@@ -69,6 +69,13 @@ jobs:
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 
+      # 브라우저가 이전 app.js/style.css 를 캐시해 두지 않도록 커밋 버전을 붙인다 (배포본에만 적용)
+      - name: 정적 파일 버전 표시
+        run: |
+          v=${GITHUB_SHA::7}
+          sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|" site/index.html
+          grep -E "style.css|app.js" site/index.html
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
