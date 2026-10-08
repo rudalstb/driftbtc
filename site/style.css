@@ -51,8 +51,10 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mid { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
-.live { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 8px; }
-.live .meta { color: var(--muted); font-size: 12.5px; text-align: right; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pair .card { margin-bottom: 16px; }
+.live { display: flex; flex-direction: column; }
+.live .meta { color: var(--muted); font-size: 12.5px; margin-top: auto; padding-top: 8px; }
 .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-left: 4px; vertical-align: middle; animation: pulse 2s infinite; }
 @keyframes pulse { 50% { opacity: 0.25; } }
 
@@ -103,7 +105,7 @@ td.best { color: var(--accent); font-weight: 700; }
 .disclaimer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--border); padding-top: 12px; margin-bottom: 0; }
 
 @media (max-width: 720px) {
-  .grid { grid-template-columns: 1fr; gap: 0; }
+  .grid, .pair { grid-template-columns: 1fr; gap: 0; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }
 }

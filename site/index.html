@@ -16,21 +16,20 @@
       <p class="sub">비트코인 가격이 <strong>어디로 갈지</strong>가 아니라 <strong>어디까지 움직일 수 있는지</strong>를 예측합니다.</p>
     </header>
 
-    <section class="live card">
-      <div>
-        <div class="label">BTC/USDT 실시간 <span class="dot"></span></div>
-        <div id="live-price" class="big">—</div>
-      </div>
-      <div class="meta" id="generated">—</div>
-    </section>
-
     <nav class="tabs" role="tablist">
       <button role="tab" data-freq="1h" aria-selected="true">1시간</button>
       <button role="tab" data-freq="1d" aria-selected="false">1일</button>
       <button role="tab" data-freq="1w" aria-selected="false">1주</button>
     </nav>
 
-    <section class="card update">
+    <section class="pair">
+    <div class="live card">
+      <div class="label">BTC/USDT 실시간 <span class="dot"></span></div>
+      <div id="live-price" class="big">—</div>
+      <div class="meta" id="generated">—</div>
+    </div>
+
+    <div class="card update">
       <div class="update-row">
         <div>
           <div class="label">다음 <span class="unit"></span> 예측 갱신까지</div>
@@ -45,6 +44,7 @@
       </div>
       <div class="progress" role="progressbar" aria-label="이번 예측 진행률"><div id="progress-bar"></div></div>
       <div class="progress-label muted small"><span id="progress-start"></span><span id="progress-end"></span></div>
+    </div>
     </section>
 
     <section class="grid">
