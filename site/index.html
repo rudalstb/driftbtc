@@ -29,6 +29,23 @@
       <button role="tab" data-freq="1w" aria-selected="false">1주</button>
     </nav>
 
+    <section class="card update">
+      <div class="update-row">
+        <div>
+          <div class="label">다음 <span class="unit"></span> 예측 갱신까지</div>
+          <div id="next-update" class="mid">—</div>
+          <div class="muted small" id="next-update-at"></div>
+        </div>
+        <div class="update-side">
+          <div class="label">마지막 갱신</div>
+          <div id="last-update" class="strong">—</div>
+          <div class="muted small" id="cycle"></div>
+        </div>
+      </div>
+      <div class="progress" role="progressbar" aria-label="이번 예측 진행률"><div id="progress-bar"></div></div>
+      <div class="progress-label muted small"><span id="progress-start"></span><span id="progress-end"></span></div>
+    </section>
+
     <section class="grid">
       <div class="card">
         <div class="label">기준가 <span id="as-of" class="muted"></span></div>

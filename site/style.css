@@ -64,6 +64,15 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 }
 .tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
 
+.update-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.update-side { text-align: right; }
+.strong { font-weight: 650; }
+#next-update { font-variant-numeric: tabular-nums; }
+#next-update.overdue { color: var(--accent); font-size: 18px; }
+.progress { height: 6px; border-radius: 3px; background: var(--border); margin: 14px 0 6px; overflow: hidden; }
+#progress-bar { height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 1s linear; }
+.progress-label { display: flex; justify-content: space-between; gap: 8px; }
+
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .grid .card { margin-bottom: 16px; }
 .range, .lean { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; font-weight: 600; margin: 4px 0; }

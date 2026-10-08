@@ -25,12 +25,82 @@ function fmtTime(iso, f) {
   return new Date(iso).toLocaleString("ko-KR", opts).replace(/\s/g, " ");
 }
 
+// GitHub Actions 가 목표 시각 5분 뒤(cron "5 * * * *")에 실행된다
+const RUN_DELAY_MS = 5 * 60 * 1000;
+const CYCLE = { "1h": "매시간 갱신", "1d": "매일 09:00 KST 갱신", "1w": "매주 월요일 09:00 KST 갱신" };
+
+function clock(d) {
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
+function dayClock(d) {
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
+function remaining(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}일 ${h}시간`;
+  if (h > 0) return `${h}시간 ${m}분`;
+  return `${m}분 ${String(s % 60).padStart(2, "0")}초`;
+}
+
+function ago(ms) {
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return "방금 전";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h}시간 ${m % 60}분 전` : `${Math.floor(h / 24)}일 전`;
+}
+
+function tick() {
+  if (!report) return;
+  const f = report.forecasts[freq];
+  const now = Date.now();
+  const start = new Date(f.as_of).getTime();
+  const end = new Date(f.next.t).getTime();
+  const scheduled = end + RUN_DELAY_MS;
+  const fmt = freq === "1h" ? clock : dayClock;
+
+  const el = $("next-update");
+  if (now < scheduled) {
+    el.textContent = remaining(scheduled - now);
+    el.classList.remove("overdue");
+    $("next-update-at").textContent = `${fmt(new Date(scheduled))} KST 예정`;
+  } else {
+    el.textContent = "갱신 중…";
+    el.classList.add("overdue");
+    $("next-update-at").textContent = "GitHub 실행을 기다리는 중입니다. 보통 몇 분 안에 끝나며, 자동으로 불러옵니다.";
+  }
+  $("last-update").textContent = ago(now - new Date(report.generated_at).getTime());
+  $("cycle").textContent = CYCLE[freq];
+
+  const p = Math.min(1, Math.max(0, (now - start) / (end - start)));
+  $("progress-bar").style.width = (p * 100).toFixed(2) + "%";
+  $("progress-start").textContent = `기준 ${fmt(new Date(start))}`;
+  $("progress-end").textContent = now < end ? `결과 확인 ${fmt(new Date(end))}` : "결과 확정, 새 예측 대기";
+}
+
 async function loadReport() {
-  const r = await fetch("data/forecast.json", { cache: "no-store" });
-  report = await r.json();
+  // GitHub Pages CDN 캐시를 피하기 위해 쿼리 문자열을 붙인다
+  const r = await fetch("data/forecast.json?t=" + Date.now(), { cache: "no-store" });
+  const next = await r.json();
+  if (report && next.generated_at === report.generated_at) return;
+  report = next;
   $("generated").textContent = "예측 생성 " + new Date(report.generated_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + " KST";
   renderTables();
   render();
+}
+
+// 갱신 예정 시각이 지났으면 1분마다, 아니면 5분마다 새 예측을 확인한다
+async function pollReport() {
+  try {
+    await loadReport();
+  } catch (e) {}
+  // 매 실행마다 모든 주기가 함께 갱신되므로 가장 잦은 1시간 기준으로 판단
+  const f = report?.forecasts["1h"];
+  const overdue = f && Date.now() > new Date(f.next.t).getTime() + RUN_DELAY_MS;
+  setTimeout(pollReport, overdue ? 60 * 1000 : 5 * 60 * 1000);
 }
 
 async function pollLive() {
@@ -75,7 +145,7 @@ function render() {
     const v = f.lean_pct[m];
     const el = $("lean-" + m);
     el.textContent = pct(v, 3);
-    el.className = v >= 0 ? "pos" : "neg";
+    el.className = Number(v.toFixed(3)) === 0 ? "" : v > 0 ? "pos" : "neg";
   }
   const s = report.summary?.[freq];
   $("lean-note").textContent = s
@@ -84,6 +154,7 @@ function render() {
   $("cover").textContent = `최근 ${f.history.length}개 중 실제 가격이 95% 구간 안: ${(f.recent_cover95 * 100).toFixed(0)}%`;
   renderLive();
   renderChart(f);
+  tick();
 }
 
 function renderChart(f) {
@@ -183,6 +254,6 @@ document.querySelectorAll(".tabs button").forEach((b) =>
   })
 );
 
-loadReport().then(pollLive);
+pollReport().then(pollLive);
 setInterval(pollLive, 5000);
-setInterval(loadReport, 5 * 60 * 1000);
+setInterval(tick, 1000);
