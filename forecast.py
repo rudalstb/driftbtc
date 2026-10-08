@@ -130,7 +130,7 @@ def main(update: bool = True) -> None:
     out = _round(out)
     SITE_DATA.mkdir(parents=True, exist_ok=True)
     (SITE_DATA / "forecast.json").write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
-    with open(SITE_DATA / "forecast_log.jsonl", "a", encoding="utf-8") as log:
+    with open(SITE_DATA / "forecast_log.jsonl", "a", encoding="utf-8", newline="\n") as log:
         for freq, f in out["forecasts"].items():
             log.write(json.dumps({"made_at": out["generated_at"], "freq": freq, "price": f["price"],
                                   "as_of": f["as_of"], **f["next"]}) + "\n")
