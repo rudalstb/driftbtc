@@ -9,6 +9,7 @@ const MODEL_NAME = { naive: "기준선", drift: "Drift", ridge: "Ridge", lgbm: "
 let report = null;
 let freq = "1h";
 let live = null;
+let titleArrow = "";
 let chart = null;
 
 const $ = (id) => document.getElementById(id);
@@ -108,8 +109,12 @@ async function pollLive() {
     try {
       const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) continue;
+      const prev = live;
       live = parseFloat((await r.json()).price);
       $("live-price").textContent = usd(live);
+      // 가격이 그대로면 직전 방향 표시를 유지한다
+      if (prev != null && Math.round(prev) !== Math.round(live)) titleArrow = live > prev ? " ▲" : " ▼";
+      document.title = `${usd(live)}${titleArrow} · DriftBTC`;
       renderLive();
       return;
     } catch (e) {}
