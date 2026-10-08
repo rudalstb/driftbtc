@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DriftBTC</title>
+  <meta name="description" content="기준선과 정직하게 비교한 비트코인 가격 예측 구간">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>DriftBTC</h1>
+      <p class="sub">비트코인 가격이 <strong>어디로 갈지</strong>가 아니라 <strong>어디까지 움직일 수 있는지</strong>를 예측합니다.</p>
+    </header>
+
+    <section class="live card">
+      <div>
+        <div class="label">BTC/USDT 실시간 <span class="dot"></span></div>
+        <div id="live-price" class="big">—</div>
+      </div>
+      <div class="meta" id="generated">—</div>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-freq="1h" aria-selected="true">1시간</button>
+      <button role="tab" data-freq="1d" aria-selected="false">1일</button>
+      <button role="tab" data-freq="1w" aria-selected="false">1주</button>
+    </nav>
+
+    <section class="grid">
+      <div class="card">
+        <div class="label">기준가 <span id="as-of" class="muted"></span></div>
+        <div id="anchor" class="mid">—</div>
+        <div class="muted small" id="live-vs-anchor"></div>
+      </div>
+      <div class="card">
+        <div class="label">다음 <span class="unit"></span> 예측 구간</div>
+        <div class="range"><span class="tag t95">95%</span><span id="r95">—</span></div>
+        <div class="range"><span class="tag t68">68%</span><span id="r68">—</span></div>
+        <div class="muted small" id="live-in-band"></div>
+      </div>
+      <div class="card">
+        <div class="label">모델 기울기 <span class="muted">(참고)</span></div>
+        <div class="lean"><span>LightGBM</span><span id="lean-lgbm">—</span></div>
+        <div class="lean"><span>Ridge</span><span id="lean-ridge">—</span></div>
+        <div class="muted small" id="lean-note"></div>
+      </div>
+    </section>
+
+    <section class="card chart-card">
+      <div class="chart-head">
+        <div class="label">최근 실제 가격 · 과거 95% 구간 · 앞으로의 예측 범위</div>
+        <div class="muted small" id="cover"></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div class="legend">
+        <span><i class="sw actual"></i>실제 가격</span>
+        <span><i class="sw past"></i>과거 1단계 95% 구간</span>
+        <span><i class="sw f95"></i>예측 95%</span>
+        <span><i class="sw f68"></i>예측 68%</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>정확도는 얼마나 되나요?</h2>
+      <p class="muted">걷기식 백테스트 결과입니다. 각 시점에서 그때까지의 데이터로만 학습한 뒤 다음 캔들을 예측했습니다.
+        <b>기준선</b>은 "다음 가격 = 현재 가격"입니다.</p>
+      <div class="table-wrap"><table id="bt-table"></table></div>
+      <p class="muted small" id="bt-note"></p>
+
+      <h3>btcgpt.info와 같은 시점 비교</h3>
+      <div class="table-wrap"><table id="cmp-table"></table></div>
+      <p class="muted small">btcgpt.info가 공개한 과거 예측 100개와 같은 목표 시점에서 평균 오차(MAPE)를 비교했습니다. 낮을수록 좋습니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>방법</h2>
+      <ul class="method">
+        <li><b>중앙값은 현재 가격입니다.</b> Ridge·LightGBM 등 여러 모델을 시험했지만, 기준선보다 통계적으로 유의하게 정확한 모델은 없었습니다.</li>
+        <li><b>예측 구간은 GARCH(1,1)-t 변동성 모델</b>로 만듭니다. 백테스트에서 95% 구간에 실제 가격이 들어간 비율은 94~95%로 목표에 맞았습니다.</li>
+        <li>데이터: Binance BTCUSDT 캔들. 아직 마감되지 않은 캔들은 사용하지 않습니다.</li>
+        <li>예측은 매 실행마다 기록되어 실제 운영 성적으로 쌓입니다.</li>
+      </ul>
+      <p class="disclaimer">이 사이트는 예측 실험이며 투자 권유가 아닙니다. 정보 사용에 따른 책임은 이용자에게 있습니다.</p>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

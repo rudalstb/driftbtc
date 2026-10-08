@@ -1,0 +1,6 @@
+arch==8.0.0
+lightgbm==4.7.0
+numpy==2.5.3
+pandas==3.0.6
+requests==2.34.2
+scikit-learn==1.9.1
