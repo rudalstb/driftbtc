@@ -49,15 +49,19 @@
 
     <section class="grid">
       <div class="card">
-        <div class="label">기준가 <span id="as-of" class="muted"></span></div>
-        <div id="anchor" class="mid">—</div>
-        <div class="muted small" id="live-vs-anchor"></div>
-      </div>
-      <div class="card">
-        <div class="label">다음 <span class="unit"></span> 예측 구간</div>
-        <div class="range"><span class="tag t95">95%</span><span id="r95">—</span></div>
-        <div class="range"><span class="tag t68">68%</span><span id="r68">—</span></div>
-        <div class="muted small" id="live-in-band"></div>
+        <div class="label">다음 <span class="unit"></span> 예측 구간 <span class="muted" id="range-end"></span></div>
+        <div class="band" aria-hidden="true">
+          <div class="band-track">
+            <div class="band-seg s95" id="seg95"></div>
+            <div class="band-seg s68" id="seg68"></div>
+            <div class="band-center" id="band-center"></div>
+            <div class="band-marker" id="band-marker"><span id="marker-label"></span></div>
+          </div>
+          <div class="band-scale"><span id="scale-lo"></span><span id="scale-mid"></span><span id="scale-hi"></span></div>
+        </div>
+        <div class="range"><span class="tag t95">거의 확실 95%</span><span id="r95">—</span></div>
+        <div class="range"><span class="tag t68">가능성 높음 68%</span><span id="r68">—</span></div>
+        <div class="small" id="live-in-band"></div>
       </div>
       <div class="card">
         <div class="label">모델 기울기 <span class="muted">(참고)</span></div>

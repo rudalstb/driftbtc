@@ -122,25 +122,56 @@ async function pollLive() {
   $("live-price").textContent = "연결 실패";
 }
 
+// 범위 막대의 표시 영역: 95% 구간 양옆으로 20%씩 여유를 둬서 범위 밖 가격도 보이게 한다
+function bandScale(n) {
+  const w = n.hi95 - n.lo95;
+  const lo = n.lo95 - 0.2 * w, hi = n.hi95 + 0.2 * w;
+  return (v) => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
+}
+
+function placeBand(f) {
+  const n = f.next;
+  const x = bandScale(n);
+  const seg = (el, a, b) => Object.assign($(el).style, { left: x(a) + "%", width: x(b) - x(a) + "%" });
+  seg("seg95", n.lo95, n.hi95);
+  seg("seg68", n.lo68, n.hi68);
+  $("band-center").style.left = x(f.price) + "%";
+  for (const [id, v, text] of [
+    ["scale-lo", n.lo95, usd(n.lo95)],
+    ["scale-mid", f.price, `출발 ${usd(f.price)}`],
+    ["scale-hi", n.hi95, usd(n.hi95)],
+  ]) {
+    $(id).textContent = text;
+    $(id).style.left = x(v) + "%";
+  }
+}
+
 function renderLive() {
   if (!report || live == null) return;
   const f = report.forecasts[freq];
-  const diff = (live / f.price - 1) * 100;
-  $("live-vs-anchor").innerHTML = `실시간 가격은 기준가 대비 <span class="${diff >= 0 ? "pos" : "neg"}">${pct(diff)}</span>`;
   const n = f.next;
-  let where;
-  if (live < n.lo95 || live > n.hi95) where = "실시간 가격이 95% 구간 <b>밖</b>에 있습니다";
-  else if (live < n.lo68 || live > n.hi68) where = "실시간 가격이 68~95% 구간에 있습니다";
-  else where = "실시간 가격이 68% 구간 안에 있습니다";
-  $("live-in-band").innerHTML = where;
+  const x = bandScale(n);
+  const marker = $("band-marker");
+  marker.style.left = x(live) + "%";
+  marker.hidden = false;
+  $("marker-label").textContent = "지금";
+
+  const diff = (live / f.price - 1) * 100;
+  let where, cls;
+  if (live < n.lo95 || live > n.hi95) [where, cls] = ["예측 범위를 벗어났어요", "neg"];
+  else if (live < n.lo68 || live > n.hi68) [where, cls] = ["범위 가장자리에 있어요", "warn"];
+  else [where, cls] = ["가능성 높은 범위 안에 있어요", "pos"];
+  $("live-in-band").innerHTML =
+    `지금 <b>${usd(live)}</b> <span class="muted">(출발가 대비 ${pct(diff)})</span> · <span class="${cls}">${where}</span>`;
 }
 
 function render() {
   const f = report.forecasts[freq];
   document.querySelectorAll(".unit").forEach((el) => (el.textContent = UNIT[freq]));
-  $("as-of").textContent = fmtTime(f.as_of, freq === "1h" ? "1h" : "1d") + " KST";
-  $("anchor").textContent = usd(f.price);
   const n = f.next;
+  const endFmt = freq === "1h" ? clock : dayClock;
+  $("range-end").textContent = `· ${endFmt(new Date(n.t))} KST 기준`;
+  placeBand(f);
   const w95 = ((n.hi95 / f.price - 1) * 100).toFixed(2);
   const w68 = ((n.hi68 / f.price - 1) * 100).toFixed(2);
   $("r95").textContent = `${usd(n.lo95)} ~ ${usd(n.hi95)}  (±${w95}%)`;
