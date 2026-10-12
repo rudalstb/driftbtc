@@ -20,10 +20,11 @@ const pct = (v, d = 2) => {
 };
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+// 그래프 축용 짧은 시각: 1시간은 "10/12 05시", 그 외는 "10/12" (한국 시간)
 function fmtTime(iso, f) {
-  const opts = { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" };
-  if (f === "1h") Object.assign(opts, { hour: "2-digit", hourCycle: "h23" });
-  return new Date(iso).toLocaleString("ko-KR", opts).replace(/\s/g, " ");
+  const kst = new Date(new Date(iso).getTime() + 9 * 3600 * 1000);
+  const md = `${kst.getUTCMonth() + 1}/${kst.getUTCDate()}`;
+  return f === "1h" ? `${md} ${String(kst.getUTCHours()).padStart(2, "0")}시` : md;
 }
 
 // GitHub Actions 가 목표 시각 5분 뒤(cron "5 * * * *")에 실행된다
@@ -177,25 +178,68 @@ function render() {
   $("r95").textContent = `${usd(n.lo95)} ~ ${usd(n.hi95)}  (±${w95}%)`;
   $("r68").textContent = `${usd(n.lo68)} ~ ${usd(n.hi68)}  (±${w68}%)`;
 
-  for (const m of ["lgbm", "ridge"]) {
-    const v = f.lean_pct[m];
-    const el = $("lean-" + m);
-    el.textContent = pct(v, 3);
-    el.className = Number(v.toFixed(3)) === 0 ? "" : v > 0 ? "pos" : "neg";
-  }
-  const s = report.summary?.[freq];
-  $("lean-note").textContent = s
-    ? `백테스트 방향 적중률 ${(s.lgbm.dir_acc * 100).toFixed(1)}%. 기준선보다 유의하게 낫지 않으므로 참고만 하세요.`
-    : "";
+  renderDirection(f);
   $("cover").textContent = `최근 ${f.history.length}개 중 실제 가격이 95% 구간 안: ${(f.recent_cover95 * 100).toFixed(0)}%`;
   renderLive();
   renderChart(f);
   tick();
 }
 
+// 표준정규 누적분포 (Abramowitz-Stegun erf 근사)
+function normCdf(z) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z / 2);
+  return z >= 0 ? (1 + y) / 2 : (1 - y) / 2;
+}
+
+function renderDirection(f) {
+  const n = f.next;
+  // 다음 캔들 수익률 표준편차 (68% 상단 = price * exp(0.9945 * sigma))
+  const sigma = Math.log(n.hi68 / f.price) / 0.9945;
+  // 백테스트상 가장 보정이 잘 된(과신하지 않는) Ridge 기울기를 사용
+  const pUp = Math.round(normCdf(f.lean_pct.ridge / 100 / sigma) * 100);
+  $("dir-verdict").textContent = Math.abs(pUp - 50) <= 5 ? "사실상 반반" : pUp > 50 ? "약간 상승 쪽" : "약간 하락 쪽";
+  $("p-up-bar").style.width = pUp + "%";
+  $("p-up").textContent = `상승 ${pUp}%`;
+  $("p-down").textContent = `하락 ${100 - pUp}%`;
+  $("if-up").textContent = `${usd(n.hi68)} (${pct((n.hi68 / f.price - 1) * 100)})`;
+  $("if-down").textContent = `${usd(n.lo68)} (${pct((n.lo68 / f.price - 1) * 100)})`;
+  const s = report.summary?.[freq];
+  $("dir-note").textContent =
+    "비트코인의 방향은 누구도 꾸준히 맞히지 못해요." +
+    (s ? ` 과거 3년 검증에서 방향 적중률은 ${(s.lgbm.dir_acc * 100).toFixed(0)}% 수준이었어요.` : "") +
+    " 대신 얼마나 움직일지는 잘 맞아요.";
+}
+
+// 그래프에는 최근 구간만 확대해서 보여준다
+const PAST = { "1h": 48, "1d": 60, "1w": 52 };
+const AHEAD = { "1h": 12, "1d": 14, "1w": 8 };
+
+// 예측 부채꼴 끝에 '오르면 / 내리면' 가격을 직접 적는다
+const endLabels = {
+  id: "endLabels",
+  afterDatasetsDraw(c) {
+    const { ctx } = c;
+    const items = [[5, "오르면", css("--up")], [4, "내리면", css("--down")]];
+    ctx.save();
+    ctx.font = "600 12px -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif";
+    ctx.textAlign = "right";
+    for (const [idx, word, color] of items) {
+      const pts = c.getDatasetMeta(idx).data;
+      const last = pts[pts.length - 1];
+      const v = c.data.datasets[idx].data.at(-1);
+      if (!last || v == null) continue;
+      ctx.fillStyle = color;
+      ctx.textBaseline = idx === 5 ? "bottom" : "top";
+      ctx.fillText(`${word} ${usd(v)}`, last.x - 4, last.y + (idx === 5 ? -4 : 4));
+    }
+    ctx.restore();
+  },
+};
+
 function renderChart(f) {
-  const hist = f.history;
-  const fut = f.future;
+  const hist = f.history.slice(-PAST[freq]);
+  const fut = f.future.slice(0, AHEAD[freq]);
   const labels = [...hist.map((h) => h.t), ...fut.map((p) => p.t)].map((t) => fmtTime(t, freq));
   const H = hist.length;
   const pad = (n) => Array(n).fill(null);
@@ -212,9 +256,15 @@ function renderChart(f) {
     { data: fan("mid"), borderColor: css("--accent"), borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0 },
     {
       label: "실제", data: [...hist.map((h) => h.actual), ...pad(fut.length)],
-      borderColor: css("--text"), borderWidth: 2, pointRadius: 0, tension: 0.15,
+      borderColor: css("--text"), borderWidth: 2.5, tension: 0.15,
+      pointRadius: (c) => (c.dataIndex === H - 1 ? 4 : 0), pointBackgroundColor: css("--accent"),
     },
   ];
+
+  // 세로축은 실제 가격과 '가능성 높음(68%)' 범위에 맞춘다 (95% 범위는 잘려도 됨)
+  const vals = [...hist.map((h) => h.actual), ...fut.map((p) => p.lo68), ...fut.map((p) => p.hi68)];
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const padY = (hi - lo) * 0.08;
 
   const opts = {
     responsive: true,
@@ -239,9 +289,11 @@ function renderChart(f) {
       },
     },
     scales: {
-      x: { ticks: { color: css("--muted"), maxTicksLimit: innerWidth < 720 ? 4 : 8, maxRotation: 0 }, grid: { display: false } },
+      x: { ticks: { color: css("--muted"), maxTicksLimit: innerWidth < 720 ? 3 : 8, maxRotation: 0, autoSkipPadding: 16 }, grid: { display: false } },
       y: {
         position: "right",
+        min: lo - padY,
+        max: hi + padY,
         ticks: { color: css("--muted"), callback: (v) => "$" + (v / 1000).toFixed(v < 1e5 ? 1 : 0) + "k" },
         grid: { color: css("--border") },
       },
@@ -249,7 +301,7 @@ function renderChart(f) {
   };
 
   if (chart) chart.destroy();
-  chart = new Chart($("chart"), { type: "line", data: { labels, datasets }, options: opts });
+  chart = new Chart($("chart"), { type: "line", data: { labels, datasets }, options: opts, plugins: [endLabels] });
 }
 
 function renderTables() {

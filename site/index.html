@@ -64,24 +64,27 @@
         <div class="small" id="live-in-band"></div>
       </div>
       <div class="card">
-        <div class="label">모델 기울기 <span class="muted">(참고)</span></div>
-        <div class="lean"><span>LightGBM</span><span id="lean-lgbm">—</span></div>
-        <div class="lean"><span>Ridge</span><span id="lean-ridge">—</span></div>
-        <div class="muted small" id="lean-note"></div>
+        <div class="label">오를까, 내릴까?</div>
+        <div id="dir-verdict" class="mid">—</div>
+        <div class="updown" aria-hidden="true"><div id="p-up-bar"></div></div>
+        <div class="updown-label small"><span class="pos" id="p-up"></span><span class="neg" id="p-down"></span></div>
+        <div class="lean"><span>🚀 오르면 보통</span><span id="if-up" class="pos">—</span></div>
+        <div class="lean"><span>😱 내리면 보통</span><span id="if-down" class="neg">—</span></div>
+        <div class="muted small" id="dir-note"></div>
       </div>
     </section>
 
     <section class="card chart-card">
       <div class="chart-head">
-        <div class="label">최근 실제 가격 · 과거 95% 구간 · 앞으로의 예측 범위</div>
+        <div class="label">지금까지의 가격과 앞으로 움직일 수 있는 범위</div>
         <div class="muted small" id="cover"></div>
       </div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
       <div class="legend">
         <span><i class="sw actual"></i>실제 가격</span>
-        <span><i class="sw past"></i>과거 1단계 95% 구간</span>
-        <span><i class="sw f95"></i>예측 95%</span>
-        <span><i class="sw f68"></i>예측 68%</span>
+        <span><i class="sw past"></i>과거 예측 범위</span>
+        <span><i class="sw f95"></i>거의 확실 (95%)</span>
+        <span><i class="sw f68"></i>가능성 높음 (68%)</span>
       </div>
     </section>
 
