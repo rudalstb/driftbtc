@@ -340,8 +340,19 @@ function renderPositions(d) {
     ? `<thead><tr><th>종목</th><th>방향</th><th>진입가</th><th>청산가</th><th>수량</th><th>순손익</th><th>수수료·펀딩</th><th>청산 시각</th></tr></thead><tbody>` +
       hist.map((h) => `<tr><td>${h.symbol}</td><td>${sideTag(h.side)}</td><td>${num(h.entry)}</td><td>${num(h.exit)}</td><td>${h.size}</td>
         <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${h.closed ? shortTime(h.closed) : "—"}</td></tr>`).join("") +
-      `</tbody>`
+      `</tbody>` + historyTotal(hist)
     : `<tbody><tr><td class="mp-empty">아직 청산 기록이 없어요</td></tr></tbody>`;
+}
+
+// 최근 청산 기록 합계: 승패, 순손익 합계, 수수료·펀딩 합계
+function historyTotal(hist) {
+  const wins = hist.filter((h) => h.net > 0).length;
+  const losses = hist.filter((h) => h.net < 0).length;
+  const net = hist.reduce((a, h) => a + (h.net || 0), 0);
+  const fees = hist.reduce((a, h) => a + (h.fees || 0), 0);
+  const rate = wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0;
+  return `<tfoot><tr class="total-row"><td colspan="5">합계 ${hist.length}건 · <span class="pos">${wins}승</span> <span class="neg">${losses}패</span> (승률 ${rate}%)</td>
+    <td>${signed(net)}</td><td>${money(fees)}</td><td></td></tr></tfoot>`;
 }
 
 setInterval(() => {

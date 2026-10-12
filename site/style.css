@@ -86,6 +86,8 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .mp-stats .strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .side-long { color: var(--up); font-weight: 700; }
 .side-short { color: var(--down); font-weight: 700; }
+.total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
+.total-row td:first-child { white-space: normal; }
 .mp-empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
