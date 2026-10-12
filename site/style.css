@@ -114,6 +114,20 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 table.compact th, table.compact td { padding: 5px 6px; }
 .eq-wrap { position: relative; height: 150px; margin-top: 8px; }
 
+.move-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.vol-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.vol-badge.calm { background: rgba(63, 185, 80, 0.15); color: var(--up); }
+.vol-badge.mid { background: var(--band95); color: var(--accent); }
+.vol-badge.wild { background: rgba(248, 81, 73, 0.15); color: var(--down); }
+.move-big { font-size: 18px; margin: 6px 0 2px; }
+.move-big b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.touch { margin: 4px 0 8px; }
+.touch-row { display: grid; grid-template-columns: 9.5em 1fr 3em; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.touch-row b { text-align: right; }
+.touch-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.touch-bar i { display: block; height: 100%; background: var(--accent); }
+.lev-line { margin-top: 6px; }
+
 .band { margin: 30px 0 16px; }
 .band-track { position: relative; height: 18px; border-radius: 9px; background: var(--border); }
 .band-seg { position: absolute; top: 0; bottom: 0; border-radius: 9px; }

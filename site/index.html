@@ -49,19 +49,17 @@
 
     <section class="grid">
       <div class="card">
-        <div class="label">다음 <span class="unit"></span> 예측 구간 <span class="muted" id="range-end"></span></div>
-        <div class="band" aria-hidden="true">
-          <div class="band-track">
-            <div class="band-seg s95" id="seg95"></div>
-            <div class="band-seg s68" id="seg68"></div>
-            <div class="band-center" id="band-center"></div>
-            <div class="band-marker" id="band-marker"><span id="marker-label"></span></div>
-          </div>
-          <div class="band-scale"><span id="scale-lo"></span><span id="scale-mid"></span><span id="scale-hi"></span></div>
+        <div class="move-head">
+          <div class="label">이번 <span class="unit"></span>, 얼마나 움직일까? <span class="muted" id="range-end"></span></div>
+          <span class="vol-badge" id="vol-badge"></span>
         </div>
-        <div class="range"><span class="tag t95">거의 확실 95%</span><span id="r95">—</span></div>
-        <div class="range"><span class="tag t68">가능성 높음 68%</span><span id="r68">—</span></div>
-        <div class="small" id="live-in-band"></div>
+        <div class="move-big">보통 <b id="move68">—</b> 안에서 움직여요</div>
+        <div class="muted small" id="move95"></div>
+        <div class="label game-sub">손절·익절 거리별로 <span class="unit"></span> 안에 닿을 확률</div>
+        <div id="touch-table" class="touch"></div>
+        <div class="small" id="touch-note"></div>
+        <div class="small lev-line" id="lev-line"></div>
+        <div class="muted small" id="live-in-band"></div>
       </div>
       <div class="card">
         <div class="label">오를까, 내릴까?</div>

@@ -123,47 +123,63 @@ async function pollLive() {
   $("live-price").textContent = "연결 실패";
 }
 
-// 범위 막대의 표시 영역: 95% 구간 양옆으로 20%씩 여유를 둬서 범위 밖 가격도 보이게 한다
-function bandScale(n) {
-  const w = n.hi95 - n.lo95;
-  const lo = n.lo95 - 0.2 * w, hi = n.hi95 + 0.2 * w;
-  return (v) => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
+// "얼마나 움직일까?" 카드: 예측 변동성을 매매에 바로 쓰는 숫자로 바꿔 보여준다
+// 손절·익절 거리 (주기별)
+const TOUCH_LEVELS = { "1h": [0.3, 0.5, 1, 2], "1d": [1, 2, 3, 5], "1w": [3, 5, 10, 15] };
+let lastPositions = [];
+
+// 다음 캔들 수익률 표준편차 (68% 상단 = price * exp(0.9945 * sigma))
+const nextSigma = (f) => Math.log(f.next.hi68 / f.price) / 0.9945;
+
+// 기간 안에 ±d 거리에 한 번이라도 닿을 확률 (무작위 행보 근사, 반사 원리: 2 × 끝에서 넘어 있을 확률)
+const touchProb = (d, sigma) => Math.min(1, 2 * (1 - normCdf(d / sigma)));
+
+function renderMove(f) {
+  const n = f.next;
+  const s = nextSigma(f);
+  const w68 = n.hi68 - f.price, w95 = n.hi95 - f.price;
+  $("move68").textContent = `±${usd(w68)} (±${(s * 0.9945 * 100).toFixed(2)}%)`;
+  $("move95").textContent = `크게 움직여도 ±${usd(w95)} (±${((n.hi95 / f.price - 1) * 100).toFixed(2)}%) 안이에요 (95%)`;
+
+  // 최근 기록 대비 지금 변동성 수준
+  const past = f.history.map((h) => Math.log(h.hi95 / h.lo95) / (2 * 1.96)).filter((v) => v > 0);
+  const rank = past.filter((v) => v < s).length / past.length;
+  const [badge, cls] = rank < 0.33 ? ["🟢 평소보다 잔잔", "calm"] : rank < 0.67 ? ["🟡 평소 수준", "mid"] : ["🔴 평소보다 요동", "wild"];
+  $("vol-badge").textContent = badge;
+  $("vol-badge").className = "vol-badge " + cls;
+
+  const levels = TOUCH_LEVELS[freq];
+  $("touch-table").innerHTML = levels
+    .map((d) => {
+      const p = touchProb(d / 100, s);
+      const cls = p >= 0.4 ? "neg" : p >= 0.15 ? "warn" : "pos";
+      return `<div class="touch-row"><span>±${d}% <span class="muted">(${usd(f.price * d / 100)})</span></span>
+        <span class="touch-bar"><i style="width:${(p * 100).toFixed(0)}%"></i></span><b class="${cls}">${(p * 100).toFixed(0)}%</b></div>`;
+    })
+    .join("");
+  const safe = levels.find((d) => touchProb(d / 100, s) < 0.2);
+  const tight = levels[0];
+  $("touch-note").innerHTML =
+    `손절을 <b>-${tight}%</b>에 두면 그냥 흔들림에도 걸릴 확률이 <b>${(touchProb(tight / 100, s) * 100).toFixed(0)}%</b>예요.` +
+    (safe ? ` 닿을 확률이 20% 아래로 떨어지는 건 <b>±${safe}%</b>부터예요.` : "");
+  renderLeverage(f);
 }
 
-function placeBand(f) {
-  const n = f.next;
-  const x = bandScale(n);
-  const seg = (el, a, b) => Object.assign($(el).style, { left: x(a) + "%", width: x(b) - x(a) + "%" });
-  seg("seg95", n.lo95, n.hi95);
-  seg("seg68", n.lo68, n.hi68);
-  $("band-center").style.left = x(f.price) + "%";
-  for (const [id, v, text] of [
-    ["scale-lo", n.lo95, usd(n.lo95)],
-    ["scale-mid", f.price, `출발 ${usd(f.price)}`],
-    ["scale-hi", n.hi95, usd(n.hi95)],
-  ]) {
-    $(id).textContent = text;
-    $(id).style.left = x(v) + "%";
-  }
+// 보유 중인 BTC 포지션의 레버리지로 '보통 손익 흔들림'을 환산 (없으면 10배 예시)
+function renderLeverage(f) {
+  const btc = lastPositions.filter((p) => p.symbol === "BTCUSDT");
+  const lev = btc.length ? Math.max(...btc.map((p) => p.leverage)) : 10;
+  const move = nextSigma(f) * 0.9945 * 100;
+  $("lev-line").innerHTML = btc.length
+    ? `지금 보유한 BTC 포지션(${lev}배) 기준으로는 보통 손익이 <b>±${(move * lev).toFixed(1)}%</b> 흔들려요.`
+    : `${lev}배 레버리지라면 보통 손익이 <b>±${(move * lev).toFixed(1)}%</b> 흔들려요.`;
 }
 
 function renderLive() {
   if (!report || live == null) return;
   const f = report.forecasts[freq];
-  const n = f.next;
-  const x = bandScale(n);
-  const marker = $("band-marker");
-  marker.style.left = x(live) + "%";
-  marker.hidden = false;
-  $("marker-label").textContent = "지금";
-
   const diff = (live / f.price - 1) * 100;
-  let where, cls;
-  if (live < n.lo95 || live > n.hi95) [where, cls] = ["예측 범위를 벗어났어요", "neg"];
-  else if (live < n.lo68 || live > n.hi68) [where, cls] = ["범위 가장자리에 있어요", "warn"];
-  else [where, cls] = ["가능성 높은 범위 안에 있어요", "pos"];
-  $("live-in-band").innerHTML =
-    `지금 <b>${usd(live)}</b> <span class="muted">(출발가 대비 ${pct(diff)})</span> · <span class="${cls}">${where}</span>`;
+  $("live-in-band").innerHTML = `지금 ${usd(live)} · 기준가 ${usd(f.price)} 대비 ${pct(diff)}`;
 }
 
 function render() {
@@ -171,12 +187,8 @@ function render() {
   document.querySelectorAll(".unit").forEach((el) => (el.textContent = UNIT[freq]));
   const n = f.next;
   const endFmt = freq === "1h" ? clock : dayClock;
-  $("range-end").textContent = `· ${endFmt(new Date(n.t))} KST 기준`;
-  placeBand(f);
-  const w95 = ((n.hi95 / f.price - 1) * 100).toFixed(2);
-  const w68 = ((n.hi68 / f.price - 1) * 100).toFixed(2);
-  $("r95").textContent = `${usd(n.lo95)} ~ ${usd(n.hi95)}  (±${w95}%)`;
-  $("r68").textContent = `${usd(n.lo68)} ~ ${usd(n.hi68)}  (±${w68}%)`;
+  $("range-end").textContent = `· ${endFmt(new Date(n.t))} KST까지`;
+  renderMove(f);
 
   renderDirection(f);
   renderGame(f);
@@ -327,6 +339,8 @@ function renderPositions(d) {
   $("mp-upnl").innerHTML = a.unrealized_pnl != null ? signed(a.unrealized_pnl) : "—";
 
   const pos = d.positions || [];
+  lastPositions = pos;
+  if (report) renderLeverage(report.forecasts[freq]);
   $("mp-positions").innerHTML = pos.length
     ? `<thead><tr><th>종목</th><th>방향</th><th>레버리지</th><th>수량</th><th>진입가</th><th>현재가</th><th>청산가</th><th>증거금</th><th>손익</th><th>수익률</th><th>진입</th></tr></thead><tbody>` +
       pos.map((p) => `<tr><td>${p.symbol}</td><td>${sideTag(p.side)}</td><td>${p.leverage}x ${p.margin_mode === "isolated" ? "격리" : p.margin_mode === "crossed" ? "교차" : ""}</td>
