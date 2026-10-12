@@ -26,6 +26,7 @@ import backtest
 import data
 import features
 import models
+import signals
 
 ROOT = Path(__file__).parent
 SITE_DATA = ROOT / "site" / "data"
@@ -96,6 +97,7 @@ def run(freq: str) -> dict:
         "next": future[0],
         "future": future,
         "lean_pct": {k: v * 100 for k, v in lean.items()},
+        "sigma_next": float(sd[0]),
         "history": history,
         "recent_cover95": float(np.mean(hits)),
     }
@@ -122,7 +124,14 @@ def main(update: bool = True) -> None:
         print(f"{freq}: 현재 ${f['price']:,.0f}  다음 95% [{f['next']['lo95']:,.0f} ~ {f['next']['hi95']:,.0f}]"
               f"  최근 적중 {f['recent_cover95'] * 100:.0f}%")
 
-    for name in ["summary.json", "btcgpt_compare.json"]:
+    # 🎲 롱/숏 게임: 새 신호 기록 + 확정된 신호 채점
+    frames = {freq: data.load(freq) for freq in signals.SIGNAL_FREQS}
+    out["signals"] = signals.record_and_score(out["forecasts"], frames)
+    for freq, r in out["signals"].items():
+        c = r["current"]
+        print(f"{freq} 신호: {c['signal'] if c else '-'}  운영 성적 {r.get('hits', 0)}/{r['n']}")
+
+    for name in ["summary.json", "btcgpt_compare.json", "signal_backtest.json"]:
         p = ROOT / "reports" / name
         if p.exists():
             out[name.removesuffix(".json")] = json.loads(p.read_text(encoding="utf-8"))

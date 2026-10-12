@@ -57,6 +57,7 @@ jobs:
         run: |
           python backtest.py
           python compare_btcgpt.py
+          python signals.py
 
       - name: 예측 생성
         run: python forecast.py --no-update
@@ -65,7 +66,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data reports/summary.json reports/btcgpt_compare.json
+          git add site/data reports/summary.json reports/btcgpt_compare.json reports/signal_backtest.json
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 

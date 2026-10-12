@@ -179,6 +179,7 @@ function render() {
   $("r68").textContent = `${usd(n.lo68)} ~ ${usd(n.hi68)}  (±${w68}%)`;
 
   renderDirection(f);
+  renderGame(f);
   $("cover").textContent = `최근 ${f.history.length}개 중 실제 가격이 95% 구간 안: ${(f.recent_cover95 * 100).toFixed(0)}%`;
   renderLive();
   renderChart(f);
@@ -207,8 +208,88 @@ function renderDirection(f) {
   const s = report.summary?.[freq];
   $("dir-note").textContent =
     "비트코인의 방향은 누구도 꾸준히 맞히지 못해요." +
-    (s ? ` 과거 3년 검증에서 방향 적중률은 ${(s.lgbm.dir_acc * 100).toFixed(0)}% 수준이었어요.` : "") +
+    (s ? ` 과거 3년 검증에서 방향 적중률은 ${(s.ridge.dir_acc * 100).toFixed(0)}% 수준이었어요.` : "") +
     " 대신 얼마나 움직일지는 잘 맞아요.";
+}
+
+// 🎲 롱/숏 게임 (실험): 1일·1주만 신호, 1시간은 수수료 때문에 신호 없음
+let eqChart = null;
+
+function renderGame(f) {
+  const bt = report.signal_backtest?.[freq];
+  const sig = report.signals?.[freq];
+  const big = $("sig-big");
+  const fmt = freq === "1h" ? clock : dayClock;
+
+  if (!sig) {
+    big.className = "sig-big none";
+    big.textContent = "🚫 신호 없음";
+    $("sig-detail").innerHTML = bt
+      ? `1시간마다 롱/숏을 바꾸면 수수료가 너무 커요. 과거 1년 동안 매시간 신호대로 했다면 수수료 후 <b class="neg">${pct(bt.signal.return_pct, 1)}</b>였어요.`
+      : "1시간마다 롱/숏을 바꾸면 수수료가 너무 커서 신호를 내지 않아요.";
+    $("live-record").textContent = "1일·1주 탭에서 신호를 확인하세요.";
+    $("hit-row").innerHTML = "";
+  } else {
+    const c = sig.current;
+    const long = c.signal === "long";
+    big.className = "sig-big " + (long ? "long" : "short");
+    big.textContent = long ? "🟢 롱" : "🔴 숏";
+    const pUp = Math.round(c.p_up * 100);
+    $("sig-detail").innerHTML =
+      `${long ? "상승" : "하락"} 확률 <b>${long ? pUp : 100 - pUp}%</b> · 진입 기준 ${usd(c.price)}<br>` +
+      `<span class="muted">결과 확인 ${fmt(new Date(c.target))} KST</span>`;
+
+    if (!sig.n) {
+      $("live-record").innerHTML = `아직 결과가 나온 신호가 없어요. 첫 결과는 <b>${fmt(new Date(c.target))}</b>에 나와요.`;
+      $("hit-row").innerHTML = "";
+    } else {
+      const streak = sig.streak >= 2 ? ` · ${sig.streak_hit ? "🔥" : "🥶"} ${sig.streak}연속 ${sig.streak_hit ? "적중" : "실패"}` : "";
+      $("live-record").innerHTML =
+        `적중 <b>${sig.hits}/${sig.n}</b> (${(sig.hit_rate * 100).toFixed(0)}%) · 수수료 후 ` +
+        `<b class="${sig.return_pct >= 0 ? "pos" : "neg"}">${pct(sig.return_pct, 1)}</b> ` +
+        `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)})</span>${streak}`;
+      $("hit-row").innerHTML = sig.recent
+        .map((r) => `<span title="${fmt(new Date(r.t))} ${r.signal === "long" ? "롱" : "숏"} ${pct(r.ret_pct, 2)}">${r.hit ? "✅" : "❌"}</span>`)
+        .join("");
+    }
+  }
+
+  if (!bt) return;
+  const ym = (t) => { const d = new Date(t); return `${d.getUTCFullYear()}.${d.getUTCMonth() + 1}`; };
+  $("bt-period").textContent = `${ym(bt.start)}~${ym(bt.end)}`;
+  const row = (name, s) =>
+    `<tr><td>${name}</td><td class="${s.return_pct >= 0 ? "pos" : "neg"}">${pct(s.return_pct, 0)}</td>` +
+    `<td>${s.max_drawdown_pct.toFixed(0)}%</td><td>${(s.hit_rate * 100).toFixed(1)}%</td></tr>`;
+  $("sig-table").innerHTML =
+    `<thead><tr><th></th><th>수익률</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
+    row(freq === "1h" ? "매시간 신호대로" : "신호대로", bt.signal) + row("항상 롱", bt.always_long) + `</tbody>`;
+  $("sig-note").textContent =
+    freq === "1w" && bt.signal.flips === 0
+      ? "주간 신호는 과거 3년 내내 '롱'이었어요. 그래서 항상 롱과 결과가 같아요."
+      : `신호가 롱↔숏으로 ${bt.signal.flips.toLocaleString()}번 바뀌었어요. 과거 성적이 앞으로도 같다는 보장은 없어요.`;
+
+  const labels = bt.series.map((p) => ym(p.t));
+  const data = {
+    labels,
+    datasets: [
+      { label: freq === "1h" ? "매시간 신호대로" : "신호대로", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
+      { label: "항상 롱", data: bt.series.map((p) => p.long), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
+    ],
+  };
+  const opts = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { labels: { color: css("--muted"), boxWidth: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: (i) => `${i.dataset.label} ${pct((i.raw - 1) * 100, 0)}` } },
+    },
+    scales: {
+      x: { ticks: { color: css("--muted"), maxTicksLimit: 4, maxRotation: 0 }, grid: { display: false } },
+      y: { position: "right", ticks: { color: css("--muted"), callback: (v) => pct((v - 1) * 100, 0) }, grid: { color: css("--border") } },
+    },
+  };
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart($("eq-chart"), { type: "line", data, options: opts });
 }
 
 // 그래프에는 최근 구간만 확대해서 보여준다
