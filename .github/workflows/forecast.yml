@@ -74,7 +74,7 @@ jobs:
       - name: 정적 파일 버전 표시
         run: |
           v=${GITHUB_SHA::7}
-          sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|" site/index.html
+          sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|; s|src=\"config.js\"|src=\"config.js?v=$v\"|" site/index.html
           grep -E "style.css|app.js" site/index.html
 
       - uses: actions/configure-pages@v5
