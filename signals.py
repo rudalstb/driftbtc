@@ -22,7 +22,7 @@ import pandas as pd
 ROOT = Path(__file__).parent
 FEE = 0.0005           # 바이낸스 선물 테이커 수수료 (편도)
 MODEL = "ridge"        # 백테스트에서 확률이 가장 과신하지 않았던 모델
-SIGNAL_FREQS = ["1d", "1w"]  # 1시간은 수수료 때문에 신호를 내지 않는다
+SIGNAL_FREQS = ["1h", "1d", "1w"]  # 1시간은 매번 바꾸면 수수료가 크므로 화면에서 '관점'으로만 안내
 STEP = {"1h": pd.Timedelta(hours=1), "1d": pd.Timedelta(days=1), "1w": pd.Timedelta(weeks=1)}
 LOG = ROOT / "site" / "data" / "signal_log.jsonl"
 
@@ -39,6 +39,7 @@ def _stats(sig: np.ndarray, ret: np.ndarray) -> dict:
     nz = ret != 0
     return {
         "return_pct": float((eq[-1] - 1) * 100),
+        "gross_return_pct": float((np.exp(np.sum(sig * ret)) - 1) * 100),
         "max_drawdown_pct": float((eq / np.maximum.accumulate(eq) - 1).min() * 100),
         "hit_rate": float((np.sign(sig[nz]) == np.sign(ret[nz])).mean()),
         "flips": int((np.abs(np.diff(sig)) == 2).sum()),
@@ -133,6 +134,7 @@ def record_and_score(forecasts: dict, frames: dict[str, pd.DataFrame]) -> dict:
                 "hits": int(sum(hits)),
                 "hit_rate": float(np.mean(hits)),
                 "return_pct": float((eq[-1] - 1) * 100),
+                "gross_pct": float((np.exp(np.sum(sig * ret)) - 1) * 100),
                 "always_long_pct": float((hold[-1] - 1) * 100),
                 "streak": streak, "streak_hit": hits[-1],
                 "recent": [{"t": s["target"], "signal": s["signal"], "hit": h,

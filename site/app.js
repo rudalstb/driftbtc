@@ -221,13 +221,11 @@ function renderGame(f) {
   const big = $("sig-big");
   const fmt = freq === "1h" ? clock : dayClock;
 
-  if (!sig) {
+  if (!sig?.current) {
     big.className = "sig-big none";
-    big.textContent = "🚫 신호 없음";
-    $("sig-detail").innerHTML = bt
-      ? `1시간마다 롱/숏을 바꾸면 수수료가 너무 커요. 과거 1년 동안 매시간 신호대로 했다면 수수료 후 <b class="neg">${pct(bt.signal.return_pct, 1)}</b>였어요.`
-      : "1시간마다 롱/숏을 바꾸면 수수료가 너무 커서 신호를 내지 않아요.";
-    $("live-record").textContent = "1일·1주 탭에서 신호를 확인하세요.";
+    big.textContent = "—";
+    $("sig-detail").textContent = "다음 갱신 때 첫 관점이 나와요.";
+    $("live-record").textContent = "";
     $("hit-row").innerHTML = "";
   } else {
     const c = sig.current;
@@ -236,18 +234,21 @@ function renderGame(f) {
     big.textContent = long ? "🟢 롱" : "🔴 숏";
     const pUp = Math.round(c.p_up * 100);
     $("sig-detail").innerHTML =
-      `${long ? "상승" : "하락"} 확률 <b>${long ? pUp : 100 - pUp}%</b> · 진입 기준 ${usd(c.price)}<br>` +
-      `<span class="muted">결과 확인 ${fmt(new Date(c.target))} KST</span>`;
+      `${long ? "상승" : "하락"} 확률 <b>${long ? pUp : 100 - pUp}%</b> · 기준가 ${usd(c.price)}<br>` +
+      `<span class="muted">결과 확인 ${fmt(new Date(c.target))} KST</span>` +
+      (freq === "1h" ? `<br><span class="muted">참고용 관점이에요. 매시간 포지션을 바꾸라는 뜻은 아니에요.</span>` : "");
 
     if (!sig.n) {
-      $("live-record").innerHTML = `아직 결과가 나온 신호가 없어요. 첫 결과는 <b>${fmt(new Date(c.target))}</b>에 나와요.`;
+      $("live-record").innerHTML = `아직 결과가 나온 관점이 없어요. 첫 결과는 <b>${fmt(new Date(c.target))}</b>에 나와요.`;
       $("hit-row").innerHTML = "";
     } else {
       const streak = sig.streak >= 2 ? ` · ${sig.streak_hit ? "🔥" : "🥶"} ${sig.streak}연속 ${sig.streak_hit ? "적중" : "실패"}` : "";
+      const money = (v) => `<b class="${v >= 0 ? "pos" : "neg"}">${pct(v, 1)}</b>`;
       $("live-record").innerHTML =
-        `적중 <b>${sig.hits}/${sig.n}</b> (${(sig.hit_rate * 100).toFixed(0)}%) · 수수료 후 ` +
-        `<b class="${sig.return_pct >= 0 ? "pos" : "neg"}">${pct(sig.return_pct, 1)}</b> ` +
-        `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)})</span>${streak}`;
+        `적중 <b>${sig.hits}/${sig.n}</b> (${(sig.hit_rate * 100).toFixed(0)}%)${streak}<br>` +
+        (sig.gross_pct != null ? `방향대로 들고 있었다면 ${money(sig.gross_pct)} · ` : "") +
+        `매번 바꿨다면 수수료 후 ${money(sig.return_pct)} ` +
+        `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)})</span>`;
       $("hit-row").innerHTML = sig.recent
         .map((r) => `<span title="${fmt(new Date(r.t))} ${r.signal === "long" ? "롱" : "숏"} ${pct(r.ret_pct, 2)}">${r.hit ? "✅" : "❌"}</span>`)
         .join("");
@@ -257,22 +258,26 @@ function renderGame(f) {
   if (!bt) return;
   const ym = (t) => { const d = new Date(t); return `${d.getUTCFullYear()}.${d.getUTCMonth() + 1}`; };
   $("bt-period").textContent = `${ym(bt.start)}~${ym(bt.end)}`;
+  const cell = (v) => `<td class="${v >= 0 ? "pos" : "neg"}">${pct(v, 0)}</td>`;
   const row = (name, s) =>
-    `<tr><td>${name}</td><td class="${s.return_pct >= 0 ? "pos" : "neg"}">${pct(s.return_pct, 0)}</td>` +
+    `<tr><td>${name}</td>${cell(s.gross_return_pct ?? s.return_pct)}${cell(s.return_pct)}` +
     `<td>${s.max_drawdown_pct.toFixed(0)}%</td><td>${(s.hit_rate * 100).toFixed(1)}%</td></tr>`;
   $("sig-table").innerHTML =
-    `<thead><tr><th></th><th>수익률</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
-    row(freq === "1h" ? "매시간 신호대로" : "신호대로", bt.signal) + row("항상 롱", bt.always_long) + `</tbody>`;
+    `<thead><tr><th></th><th>수수료 전</th><th>수수료 후</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
+    row("관점대로", bt.signal) + row("항상 롱", bt.always_long) + `</tbody>`;
+  const flips = bt.signal.flips.toLocaleString();
   $("sig-note").textContent =
     freq === "1w" && bt.signal.flips === 0
-      ? "주간 신호는 과거 3년 내내 '롱'이었어요. 그래서 항상 롱과 결과가 같아요."
-      : `신호가 롱↔숏으로 ${bt.signal.flips.toLocaleString()}번 바뀌었어요. 과거 성적이 앞으로도 같다는 보장은 없어요.`;
+      ? "주간 관점은 과거 3년 내내 '롱'이었어요. 그래서 항상 롱과 결과가 같아요."
+      : freq === "1h"
+        ? `방향만 보면 수수료 전 ${pct(bt.signal.gross_return_pct, 0)}였지만, 매시간 롱↔숏을 ${flips}번 바꾸면 수수료로 ${pct(bt.signal.return_pct, 0)}가 돼요. 진입 방향 참고용으로만 보세요.`
+        : `관점이 롱↔숏으로 ${flips}번 바뀌었어요. 과거 성적이 앞으로도 같다는 보장은 없어요.`;
 
   const labels = bt.series.map((p) => ym(p.t));
   const data = {
     labels,
     datasets: [
-      { label: freq === "1h" ? "매시간 신호대로" : "신호대로", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
+      { label: "관점대로 (수수료 후)", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
       { label: "항상 롱", data: bt.series.map((p) => p.long), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
     ],
   };
