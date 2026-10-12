@@ -342,6 +342,44 @@ function renderPositions(d) {
         <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${h.closed ? shortTime(h.closed) : "—"}</td></tr>`).join("") +
       `</tbody>` + historyTotal(hist)
     : `<tbody><tr><td class="mp-empty">아직 청산 기록이 없어요</td></tr></tbody>`;
+
+  renderPositionsMobile(pos, hist);
+}
+
+// 모바일: 표 대신 포지션 하나당 카드 하나 (가로 스크롤 없음)
+const mode = (m) => (m === "isolated" ? "격리" : m === "crossed" ? "교차" : "");
+const kv = (k, v) => `<div><span class="muted">${k}</span><b>${v}</b></div>`;
+
+function renderPositionsMobile(pos, hist) {
+  $("mp-positions-m").innerHTML = pos.length
+    ? pos.map((p) => `<div class="pcard">
+        <div class="pcard-head">
+          <div><b>${p.symbol}</b> ${sideTag(p.side)} <span class="muted">${p.leverage}x ${mode(p.margin_mode)}</span></div>
+          <div class="pcard-pnl">${signed(p.upnl)}<span class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</span></div>
+        </div>
+        <div class="pcard-grid">
+          ${kv("진입가", num(p.entry))}${kv("현재가", num(p.mark))}
+          ${kv("청산가", p.liq ? num(p.liq) : "—")}${kv("증거금", money(p.margin))}
+          ${kv("수량", p.size)}${kv("진입", p.opened ? shortTime(p.opened) : "—")}
+        </div></div>`).join("")
+    : `<div class="mp-empty">지금은 포지션이 없어요 (관망 중)</div>`;
+
+  if (!hist.length) {
+    $("mp-history-m").innerHTML = `<div class="mp-empty">아직 청산 기록이 없어요</div>`;
+    return;
+  }
+  const wins = hist.filter((h) => h.net > 0).length;
+  const losses = hist.filter((h) => h.net < 0).length;
+  const net = hist.reduce((a, h) => a + (h.net || 0), 0);
+  const fees = hist.reduce((a, h) => a + (h.fees || 0), 0);
+  const rate = wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0;
+  $("mp-history-m").innerHTML =
+    `<div class="pcard total"><div class="pcard-head"><div><b>합계 ${hist.length}건</b> · <span class="pos">${wins}승</span> <span class="neg">${losses}패</span> <span class="muted">(승률 ${rate}%)</span></div>
+      <div class="pcard-pnl">${signed(net)}<span class="muted">수수료 ${money(fees)}</span></div></div></div>` +
+    hist.map((h) => `<div class="hrow">
+        <div><b>${h.symbol}</b> ${sideTag(h.side)}<div class="muted small">${num(h.entry)} → ${num(h.exit)} · ${h.size}</div></div>
+        <div class="hrow-r">${signed(h.net)}<div class="muted small">${h.closed ? shortTime(h.closed) : ""}</div></div>
+      </div>`).join("");
 }
 
 // 최근 청산 기록 합계: 승패, 순손익 합계, 수수료·펀딩 합계

@@ -88,6 +88,17 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .side-short { color: var(--down); font-weight: 700; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
+.m-only { display: none; }
+.pcard { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 6px 0; }
+.pcard.total { background: var(--bg); }
+.pcard-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.pcard-pnl { text-align: right; font-weight: 700; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.pcard-pnl span:last-child { font-size: 12.5px; }
+.pcard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-top: 8px; font-size: 13px; }
+.pcard-grid div { display: flex; justify-content: space-between; gap: 6px; }
+.pcard-grid b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.hrow-r { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mp-empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
@@ -153,6 +164,8 @@ td.best { color: var(--accent); font-weight: 700; }
   .grid, .pair { grid-template-columns: 1fr; gap: 0; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }
   .mp-stats .strong { font-size: 15px; }
+  .pc-only { display: none; }
+  .m-only { display: block; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }
 }
