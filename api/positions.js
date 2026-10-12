@@ -4,12 +4,13 @@
 //   BITGET_API_KEY, BITGET_API_SECRET, BITGET_PASSPHRASE
 import worker from "../worker/positions.js";
 
-// 대시보드에 붙여 넣을 때 섞인 앞뒤 공백·줄바꿈을 제거한다
+// 대시보드에 붙여 넣을 때 섞인 앞뒤 공백·줄바꿈·따옴표를 제거한다
+const clean = (v) => v?.trim().replace(/^["']|["']$/g, "").trim();
 const env = () => ({
-  BITGET_API_KEY: process.env.BITGET_API_KEY?.trim(),
-  BITGET_API_SECRET: process.env.BITGET_API_SECRET?.trim(),
-  BITGET_PASSPHRASE: process.env.BITGET_PASSPHRASE?.trim(),
-  ALLOW_ORIGIN: process.env.ALLOW_ORIGIN?.trim(),
+  BITGET_API_KEY: clean(process.env.BITGET_API_KEY),
+  BITGET_API_SECRET: clean(process.env.BITGET_API_SECRET),
+  BITGET_PASSPHRASE: clean(process.env.BITGET_PASSPHRASE),
+  ALLOW_ORIGIN: clean(process.env.ALLOW_ORIGIN),
 });
 
 export async function GET(request) {
