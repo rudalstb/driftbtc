@@ -39,9 +39,13 @@ async function get(env, path, params = {}) {
       locale: "en-US",
     },
   });
-  const body = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let body = {};
+  try { body = JSON.parse(text); } catch {}
   if (body.code !== "00000") {
-    const err = new Error(`${path}: ${body.code || res.status} ${body.msg || ""}`.trim());
+    // 원인 파악용: HTTP 상태, 비트겟 코드/메시지, (JSON 이 아니면) 응답 앞부분. 키 값은 들어가지 않는다
+    const detail = body.code ? `${body.code} ${body.msg || ""}` : text.replace(/\s+/g, " ").slice(0, 160);
+    const err = new Error(`${path}: HTTP ${res.status} ${detail}`.trim());
     err.code = body.code;
     throw err;
   }
@@ -115,6 +119,7 @@ async function readClassic(env) {
 }
 
 async function read(env) {
+  let utaError = null;
   if (mode !== "classic") {
     try {
       const d = await readUta(env);
@@ -122,11 +127,17 @@ async function read(env) {
       return d;
     } catch (e) {
       if (mode === "uta") throw e; // 통합 계정으로 확인된 뒤의 오류는 그대로 알린다
+      utaError = e;
     }
   }
-  const d = await readClassic(env);
-  mode = "classic";
-  return d;
+  try {
+    const d = await readClassic(env);
+    mode = "classic";
+    return d;
+  } catch (e) {
+    // 두 방식 모두 실패하면 둘 다 보여준다
+    throw new Error(utaError ? `[통합] ${utaError.message} | [기존] ${e.message}` : e.message);
+  }
 }
 
 export default {
@@ -149,7 +160,8 @@ export default {
       return new Response(cache.body, { headers: cors });
     } catch (e) {
       // 오류 메시지에는 비트겟 응답 코드만 담기고 키 값은 들어가지 않는다
-      return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+      // 어느 지역 Cloudflare 서버에서 요청했는지도 함께 (지역 차단 여부 확인용)
+      return new Response(JSON.stringify({ error: String(e.message || e), colo: request.cf?.colo, country: request.cf?.country }), { status: 502, headers: cors });
     }
   },
 };
