@@ -1,4 +1,12 @@
-# 비트겟 포지션 중계 (Cloudflare Worker)
+# 비트겟 포지션 중계
+
+> ⚠️ 비트겟은 Cloudflare Worker 에서 오는 요청을 `{"cloudflare":"block"}` 으로 차단한다 (2026-10 확인).
+> 그래서 실제 운영은 **Vercel 서버리스 함수(`api/positions.js`, 서울 리전)** 로 한다. 로직은 이 파일과 동일하다.
+>
+> Vercel 설정: GitHub 로 로그인 → 이 저장소 Import → Environment Variables 에 키 3개 → Deploy →
+> `https://<프로젝트>.vercel.app/api/positions` 를 `site/config.js` 에 넣는다.
+
+## (참고) Cloudflare Worker 방식
 
 사이트의 "📊 운영자 실전 포지션" 카드에 비트겟 USDT-M 선물 포지션을 실시간으로 보여준다.
 API 키는 Cloudflare Worker 의 Secret 에만 저장하고, 저장소와 사이트에는 절대 넣지 않는다.
