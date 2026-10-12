@@ -13,8 +13,24 @@ const env = () => ({
   ALLOW_ORIGIN: clean(process.env.ALLOW_ORIGIN),
 });
 
+// 키 값 자체는 내보내지 않고 '모양'만 점검한다 (오류일 때만 응답에 붙음)
+function keyShape(e) {
+  const k = e.BITGET_API_KEY || "";
+  return {
+    api_key_starts_bg: k.startsWith("bg_"),
+    api_key_length: k.length,
+    api_key_format_ok: /^bg_[0-9a-f]{32}$/.test(k),
+    secret_length: (e.BITGET_API_SECRET || "").length,
+    passphrase_length: (e.BITGET_PASSPHRASE || "").length,
+  };
+}
+
 export async function GET(request) {
-  return worker.fetch(request, env());
+  const e = env();
+  const res = await worker.fetch(request, e);
+  if (res.status === 200) return res;
+  const body = await res.json();
+  return new Response(JSON.stringify({ ...body, check: keyShape(e) }), { status: res.status, headers: res.headers });
 }
 
 export async function OPTIONS(request) {
