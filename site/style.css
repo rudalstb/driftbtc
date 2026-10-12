@@ -81,6 +81,13 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 #p-up-bar { height: 100%; background: var(--up); width: 50%; }
 .updown-label { display: flex; justify-content: space-between; font-weight: 650; margin-bottom: 8px; }
 
+.live-tag { color: var(--up); background: rgba(63, 185, 80, 0.15); }
+.mp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 4px; }
+.mp-stats .strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.side-long { color: var(--up); font-weight: 700; }
+.side-short { color: var(--down); font-weight: 700; }
+.mp-empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
+
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
 .game-head h2 { margin: 0; }
 .exp { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--band95); color: var(--accent); vertical-align: 3px; }
@@ -143,6 +150,7 @@ td.best { color: var(--accent); font-weight: 700; }
 @media (max-width: 720px) {
   .grid, .pair { grid-template-columns: 1fr; gap: 0; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }
+  .mp-stats .strong { font-size: 15px; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }
 }

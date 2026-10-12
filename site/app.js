@@ -297,6 +297,57 @@ function renderGame(f) {
   eqChart = new Chart($("eq-chart"), { type: "line", data, options: opts });
 }
 
+// 📊 운영자 실전 포지션: Cloudflare Worker 가 비트겟 조회 전용 키로 읽어 정리한 값을 받는다
+const num = (v, d = 2) => Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = (v) => (v < 0 ? "-$" : "$") + num(Math.abs(v));
+const signed = (v) => `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${money(v).replace("-", "−")}</span>`;
+const sideTag = (s) => `<span class="side-${s}">${s === "long" ? "롱" : "숏"}</span>`;
+const shortTime = (ms) =>
+  new Date(Number(ms)).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+let posUpdated = 0;
+
+async function pollPositions() {
+  if (!window.POSITIONS_URL) return;
+  try {
+    const r = await fetch(window.POSITIONS_URL, { cache: "no-store" });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || r.status);
+    renderPositions(d);
+  } catch (e) {
+    $("mp-updated").textContent = "연결 실패, 다시 시도 중…";
+  }
+}
+
+function renderPositions(d) {
+  $("mypos").hidden = false;
+  posUpdated = d.updated;
+  const a = d.account || {};
+  $("mp-equity").textContent = a.equity != null ? money(a.equity) : "—";
+  $("mp-available").textContent = a.available != null ? money(a.available) : "—";
+  $("mp-upnl").innerHTML = a.unrealized_pnl != null ? signed(a.unrealized_pnl) : "—";
+
+  const pos = d.positions || [];
+  $("mp-positions").innerHTML = pos.length
+    ? `<thead><tr><th>종목</th><th>방향</th><th>레버리지</th><th>수량</th><th>진입가</th><th>현재가</th><th>청산가</th><th>증거금</th><th>손익</th><th>수익률</th><th>진입</th></tr></thead><tbody>` +
+      pos.map((p) => `<tr><td>${p.symbol}</td><td>${sideTag(p.side)}</td><td>${p.leverage}x ${p.margin_mode === "isolated" ? "격리" : p.margin_mode === "crossed" ? "교차" : ""}</td>
+        <td>${p.size}</td><td>${num(p.entry)}</td><td>${num(p.mark)}</td><td>${p.liq ? num(p.liq) : "—"}</td><td>${money(p.margin)}</td>
+        <td>${signed(p.upnl)}</td><td class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</td><td>${p.opened ? shortTime(p.opened) : "—"}</td></tr>`).join("") +
+      `</tbody>`
+    : `<tbody><tr><td class="mp-empty">지금은 포지션이 없어요 (관망 중)</td></tr></tbody>`;
+
+  const hist = d.history || [];
+  $("mp-history").innerHTML = hist.length
+    ? `<thead><tr><th>종목</th><th>방향</th><th>진입가</th><th>청산가</th><th>수량</th><th>순손익</th><th>수수료·펀딩</th><th>청산 시각</th></tr></thead><tbody>` +
+      hist.map((h) => `<tr><td>${h.symbol}</td><td>${sideTag(h.side)}</td><td>${num(h.entry)}</td><td>${num(h.exit)}</td><td>${h.size}</td>
+        <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${h.closed ? shortTime(h.closed) : "—"}</td></tr>`).join("") +
+      `</tbody>`
+    : `<tbody><tr><td class="mp-empty">아직 청산 기록이 없어요</td></tr></tbody>`;
+}
+
+setInterval(() => {
+  if (posUpdated) $("mp-updated").textContent = `${Math.max(0, Math.round((Date.now() - posUpdated) / 1000))}초 전 업데이트`;
+}, 1000);
+
 // 그래프에는 최근 구간만 확대해서 보여준다
 const PAST = { "1h": 48, "1d": 60, "1w": 52 };
 const AHEAD = { "1h": 12, "1d": 14, "1w": 8 };
@@ -431,3 +482,5 @@ document.querySelectorAll(".tabs button").forEach((b) =>
 pollReport().then(pollLive);
 setInterval(pollLive, 5000);
 setInterval(tick, 1000);
+pollPositions();
+setInterval(pollPositions, 5000);
