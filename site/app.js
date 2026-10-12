@@ -149,20 +149,28 @@ function renderMove(f) {
   $("vol-badge").className = "vol-badge " + cls;
 
   const levels = TOUCH_LEVELS[freq];
-  $("touch-table").innerHTML = levels
-    .map((d) => {
-      const p = touchProb(d / 100, s);
-      const cls = p >= 0.4 ? "neg" : p >= 0.15 ? "warn" : "pos";
-      return `<div class="touch-row"><span>±${d}% <span class="muted">(${usd(f.price * d / 100)})</span></span>
-        <span class="touch-bar"><i style="width:${(p * 100).toFixed(0)}%"></i></span><b class="${cls}">${(p * 100).toFixed(0)}%</b></div>`;
-    })
-    .join("");
+  renderTouchTable(f);
   const safe = levels.find((d) => touchProb(d / 100, s) < 0.2);
   const tight = levels[0];
   $("touch-note").innerHTML =
     `손절을 <b>-${tight}%</b>에 두면 그냥 흔들림에도 걸릴 확률이 <b>${(touchProb(tight / 100, s) * 100).toFixed(0)}%</b>예요.` +
     (safe ? ` 닿을 확률이 20% 아래로 떨어지는 건 <b>±${safe}%</b>부터예요.` : "");
   renderLeverage(f);
+}
+
+// 거리별 도달 확률 표: 지금 실시간 가격(없으면 기준가)에서 실제 위·아래 가격을 함께 보여준다
+function renderTouchTable(f) {
+  const s = nextSigma(f);
+  const base = live ?? f.price;
+  $("touch-table").innerHTML = TOUCH_LEVELS[freq]
+    .map((d) => {
+      const p = touchProb(d / 100, s);
+      const cls = p >= 0.4 ? "neg" : p >= 0.15 ? "warn" : "pos";
+      return `<div class="touch-row">
+        <div><b>±${d}%</b><div class="touch-prices"><span class="pos">▲ ${usd(base * (1 + d / 100))}</span> <span class="neg">▼ ${usd(base * (1 - d / 100))}</span></div></div>
+        <span class="touch-bar"><i style="width:${(p * 100).toFixed(0)}%"></i></span><b class="${cls}">${(p * 100).toFixed(0)}%</b></div>`;
+    })
+    .join("");
 }
 
 // 보유 중인 BTC 포지션의 레버리지로 '보통 손익 흔들림'을 환산 (없으면 10배 예시)
@@ -180,6 +188,7 @@ function renderLive() {
   const f = report.forecasts[freq];
   const diff = (live / f.price - 1) * 100;
   $("live-in-band").innerHTML = `지금 ${usd(live)} · 기준가 ${usd(f.price)} 대비 ${pct(diff)}`;
+  renderTouchTable(f);
 }
 
 function render() {

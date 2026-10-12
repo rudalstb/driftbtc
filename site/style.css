@@ -122,7 +122,9 @@ table.compact th, table.compact td { padding: 5px 6px; }
 .move-big { font-size: 18px; margin: 6px 0 2px; }
 .move-big b { font-size: 22px; font-variant-numeric: tabular-nums; }
 .touch { margin: 4px 0 8px; }
-.touch-row { display: grid; grid-template-columns: 9.5em 1fr 3em; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.touch-row { display: grid; grid-template-columns: minmax(11.5em, auto) 1fr 3em; align-items: center; gap: 10px; font-size: 13px; padding: 5px 0; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--border); }
+.touch-row:last-child { border-bottom: none; }
+.touch-prices { font-size: 12.5px; font-weight: 600; margin-top: 1px; white-space: nowrap; }
 .touch-row b { text-align: right; }
 .touch-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
 .touch-bar i { display: block; height: 100%; background: var(--accent); }
