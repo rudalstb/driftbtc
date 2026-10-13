@@ -2,8 +2,9 @@ name: forecast
 
 on:
   schedule:
-    - cron: "5 * * * *"      # 매시 5분: 예측 갱신
-    - cron: "30 0 * * 1"     # 월요일 00:30 UTC: 백테스트 + btcgpt 비교도 갱신
+    # GitHub 예약 실행은 자주 누락·지연되므로 한 시간에 4번 확인한다 (붐비는 정각 근처는 피함).
+    # 새 1시간 캔들이 없으면 바로 끝나서 커밋·배포가 생기지 않는다.
+    - cron: "2,17,32,47 * * * *"
   push:
     branches: [main]
     paths-ignore: ["site/data/**", "reports/**"]
@@ -52,34 +53,66 @@ jobs:
       - name: 데이터 갱신
         run: python data.py
 
-      - name: 백테스트 (주 1회 또는 수동)
-        if: github.event.schedule == '30 0 * * 1' || inputs.backtest || hashFiles('reports/summary.json') == ''
+      # 새 1시간 캔들이 마감됐는지, 백테스트가 7일 이상 지났는지 확인
+      - name: 갱신 필요 여부 확인
+        id: check
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, time, pandas as pd
+          from pathlib import Path
+          import data
+          last = data.load("1h").index[-1] + pd.Timedelta(hours=1)
+          try:
+              cur = json.loads(Path("site/data/forecast.json").read_text(encoding="utf-8"))["forecasts"]["1h"]["as_of"]
+          except Exception:
+              cur = None
+          event = os.environ["EVENT"]
+          new = event != "schedule" or cur is None or pd.Timestamp(cur) < last
+          stamp = Path("reports/backtest_at.txt")
+          due = os.environ.get("FORCE_BT") == "true" or not stamp.exists() or time.time() - float(stamp.read_text()) > 7 * 86400
+          print(f"new={'true' if new or due else 'false'}")
+          print(f"backtest={'true' if due else 'false'}")
+          PY
+          cat "$GITHUB_OUTPUT"
+        env:
+          EVENT: ${{ github.event_name }}
+          FORCE_BT: ${{ inputs.backtest }}
+
+      - name: 백테스트 (7일마다 또는 수동)
+        if: steps.check.outputs.backtest == 'true'
         run: |
           python backtest.py
           python compare_btcgpt.py
           python signals.py
+          date +%s > reports/backtest_at.txt
 
       - name: 예측 생성
+        if: steps.check.outputs.new == 'true'
         run: python forecast.py --no-update
 
       - name: 예측 기록 커밋
+        if: steps.check.outputs.new == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data reports/summary.json reports/btcgpt_compare.json reports/signal_backtest.json
+          git add site/data reports/summary.json reports/btcgpt_compare.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 
       # 브라우저가 이전 app.js/style.css 를 캐시해 두지 않도록 커밋 버전을 붙인다 (배포본에만 적용)
       - name: 정적 파일 버전 표시
+        if: steps.check.outputs.new == 'true'
         run: |
           v=${GITHUB_SHA::7}
           sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|; s|src=\"config.js\"|src=\"config.js?v=$v\"|" site/index.html
           grep -E "style.css|app.js" site/index.html
 
       - uses: actions/configure-pages@v5
+        if: steps.check.outputs.new == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.check.outputs.new == 'true'
         with:
           path: site
       - id: deploy
+        if: steps.check.outputs.new == 'true'
         uses: actions/deploy-pages@v4
