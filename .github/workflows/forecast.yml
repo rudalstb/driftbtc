@@ -9,9 +9,14 @@ on:
     branches: [main]
     paths-ignore: ["site/data/**", "reports/**"]
   workflow_dispatch:
+    # Cloudflare Cron(worker/cron.js)이 매시간 이 방식으로 실행시킨다. 새 캔들이 없으면 바로 끝난다
     inputs:
       backtest:
         description: "백테스트도 다시 실행"
+        type: boolean
+        default: false
+      force:
+        description: "새 캔들이 없어도 예측·배포"
         type: boolean
         default: false
 
@@ -67,7 +72,7 @@ jobs:
           except Exception:
               cur = None
           event = os.environ["EVENT"]
-          new = event != "schedule" or cur is None or pd.Timestamp(cur) < last
+          new = event == "push" or os.environ.get("FORCE") == "true" or cur is None or pd.Timestamp(cur) < last
           stamp = Path("reports/backtest_at.txt")
           due = os.environ.get("FORCE_BT") == "true" or not stamp.exists() or time.time() - float(stamp.read_text()) > 7 * 86400
           print(f"new={'true' if new or due else 'false'}")
@@ -77,6 +82,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           FORCE_BT: ${{ inputs.backtest }}
+          FORCE: ${{ inputs.force }}
 
       - name: 백테스트 (7일마다 또는 수동)
         if: steps.check.outputs.backtest == 'true'
