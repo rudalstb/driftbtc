@@ -58,7 +58,9 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mid { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
-.pair { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pair { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pair .big { font-size: 26px; }
+.nq-sym { color: #4fc3f7; font-weight: 700; }
 .pair .card { margin-bottom: 16px; }
 .live { display: flex; flex-direction: column; }
 .live .meta { color: var(--muted); font-size: 12.5px; margin-top: auto; padding-top: 8px; }
@@ -233,6 +235,9 @@ td.best { color: var(--accent); font-weight: 700; }
 .method li { margin: 6px 0; }
 .disclaimer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--border); padding-top: 12px; margin-bottom: 0; }
 
+@media (max-width: 960px) and (min-width: 721px) {
+  .pair { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 720px) {
   .grid, .pair { grid-template-columns: 1fr; gap: 0; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }

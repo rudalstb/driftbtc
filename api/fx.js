@@ -3,6 +3,7 @@
 //
 // 환율 1순위: 야후 파이낸스 USD/KRW (1분 단위), 2순위: open.er-api.com (하루 1번) — 1분 동안 재사용
 // 업비트: KRW-BTC·KRW-ETH 현재가 — 3초 동안 재사용
+// 나스닥100 선물(NQ=F): 야후 파이낸스 (약 10분 지연) — 30초 동안 재사용
 
 const ORIGIN = "https://rudalstb.github.io";
 const CACHE_MS = 60 * 1000;
@@ -20,6 +21,26 @@ async function upbitPrice() {
     if (price) upbitCache = { at: Date.now(), price, eth };
   } catch (e) {}
   return upbitCache.price;
+}
+
+const NQ_MS = 30 * 1000;
+let nqCache = { at: 0, nq: null };
+
+async function nasdaq() {
+  if (Date.now() - nqCache.at < NQ_MS && nqCache.nq) return nqCache.nq;
+  try {
+    const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/NQ%3DF?interval=1m&range=1d", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    const m = (await r.json())?.chart?.result?.[0]?.meta;
+    if (m?.regularMarketPrice && m?.chartPreviousClose) {
+      nqCache = {
+        at: Date.now(),
+        nq: { price: m.regularMarketPrice, prev: m.chartPreviousClose, time: m.regularMarketTime * 1000 },
+      };
+    }
+  } catch (e) {}
+  return nqCache.nq;
 }
 
 const headers = {
@@ -54,7 +75,7 @@ export async function GET() {
       } catch (e) {}
     }
   }
-  const upbit = await upbitPrice();
+  const [upbit, nq] = await Promise.all([upbitPrice(), nasdaq()]);
   if (!cache.fx && !upbit) return new Response(JSON.stringify({ error: "환율과 업비트 가격을 받지 못했어요" }), { status: 502, headers });
-  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit, upbit_eth: upbitCache.eth }), { headers });
+  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit, upbit_eth: upbitCache.eth, nq }), { headers });
 }

@@ -142,6 +142,7 @@ async function pollLive() {
 // 🇰🇷 김치 프리미엄 = 업비트 원화 가격 ÷ (바이낸스 달러 가격 × 환율) − 1
 let upbit = null;
 let upbitEth = null;
+let nq = null; // 나스닥100 선물 { price, prev, time }
 
 // 환율과 업비트 가격은 Vercel 중계(api/fx.js)에서 함께 받는다 (업비트를 브라우저에서 직접 부르면 막힘)
 async function loadFx() {
@@ -151,6 +152,7 @@ async function loadFx() {
     const j = await r.json();
     if (j.upbit) upbit = j.upbit;
     if (j.upbit_eth) upbitEth = j.upbit_eth;
+    if (j.nq) nq = j.nq;
     if (j.rate) {
       const first = FX == null;
       FX = j.rate;
@@ -158,7 +160,22 @@ async function loadFx() {
     }
     renderKimp();
     renderEth();
+    renderNq();
   } catch (e) {}
+}
+
+// 나스닥100 선물: 지수 포인트라 통화 표시와 상관없이 숫자 그대로 (야후 무료 시세라 약 10분 지연)
+function renderNq() {
+  if (!nq) return;
+  const c = (nq.price / nq.prev - 1) * 100;
+  $("nq-price").textContent = nq.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  $("nq-chg").innerHTML = `<span class="${c >= 0 ? "pos" : "neg"}">· 전일 대비 ${pct(c, 2)}</span>`;
+  const k = new Date(nq.time + 9 * 3600 * 1000);
+  const hm = `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
+  const stale = Date.now() - nq.time > 60 * 60 * 1000; // 1시간 넘게 체결이 없으면 쉬는 시간
+  $("nq-time").innerHTML = stale
+    ? `<span class="muted">${k.getUTCMonth() + 1}/${k.getUTCDate()} ${hm} 기준 · 지금은 거래 쉬는 시간</span>`
+    : `<span class="muted">${hm} 기준 · 약 10분 지연</span>`;
 }
 
 // Ξ 이더리움 실시간 시세 한 줄 (예측은 비트코인 전용, 이더리움은 시세만)
