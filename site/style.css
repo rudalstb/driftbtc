@@ -60,6 +60,8 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 
 .pair { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .pair .big { font-size: 26px; }
+.pair .chg { font-size: 13.5px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.pair .kimp { line-height: 1.6; }
 .nq-sym { color: #4fc3f7; font-weight: 700; }
 .pair .card { margin-bottom: 16px; }
 .live { display: flex; flex-direction: column; }

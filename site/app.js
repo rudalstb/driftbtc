@@ -169,13 +169,13 @@ function renderNq() {
   if (!nq) return;
   const c = (nq.price / nq.prev - 1) * 100;
   $("nq-price").textContent = nq.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  $("nq-chg").innerHTML = `<span class="${c >= 0 ? "pos" : "neg"}">· 전일 대비 ${pct(c, 2)}</span>`;
+  $("nq-chg").innerHTML = chgTag(c, "전일 대비");
   const k = new Date(nq.time + 9 * 3600 * 1000);
   const hm = `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
   const stale = Date.now() - nq.time > 60 * 60 * 1000; // 1시간 넘게 체결이 없으면 쉬는 시간
   $("nq-time").innerHTML = stale
-    ? `<span class="muted">${k.getUTCMonth() + 1}/${k.getUTCDate()} ${hm} 기준 · 지금은 거래 쉬는 시간</span>`
-    : `<span class="muted">${hm} 기준 · 약 10분 지연</span>`;
+    ? `<span class="muted">${k.getUTCMonth() + 1}/${k.getUTCDate()} ${hm} 기준<br>지금은 거래 쉬는 시간</span>`
+    : `<span class="muted">${hm} 기준<br>약 10분 지연</span>`;
 }
 
 // Ξ 이더리움 실시간 시세 한 줄 (예측은 비트코인 전용, 이더리움은 시세만)
@@ -195,7 +195,7 @@ async function pollEth() {
 }
 
 // 카드 제목 옆 24시간 등락률
-const chgTag = (c) => `<span class="${c >= 0 ? "pos" : "neg"}">· 24시간 ${pct(c, 2)}</span>`;
+const chgTag = (c, name = "24시간") => `<span class="muted">${name}</span> <b class="${c >= 0 ? "pos" : "neg"}">${pct(c, 2)}</b>`;
 
 function renderEth() {
   if (!eth) return;
@@ -205,7 +205,7 @@ function renderEth() {
   let html = `업비트 <b>₩${Math.round(upbitEth).toLocaleString("ko-KR")}</b>`;
   if (FX) {
     const p = (upbitEth / (eth.price * FX) - 1) * 100;
-    html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
+    html += `<br>김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
   }
   $("eth-kimp").innerHTML = html;
 }
@@ -219,7 +219,7 @@ function renderMeta() {
     const hm = `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
     parts.push(`예측 생성 ${k.getUTCMonth() + 1}/${k.getUTCDate()} ${hm}`);
   }
-  $("generated").textContent = parts.join(" · ");
+  $("generated").innerHTML = parts.join("<br>");
 }
 
 function renderKimp() {
@@ -229,7 +229,7 @@ function renderKimp() {
   let html = `업비트 <b>₩${Math.round(upbit).toLocaleString("ko-KR")}</b>`;
   if (FX && live) {
     const p = (upbit / (live * FX) - 1) * 100;
-    html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
+    html += `<br>김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
   }
   el.innerHTML = html;
 }
