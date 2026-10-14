@@ -8,4 +8,6 @@ window.OPERATOR = { seed: 1700, withdrawn: 3588 };
 
 // 카피트레이딩 원금 직접 지정 (프로젝트 번호: 달러). 비트겟이 원금을 0 으로 주는 경우(원금 출금 등)에만 쓴다
 // 비워 두면 비트겟이 주는 누적 투자 금액을 그대로 쓴다
-window.COPY_PRINCIPAL = {};
+window.COPY_PRINCIPAL = {
+  "1477845695045435392": 100, // trader丶🥇 (비트겟이 원금을 0으로 줌)
+};
