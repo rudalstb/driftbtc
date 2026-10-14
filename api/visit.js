@@ -9,8 +9,10 @@
 // 그래서 매시간 GitHub Actions(visits.py)가 site/data/visits.json 에 백업하고,
 // 여기서 초기화를 감지하면(init 키 없음) 그 백업 값을 기본값(base)으로 깔고 이어서 센다.
 //
-// 연결 정보 환경변수는 Upstash 를 연결할 때 자동으로 들어온다. 접두사가 달라도 찾도록
-// 이름이 ..._REST_API_URL / ..._REST_API_TOKEN 으로 끝나는 변수를 쓴다.
+// 연결 정보는 두 가지를 지원한다.
+// - Redis Cloud 등 일반 Redis: REDIS_URL (redis://...) → 직접 연결 (지금 연결된 방식)
+// - Upstash: ..._REST_API_URL / ..._REST_API_TOKEN → HTTP 요청
+import { createClient } from "redis";
 
 const ORIGIN = "https://rudalstb.github.io";
 const BACKUP_URL = "https://rudalstb.github.io/driftbtc/data/visits.json";
@@ -29,6 +31,7 @@ const kstDate = (ms) => new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10
 
 function redisConfig() {
   const env = process.env;
+  if (env.REDIS_URL) return { tcp: env.REDIS_URL };
   const urlKey =
     Object.keys(env).find((k) => /REST_API_URL$/.test(k) && env[k]) ||
     (env.UPSTASH_REDIS_REST_URL && "UPSTASH_REDIS_REST_URL") ||
@@ -40,7 +43,32 @@ function redisConfig() {
   return token ? { url: env[urlKey].replace(/\/$/, ""), token } : null;
 }
 
+// 일반 Redis 연결은 함수가 살아 있는 동안 재사용한다
+let tcpClient = null;
+async function tcp(url) {
+  if (!tcpClient) {
+    // 무한 재연결 대신 바로 실패하고, 끊기면 다음 요청 때 새로 연결한다
+    const c = createClient({ url, socket: { connectTimeout: 5000, reconnectStrategy: false } });
+    c.on("error", () => {
+      tcpClient = null;
+    });
+    c.on("end", () => {
+      tcpClient = null;
+    });
+    tcpClient = c.connect().then(() => c).catch((e) => {
+      tcpClient = null;
+      throw e;
+    });
+  }
+  return tcpClient;
+}
+
 async function redis(cfg, commands) {
+  if (cfg.tcp) {
+    const c = await tcp(cfg.tcp);
+    // 동시에 보내면 자동으로 한 번에 묶여 전송된다
+    return Promise.all(commands.map((cmd) => c.sendCommand(cmd.map(String))));
+  }
   const res = await fetch(cfg.url + "/pipeline", {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
@@ -76,11 +104,7 @@ async function restoreIfEmpty(cfg, today, yesterday) {
 
 export async function GET(request) {
   const cfg = redisConfig();
-  if (!cfg) {
-    // 원인 파악용: 저장소 관련 환경변수 '이름'만 보여준다 (값은 절대 내보내지 않음)
-    const names = Object.keys(process.env).filter((k) => /REDIS|KV|UPSTASH|STORAGE/i.test(k));
-    return new Response(JSON.stringify({ enabled: false, env_names: names }), { headers });
-  }
+  if (!cfg) return new Response(JSON.stringify({ enabled: false }), { headers });
 
   const q = new URL(request.url).searchParams;
   // 브라우저 번호: 영문·숫자 8~40자만 허용
