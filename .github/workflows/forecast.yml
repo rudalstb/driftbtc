@@ -112,6 +112,11 @@ jobs:
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 
+      # 공유 미리보기 이미지: 저장소에는 넣지 않고(용량) 배포본에만 포함
+      - name: 공유 미리보기 이미지
+        if: steps.check.outputs.new == 'true'
+        run: python og.py
+
       # 브라우저가 이전 app.js/style.css 를 캐시해 두지 않도록 커밋 버전을 붙인다 (배포본에만 적용)
       - name: 정적 파일 버전 표시
         if: steps.check.outputs.new == 'true'

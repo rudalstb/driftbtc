@@ -3,3 +3,4 @@ __pycache__/
 /data/
 reports/predictions_*.csv
 node_modules/
+site/og.png
