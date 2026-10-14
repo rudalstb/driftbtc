@@ -742,8 +742,7 @@ async function pingVisit(isNewView) {
     const n = (x) => Number(x).toLocaleString("ko-KR");
     $("visitors").hidden = false;
     $("visitors").innerHTML =
-      `<span class="dot"></span> 지금 <b>${n(v.online)}</b>명 보는 중 · 오늘 <b>${n(v.today)}</b>명 · 어제 ${n(v.yesterday)}명 · 누적 <b>${n(v.total)}</b>명` +
-      ` <span class="muted">(오늘 조회 ${n(v.today_views)}회)</span>`;
+      `<span class="dot"></span> 지금 <b>${n(v.online)}</b>명 보는 중 · 오늘 <b>${n(v.today)}</b>명 · 어제 ${n(v.yesterday)}명 · 누적 <b>${n(v.total)}</b>명`;
   } catch (e) {}
 }
 
