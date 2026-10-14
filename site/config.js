@@ -11,3 +11,6 @@ window.OPERATOR = { seed: 1700, withdrawn: 3588 };
 window.COPY_PRINCIPAL = {
   "1477845695045435392": 100, // trader丶🥇 (비트겟이 원금을 0으로 줌)
 };
+
+// 방문자 수 집계 주소 (Vercel 서버리스 함수, api/visit.js). 저장소(Upstash Redis)를 연결하기 전에는 표시되지 않는다
+window.VISIT_URL = "https://driftbtc.vercel.app/api/visit";

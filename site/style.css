@@ -33,7 +33,10 @@ body {
 }
 main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
 header h1 { margin: 0; font-size: 28px; color: var(--accent); letter-spacing: -0.5px; }
-.sub { margin: 4px 0 20px; color: var(--muted); }
+.sub { margin: 4px 0 8px; color: var(--muted); }
+.visitors { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+.visitors b { color: var(--text); }
+header:not(:has(.visitors:not([hidden]))) .sub { margin-bottom: 20px; }
 .sub strong { color: var(--text); font-weight: 600; }
 h2 { margin: 0 0 8px; font-size: 18px; }
 h3 { margin: 24px 0 8px; font-size: 15px; }

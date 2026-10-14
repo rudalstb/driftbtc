@@ -718,3 +718,37 @@ if (window.POSITIONS_URL) {
   loadTrades();
   setInterval(loadTrades, 10 * 60 * 1000);
 }
+
+// 👀 방문자 수: 브라우저마다 임의의 번호를 하나 만들어 같은 사람을 한 번만 센다 (개인정보 저장 없음)
+function visitorId() {
+  try {
+    let id = localStorage.getItem("driftbtc_vid");
+    if (!id) {
+      id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem("driftbtc_vid", id);
+    }
+    return id;
+  } catch (e) {
+    return Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+}
+
+async function pingVisit(isNewView) {
+  if (!window.VISIT_URL) return;
+  try {
+    const r = await fetch(`${window.VISIT_URL}?vid=${visitorId()}&view=${isNewView ? 1 : 0}`, { cache: "no-store" });
+    const v = await r.json();
+    if (!v.enabled || v.error) return;
+    const n = (x) => Number(x).toLocaleString("ko-KR");
+    $("visitors").hidden = false;
+    $("visitors").innerHTML =
+      `<span class="dot"></span> 지금 <b>${n(v.online)}</b>명 보는 중 · 오늘 <b>${n(v.today)}</b>명 · 어제 ${n(v.yesterday)}명 · 누적 <b>${n(v.total)}</b>명` +
+      ` <span class="muted">(오늘 조회 ${n(v.today_views)}회)</span>`;
+  } catch (e) {}
+}
+
+pingVisit(true);
+// 페이지를 보고 있는 동안 3분마다 '보는 중' 신호 (다른 탭에 가 있으면 보내지 않음)
+setInterval(() => {
+  if (document.visibilityState === "visible") pingVisit(false);
+}, 3 * 60 * 1000);
