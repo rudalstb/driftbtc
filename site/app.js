@@ -323,7 +323,7 @@ const num = (v, d = 2) => Number(v).toLocaleString("en-US", { minimumFractionDig
 const money = (v) => (v < 0 ? "-$" : "$") + num(Math.abs(v));
 const signed = (v) => `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${money(v).replace("-", "−")}</span>`;
 const sideTag = (s) => `<span class="side-${s}">${s === "long" ? "롱" : "숏"}</span>`;
-const copyTag = (p) => (p.source === "copy" ? ` <span class="copy-tag">카피</span>` : "");
+const copyTag = (p) => (p.source === "copy" ? ` <span class="copy-tag">카피${p.trader ? " · " + p.trader : ""}</span>` : "");
 const shortTime = (ms) =>
   new Date(Number(ms)).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 let posUpdated = 0;
@@ -347,7 +347,8 @@ function renderPositions(d) {
   $("mp-equity").textContent = a.equity != null ? money(a.equity) : "—";
   // 카피트레이딩 계좌가 연결돼 있으면 총 자산을 일반 / 카피로 나눠 보여준다
   $("mp-equity-split").textContent =
-    d.copy && d.copy.equity != null && a.main_equity != null ? `일반 ${money(a.main_equity)} · 카피 ${money(d.copy.equity)}` : "";
+    d.copy && d.copy.projects?.length && a.main_equity != null ? `일반 ${money(a.main_equity)} · 카피 ${money(d.copy.equity)}` : "";
+  renderCopyProjects(d.copy);
   renderSeed(a.equity);
   $("mp-available").textContent = a.available != null ? money(a.available) : "—";
   $("mp-upnl").innerHTML = a.unrealized_pnl != null ? signed(a.unrealized_pnl) : "—";
@@ -367,6 +368,22 @@ function renderPositions(d) {
   renderPositionsMobile(pos);
   renderHistory();
   renderMonthly();
+}
+
+// 🤝 카피트레이딩: 따라 하는 트레이더별 현재 금액과 예상 순수익
+function renderCopyProjects(copy) {
+  const el = $("mp-copy");
+  const list = copy?.projects || [];
+  if (!list.length) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML =
+    `<div class="label game-sub">카피트레이딩 (팔로우 ${list.length}명)</div><div class="copy-list">` +
+    list.map((p) => `<div class="copy-item"><b>${p.trader || p.id}</b>
+      <span>${p.value != null ? money(p.value) : "—"}</span>
+      <span class="muted small">순수익 ${p.net_profit != null ? signed(p.net_profit) : "—"}</span></div>`).join("") +
+    `</div>`;
 }
 
 // 🏁 시드·출금 요약: 총 수익 = 누적 출금 + 현재 자산 − 시드 (값은 config.js 의 OPERATOR)

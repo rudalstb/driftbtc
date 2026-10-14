@@ -173,42 +173,57 @@ async function readHistoryAll(env) {
     .sort((a, b) => (b.closed || 0) - (a.closed || 0));
 }
 
-// 카피트레이딩(엘리트 트레이더) 계좌: 비트겟은 별도의 "Elite trade API key" 로만 읽을 수 있다
-const copyEnv = (env) => ({
-  BITGET_API_KEY: env.BITGET_COPY_API_KEY,
-  BITGET_API_SECRET: env.BITGET_COPY_API_SECRET,
-  BITGET_PASSPHRASE: env.BITGET_COPY_PASSPHRASE,
-});
+// 카피트레이딩 팔로워 계좌: 프로젝트(따라 하는 트레이더)마다 잔고와 포지션을 일반 키로 읽는다
+// current-positions 는 마크가격·미실현손익을 주지 않아 공개 시세로 직접 계산한다
+const COPY_CACHE_MS = 15000; // 포지션 조회가 초당 1회 제한이라 카피 정보는 15초에 한 번만
+let copyCache = { at: 0, data: null };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function markPrices() {
+  const res = await fetch(HOST + "/api/v2/mix/market/tickers?productType=USDT-FUTURES");
+  const body = await res.json().catch(() => ({}));
+  const map = {};
+  for (const t of body.data || []) map[t.symbol] = num(t.markPrice) ?? num(t.lastPr);
+  return map;
+}
 
 async function readCopy(env) {
-  if (!env.BITGET_COPY_API_KEY || !env.BITGET_COPY_API_SECRET || !env.BITGET_COPY_PASSPHRASE) return null;
-  const ce = copyEnv(env);
-  const [pos, overview, transfer] = await Promise.allSettled([
-    get(ce, "/api/v3/copy/futures/position-summary"),
-    get(ce, "/api/v3/copy/futures/portfolio-overview", { period: "30D" }),
-    get(ce, "/api/v3/copy/futures/max-transferable", { coin: "USDT" }),
-  ]);
-  const errors = [pos, overview, transfer].filter((r) => r.status === "rejected").map((r) => String(r.reason?.message || r.reason));
-  const ov = overview.status === "fulfilled" ? overview.value || {} : {};
-  const tr = transfer.status === "fulfilled" ? transfer.value || {} : {};
-  const list = pos.status === "fulfilled" ? (Array.isArray(pos.value) ? pos.value : pos.value?.list || []) : [];
-  const positions = list.map((p) => ({
-    source: "copy", symbol: p.symbol, side: p.holdSide, size: num(p.holdSize), leverage: num(p.leverage),
-    margin_mode: p.marginMode, entry: num(p.avgPrice), mark: num(p.markPrice), liq: liq(p.liqPrice),
-    margin: num(p.margin), upnl: num(p.unrealizedPnl),
-    roe_pct: roe(num(p.unrealizedPnl), num(p.margin), num(p.roi)),
-    opened: null,
-  }));
-  const upnl = positions.reduce((a, p) => a + (p.upnl || 0), 0);
-  return {
-    equity: num(ov.asset),
-    available: num(tr.available),
-    unrealized_pnl: positions.length ? upnl : 0,
-    roi_30d_pct: ov.roi != null ? num(ov.roi) * (Math.abs(num(ov.roi)) <= 5 ? 100 : 1) : null,
-    total_profit: num(ov.totalProfit),
-    positions,
-    errors,
-  };
+  const projects = env.COPY_PROJECTS || [];
+  if (!projects.length) return null;
+  if (copyCache.data && Date.now() - copyCache.at < COPY_CACHE_MS) return copyCache.data;
+  const marks = await markPrices().catch(() => ({}));
+  const out = { equity: 0, available: 0, unrealized_pnl: 0, projects: [], positions: [], errors: [] };
+  for (const [i, id] of projects.entries()) {
+    try {
+      const c = (await get(env, "/api/v3/copy/futures/current-copy", { projectId: id })) || {};
+      if (i) await sleep(1100); // current-positions: 초당 1회 제한
+      const cp = await get(env, "/api/v3/copy/futures/current-positions", { projectId: id });
+      out.equity += num(c.estValue) || 0;
+      out.available += num(c.available) || 0;
+      out.projects.push({
+        id, trader: c.eliteTrader, value: num(c.estValue), available: num(c.available),
+        net_profit: num(c.estNetProfit), investment: num(c.currentInvestment), profit_share: num(c.profitShare),
+      });
+      for (const p of cp?.list || []) {
+        const size = num(p.total), entry = num(p.avgPrice), lev = num(p.leverage) || 1;
+        const mark = marks[p.symbol] ?? null;
+        const dir = p.posSide === "short" ? -1 : 1;
+        const upnl = mark != null && size != null && entry != null ? (mark - entry) * size * dir : null;
+        const margin = size != null && entry != null ? (entry * size) / lev : null;
+        if (upnl != null) out.unrealized_pnl += upnl;
+        out.positions.push({
+          source: "copy", trader: c.eliteTrader, symbol: p.symbol, side: p.posSide, size, leverage: lev,
+          margin_mode: p.marginMode, entry, mark, liq: null, margin, upnl,
+          roe_pct: upnl != null && margin ? (upnl / margin) * 100 : null, opened: num(p.createdTime),
+        });
+      }
+    } catch (e) {
+      // 팔로우를 끊은 프로젝트 등은 건너뛰고 오류만 기록
+      out.errors.push(`${id}: ${String(e.message || e).slice(0, 120)}`);
+    }
+  }
+  copyCache = { at: Date.now(), data: out };
+  return out;
 }
 
 async function read(env) {
@@ -266,7 +281,7 @@ export default {
           d.positions = [...d.positions.map((p) => ({ source: "main", ...p })), ...copy.positions];
           // 총 자산 = 일반(통합) 계좌 + 카피트레이딩 계좌
           d.account.main_equity = d.account.equity;
-          if (copy.equity != null) d.account.equity = (d.account.equity || 0) + copy.equity;
+          if (copy.projects.length) d.account.equity = (d.account.equity || 0) + copy.equity;
           d.account.unrealized_pnl = (d.account.unrealized_pnl || 0) + (copy.unrealized_pnl || 0);
         }
         cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined } }) };

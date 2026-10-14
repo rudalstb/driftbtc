@@ -3,6 +3,7 @@
 // 키는 Vercel 프로젝트의 Environment Variables 에만 둔다:
 //   BITGET_API_KEY, BITGET_API_SECRET, BITGET_PASSPHRASE
 import worker from "../worker/positions.js";
+import copyProjects from "../copy-projects.js";
 
 // 대시보드에 붙여 넣을 때 섞인 앞뒤 공백·줄바꿈·따옴표를 제거한다
 const clean = (v) => v?.trim().replace(/^["']|["']$/g, "").trim();
@@ -13,10 +14,8 @@ const env = () => ({
   BITGET_API_SECRET: clean(process.env.BITGET_API_SECRET),
   BITGET_PASSPHRASE: clean(process.env.BITGET_PASSPHRASE),
   ALLOW_ORIGIN: clean(process.env.ALLOW_ORIGIN),
-  // 카피트레이딩(엘리트 트레이더) 계좌 전용 키 (없으면 카피 계좌는 건너뜀)
-  BITGET_COPY_API_KEY: apiKey(clean(process.env.BITGET_COPY_API_KEY)),
-  BITGET_COPY_API_SECRET: clean(process.env.BITGET_COPY_API_SECRET),
-  BITGET_COPY_PASSPHRASE: clean(process.env.BITGET_COPY_PASSPHRASE),
+  // 카피트레이딩 팔로워 프로젝트 번호 목록 (copy-projects.js)
+  COPY_PROJECTS: copyProjects,
 });
 
 // 키 값 자체는 내보내지 않고 '모양'만 점검한다 (오류일 때만 응답에 붙음)
