@@ -96,6 +96,10 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python forecast.py --no-update
 
+      - name: 운영자 청산 기록 보관
+        if: steps.check.outputs.new == 'true'
+        run: python trades.py
+
       - name: 예측 기록 커밋
         if: steps.check.outputs.new == 'true'
         run: |

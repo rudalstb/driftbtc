@@ -367,6 +367,64 @@ function renderPositions(d) {
     : `<tbody><tr><td class="mp-empty">아직 청산 기록이 없어요</td></tr></tbody>`;
 
   renderPositionsMobile(pos, hist);
+  recentHistory = hist;
+  renderMonthly();
+}
+
+// 📅 월별 성적: 저장소에 쌓아 둔 청산 기록(data/trades.json) + 실시간 최근 기록을 합쳐 한국 시간 월 단위로 집계
+let archive = { since: null, trades: [] };
+let recentHistory = [];
+
+async function loadTrades() {
+  try {
+    const r = await fetch("data/trades.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) archive = await r.json();
+  } catch (e) {}
+  renderMonthly();
+}
+
+const kstMonth = (ms) => {
+  const d = new Date(Number(ms) + 9 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+function renderMonthly() {
+  const all = new Map();
+  for (const t of [...archive.trades, ...recentHistory]) if (t.id && t.closed) all.set(t.id, t);
+  const el = $("mp-monthly");
+  if (!all.size) {
+    el.innerHTML = `<div class="mp-empty">기록을 모으는 중이에요</div>`;
+    return;
+  }
+  const months = new Map();
+  for (const t of all.values()) {
+    const k = kstMonth(t.closed);
+    const m = months.get(k) || { n: 0, win: 0, loss: 0, net: 0, fees: 0 };
+    m.n++;
+    if (t.net > 0) m.win++;
+    else if (t.net < 0) m.loss++;
+    m.net += t.net || 0;
+    m.fees += t.fees || 0;
+    months.set(k, m);
+  }
+  const keys = [...months.keys()].sort().reverse();
+  const maxAbs = Math.max(...keys.map((k) => Math.abs(months.get(k).net)), 1);
+  const tot = { n: 0, win: 0, loss: 0, net: 0, fees: 0 };
+  for (const m of months.values()) for (const k in tot) tot[k] += m[k];
+  const rate = (m) => (m.win + m.loss ? Math.round((m.win / (m.win + m.loss)) * 100) + "%" : "—");
+  const label = (k) => `${k.slice(0, 4)}년 ${Number(k.slice(5))}월`;
+  const bar = (v) => `<span class="mbar"><i class="${v >= 0 ? "up" : "down"}" style="width:${Math.round((Math.abs(v) / maxAbs) * 100)}%"></i></span>`;
+  el.innerHTML =
+    `<div class="table-wrap"><table class="compact monthly"><thead><tr><th>월</th><th>거래</th><th>승률</th><th>순손익</th><th class="hide-m">수수료·펀딩</th></tr></thead><tbody>` +
+    keys.map((k) => {
+      const m = months.get(k);
+      return `<tr><td>${label(k)}</td><td>${m.n}건 <span class="muted small"><span class="pos">${m.win}승</span> <span class="neg">${m.loss}패</span></span></td>
+        <td>${rate(m)}</td><td>${signed(m.net)}${bar(m.net)}</td><td class="hide-m">${money(m.fees)}</td></tr>`;
+    }).join("") +
+    `</tbody><tfoot><tr class="total-row"><td>전체</td><td>${tot.n}건 <span class="muted small"><span class="pos">${tot.win}승</span> <span class="neg">${tot.loss}패</span></span></td>
+      <td>${rate(tot)}</td><td>${signed(tot.net)}</td><td class="hide-m">${money(tot.fees)}</td></tr></tfoot></table></div>`;
+  const since = archive.since || Math.min(...[...all.values()].map((t) => t.closed));
+  $("mp-monthly-since").textContent = `· ${shortTime(since).split(" ").slice(0, 2).join(" ")}부터 기록 (가장 오래된 달은 일부만 포함)`;
 }
 
 // 모바일: 표 대신 포지션 하나당 카드 하나 (가로 스크롤 없음)
@@ -556,3 +614,7 @@ setInterval(pollLive, 5000);
 setInterval(tick, 1000);
 pollPositions();
 setInterval(pollPositions, 5000);
+if (window.POSITIONS_URL) {
+  loadTrades();
+  setInterval(loadTrades, 10 * 60 * 1000);
+}

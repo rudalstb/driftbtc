@@ -14,6 +14,8 @@
 const HOST = "https://api.bitget.com";
 const CACHE_MS = 3000; // 방문자가 많아도 비트겟 호출은 3초에 한 번
 let cache = { at: 0, body: null };
+const HISTORY_CACHE_MS = 60000; // 90일 전체 기록은 1분에 한 번만 새로 받는다
+let historyCache = { at: 0, body: null };
 let mode = null; // "uta" | "classic"
 
 const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -58,6 +60,19 @@ const liq = (v) => (num(v) > 0 ? num(v) : null);
 // 수수료·펀딩은 비트겟이 '빠져나간 금액'을 음수로 준다 → 비용(양수)으로 바꾼다
 const cost = (...vs) => -sum(...vs);
 
+const histUta = (h) => ({
+  id: h.positionId, symbol: h.symbol, side: h.posSide, entry: num(h.openPriceAvg), exit: num(h.closePriceAvg),
+  size: num(h.closeTotalPos), pnl: num(h.cumRealisedPnl), net: num(h.netProfit),
+  fees: cost(h.openFeeTotal, h.closeFeeTotal, h.totalFunding),
+  opened: num(h.createdTime), closed: num(h.updatedTime),
+});
+const histClassic = (h) => ({
+  id: h.positionId, symbol: h.symbol, side: h.holdSide, entry: num(h.openAvgPrice), exit: num(h.closeAvgPrice),
+  size: num(h.closeTotalPos), pnl: num(h.pnl), net: num(h.netProfit),
+  fees: cost(h.openFee, h.closeFee, h.totalFunding),
+  opened: num(h.ctime), closed: num(h.utime),
+});
+
 async function readUta(env) {
   const [assets, cur, hist] = await Promise.all([
     get(env, "/api/v3/account/assets"),
@@ -78,12 +93,7 @@ async function readUta(env) {
       roe_pct: roe(num(p.unrealisedPnl), num(p.positionBalance), num(p.profitRate)),
       opened: num(p.createdTime),
     })),
-    history: (hist?.list || []).map((h) => ({
-      symbol: h.symbol, side: h.posSide, entry: num(h.openPriceAvg), exit: num(h.closePriceAvg),
-      size: num(h.closeTotalPos), pnl: num(h.cumRealisedPnl), net: num(h.netProfit),
-      fees: cost(h.openFeeTotal, h.closeFeeTotal, h.totalFunding),
-      opened: num(h.createdTime), closed: num(h.updatedTime),
-    })),
+    history: (hist?.list || []).map(histUta),
   };
 }
 
@@ -109,13 +119,58 @@ async function readClassic(env) {
       unrealized_pnl: num(acc.unrealizedPL) ?? positions.reduce((a, p) => a + (p.upnl || 0), 0),
     },
     positions,
-    history: (hist?.list || []).map((h) => ({
-      symbol: h.symbol, side: h.holdSide, entry: num(h.openAvgPrice), exit: num(h.closeAvgPrice),
-      size: num(h.closeTotalPos), pnl: num(h.pnl), net: num(h.netProfit),
-      fees: cost(h.openFee, h.closeFee, h.totalFunding),
-      opened: num(h.ctime), closed: num(h.utime),
-    })),
+    history: (hist?.list || []).map(histClassic),
   };
+}
+
+// 최근 90일 청산 기록 전체 (월별 성적용)
+// 통합 계정: 한 번에 최대 30일 구간, 100건씩 cursor 로 이어 받기
+// 기존 계정: 최근 3개월을 100건씩 idLessThan 으로 이어 받기
+const DAY = 86400000;
+
+async function historyUtaAll(env) {
+  const out = [];
+  const now = Date.now();
+  for (let end = now; end > now - 89 * DAY; end -= 29 * DAY) {
+    const start = Math.max(end - 29 * DAY, now - 89 * DAY);
+    let cursor = "";
+    for (let page = 0; page < 20; page++) {
+      const params = { category: "USDT-FUTURES", startTime: String(start), endTime: String(end), limit: "100" };
+      if (cursor) params.cursor = cursor;
+      const d = await get(env, "/api/v3/position/history-position", params);
+      const list = d?.list || [];
+      out.push(...list.map(histUta));
+      if (list.length < 100 || !d.cursor || d.cursor === cursor) break;
+      cursor = d.cursor;
+    }
+  }
+  return out;
+}
+
+async function historyClassicAll(env) {
+  const out = [];
+  const now = Date.now();
+  let idLessThan = "";
+  for (let page = 0; page < 30; page++) {
+    const params = { productType: "USDT-FUTURES", startTime: String(now - 89 * DAY), endTime: String(now), limit: "100" };
+    if (idLessThan) params.idLessThan = idLessThan;
+    const d = await get(env, "/api/v2/mix/position/history-position", params);
+    const list = d?.list || [];
+    out.push(...list.map(histClassic));
+    if (list.length < 100 || !d.endId || d.endId === idLessThan) break;
+    idLessThan = d.endId;
+  }
+  return out;
+}
+
+async function readHistoryAll(env) {
+  if (!mode) await read(env); // 계정 종류부터 확인
+  const list = mode === "uta" ? await historyUtaAll(env) : await historyClassicAll(env);
+  // 구간 경계에서 겹친 기록 제거 후 최신순 정렬
+  const seen = new Set();
+  return list
+    .filter((h) => (h.id ? !seen.has(h.id) && seen.add(h.id) : true))
+    .sort((a, b) => (b.closed || 0) - (a.closed || 0));
 }
 
 async function read(env) {
@@ -153,6 +208,14 @@ export default {
       return new Response(JSON.stringify({ error: "비트겟 키(Secret)가 설정되지 않았어요" }), { status: 500, headers: cors });
     }
     try {
+      // ?history=all : 최근 90일 청산 기록 전체 (월별 성적 보관용)
+      if (new URL(request.url).searchParams.get("history") === "all") {
+        if (!historyCache.body || Date.now() - historyCache.at > HISTORY_CACHE_MS) {
+          const history = await readHistoryAll(env);
+          historyCache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, count: history.length, history }) };
+        }
+        return new Response(historyCache.body, { headers: cors });
+      }
       if (!cache.body || Date.now() - cache.at > CACHE_MS) {
         const d = await read(env);
         cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d }) };

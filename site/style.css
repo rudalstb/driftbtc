@@ -89,6 +89,11 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
+table.monthly td { vertical-align: middle; }
+.mbar { display: block; height: 4px; margin-top: 3px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 60px; }
+.mbar i { display: block; height: 100%; }
+.mbar i.up { background: var(--up); }
+.mbar i.down { background: var(--down); margin-left: auto; }
 .pcard { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 6px 0; }
 .pcard.total { background: var(--bg); }
 .pcard-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -181,6 +186,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }
   .mp-stats .strong { font-size: 15px; }
   .pc-only { display: none; }
+  .hide-m { display: none; }
   .m-only { display: block; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }
