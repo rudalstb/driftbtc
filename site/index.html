@@ -87,7 +87,12 @@
       <div id="mp-positions-m" class="m-only"></div>
       <div class="label game-sub">월별 성적 <span class="muted" id="mp-monthly-since"></span></div>
       <div id="mp-monthly"></div>
-      <div class="label game-sub">최근 청산 기록</div>
+      <div class="hist-head game-sub">
+        <div class="label">최근 청산 기록</div>
+        <div class="period" id="hist-period" role="group" aria-label="기간">
+          <button data-days="7" aria-pressed="true">7일</button><button data-days="30" aria-pressed="false">30일</button><button data-days="90" aria-pressed="false">90일</button>
+        </div>
+      </div>
       <div class="table-wrap pc-only"><table id="mp-history" class="compact"></table></div>
       <div id="mp-history-m" class="m-only"></div>
       <p class="muted small" id="mp-note">비트겟 계정의 실제 포지션을 조회 전용 키로 그대로 보여줍니다. 투자 권유가 아닙니다.</p>

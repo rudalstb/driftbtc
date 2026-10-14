@@ -358,18 +358,57 @@ function renderPositions(d) {
       `</tbody>`
     : `<tbody><tr><td class="mp-empty">지금은 포지션이 없어요 (관망 중)</td></tr></tbody>`;
 
-  const hist = d.history || [];
+  recentHistory = d.history || [];
+  renderPositionsMobile(pos);
+  renderHistory();
+  renderMonthly();
+}
+
+// 🧾 최근 청산 기록: 보관 기록 + 실시간 최근 기록을 합쳐 7일/30일/90일 기간으로 보여준다
+let histDays = 7;
+
+function mergedTrades() {
+  const all = new Map();
+  for (const t of [...archive.trades, ...recentHistory]) {
+    if (!t.closed) continue;
+    all.set(t.id || `${t.symbol}-${t.closed}`, t);
+  }
+  return [...all.values()].sort((a, b) => b.closed - a.closed);
+}
+
+function renderHistory() {
+  const from = Date.now() - histDays * 86400000;
+  const hist = mergedTrades().filter((t) => t.closed >= from);
+  document.querySelectorAll("#hist-period button").forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.days) === histDays));
+  const empty = `최근 ${histDays}일 동안 청산 기록이 없어요`;
+
   $("mp-history").innerHTML = hist.length
     ? `<thead><tr><th>종목</th><th>방향</th><th>진입가</th><th>청산가</th><th>수량</th><th>순손익</th><th>수수료·펀딩</th><th>청산 시각</th></tr></thead><tbody>` +
       hist.map((h) => `<tr><td>${h.symbol}</td><td>${sideTag(h.side)}</td><td>${num(h.entry)}</td><td>${num(h.exit)}</td><td>${h.size}</td>
-        <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${h.closed ? shortTime(h.closed) : "—"}</td></tr>`).join("") +
+        <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${shortTime(h.closed)}</td></tr>`).join("") +
       `</tbody>` + historyTotal(hist)
-    : `<tbody><tr><td class="mp-empty">아직 청산 기록이 없어요</td></tr></tbody>`;
+    : `<tbody><tr><td class="mp-empty">${empty}</td></tr></tbody>`;
 
-  renderPositionsMobile(pos, hist);
-  recentHistory = hist;
-  renderMonthly();
+  if (!hist.length) {
+    $("mp-history-m").innerHTML = `<div class="mp-empty">${empty}</div>`;
+    return;
+  }
+  const t = historyStats(hist);
+  $("mp-history-m").innerHTML =
+    `<div class="pcard total"><div class="pcard-head"><div><b>합계 ${hist.length}건</b> · <span class="pos">${t.wins}승</span> <span class="neg">${t.losses}패</span> <span class="muted">(승률 ${t.rate}%)</span></div>
+      <div class="pcard-pnl">${signed(t.net)}<span class="muted">수수료 ${money(t.fees)}</span></div></div></div>` +
+    hist.map((h) => `<div class="hrow">
+        <div><b>${h.symbol}</b> ${sideTag(h.side)}<div class="muted small">${num(h.entry)} → ${num(h.exit)} · ${h.size}</div></div>
+        <div class="hrow-r">${signed(h.net)}<div class="muted small">${shortTime(h.closed)}</div></div>
+      </div>`).join("");
 }
+
+document.querySelectorAll("#hist-period button").forEach((b) =>
+  b.addEventListener("click", () => {
+    histDays = Number(b.dataset.days);
+    renderHistory();
+  })
+);
 
 // 📅 월별 성적: 저장소에 쌓아 둔 청산 기록(data/trades.json) + 실시간 최근 기록을 합쳐 한국 시간 월 단위로 집계
 let archive = { since: null, trades: [] };
@@ -380,6 +419,7 @@ async function loadTrades() {
     const r = await fetch("data/trades.json?t=" + Date.now(), { cache: "no-store" });
     if (r.ok) archive = await r.json();
   } catch (e) {}
+  renderHistory();
   renderMonthly();
 }
 
@@ -431,7 +471,7 @@ function renderMonthly() {
 const mode = (m) => (m === "isolated" ? "격리" : m === "crossed" ? "교차" : "");
 const kv = (k, v) => `<div><span class="muted">${k}</span><b>${v}</b></div>`;
 
-function renderPositionsMobile(pos, hist) {
+function renderPositionsMobile(pos) {
   $("mp-positions-m").innerHTML = pos.length
     ? pos.map((p) => `<div class="pcard">
         <div class="pcard-head">
@@ -444,34 +484,22 @@ function renderPositionsMobile(pos, hist) {
           ${kv("수량", p.size)}${kv("진입", p.opened ? shortTime(p.opened) : "—")}
         </div></div>`).join("")
     : `<div class="mp-empty">지금은 포지션이 없어요 (관망 중)</div>`;
-
-  if (!hist.length) {
-    $("mp-history-m").innerHTML = `<div class="mp-empty">아직 청산 기록이 없어요</div>`;
-    return;
-  }
-  const wins = hist.filter((h) => h.net > 0).length;
-  const losses = hist.filter((h) => h.net < 0).length;
-  const net = hist.reduce((a, h) => a + (h.net || 0), 0);
-  const fees = hist.reduce((a, h) => a + (h.fees || 0), 0);
-  const rate = wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0;
-  $("mp-history-m").innerHTML =
-    `<div class="pcard total"><div class="pcard-head"><div><b>합계 ${hist.length}건</b> · <span class="pos">${wins}승</span> <span class="neg">${losses}패</span> <span class="muted">(승률 ${rate}%)</span></div>
-      <div class="pcard-pnl">${signed(net)}<span class="muted">수수료 ${money(fees)}</span></div></div></div>` +
-    hist.map((h) => `<div class="hrow">
-        <div><b>${h.symbol}</b> ${sideTag(h.side)}<div class="muted small">${num(h.entry)} → ${num(h.exit)} · ${h.size}</div></div>
-        <div class="hrow-r">${signed(h.net)}<div class="muted small">${h.closed ? shortTime(h.closed) : ""}</div></div>
-      </div>`).join("");
 }
 
 // 최근 청산 기록 합계: 승패, 순손익 합계, 수수료·펀딩 합계
-function historyTotal(hist) {
+function historyStats(hist) {
   const wins = hist.filter((h) => h.net > 0).length;
   const losses = hist.filter((h) => h.net < 0).length;
   const net = hist.reduce((a, h) => a + (h.net || 0), 0);
   const fees = hist.reduce((a, h) => a + (h.fees || 0), 0);
   const rate = wins + losses ? Math.round((wins / (wins + losses)) * 100) : 0;
-  return `<tfoot><tr class="total-row"><td colspan="5">합계 ${hist.length}건 · <span class="pos">${wins}승</span> <span class="neg">${losses}패</span> (승률 ${rate}%)</td>
-    <td>${signed(net)}</td><td>${money(fees)}</td><td></td></tr></tfoot>`;
+  return { wins, losses, net, fees, rate };
+}
+
+function historyTotal(hist) {
+  const t = historyStats(hist);
+  return `<tfoot><tr class="total-row"><td colspan="5">합계 ${hist.length}건 · <span class="pos">${t.wins}승</span> <span class="neg">${t.losses}패</span> (승률 ${t.rate}%)</td>
+    <td>${signed(t.net)}</td><td>${money(t.fees)}</td><td></td></tr></tfoot>`;
 }
 
 setInterval(() => {

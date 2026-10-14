@@ -89,6 +89,12 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
+.hist-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.hist-head .label { margin: 0; }
+.period { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.period button { background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; padding: 4px 11px; cursor: pointer; }
+.period button + button { border-left: 1px solid var(--border); }
+.period button[aria-pressed="true"] { background: var(--band95); color: var(--accent); }
 table.monthly td { vertical-align: middle; }
 .mbar { display: block; height: 4px; margin-top: 3px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 60px; }
 .mbar i { display: block; height: 100%; }
