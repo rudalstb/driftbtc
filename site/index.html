@@ -24,7 +24,12 @@
 <body>
   <main>
     <header>
-      <h1>DriftBTC</h1>
+      <div class="head-row">
+        <h1>DriftBTC</h1>
+        <div class="period cur-toggle" id="cur-toggle" role="group" aria-label="표시 통화">
+          <button data-cur="USD" aria-pressed="true">$ 달러</button><button data-cur="KRW" aria-pressed="false">₩ 원화</button>
+        </div>
+      </div>
       <p class="sub">비트코인 가격이 <strong>어디로 갈지</strong>가 아니라 <strong>어디까지 움직일 수 있는지</strong>를 예측합니다.</p>
       <div class="visitors" id="visitors" hidden></div>
     </header>
@@ -39,6 +44,7 @@
     <div class="live card">
       <div class="label">BTC/USDT 실시간 <span class="dot"></span></div>
       <div id="live-price" class="big">—</div>
+      <div class="kimp" id="kimp"></div>
       <div class="meta" id="generated">—</div>
     </div>
 

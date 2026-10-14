@@ -14,3 +14,6 @@ window.COPY_PRINCIPAL = {
 
 // 방문자 수 집계 주소 (Vercel 서버리스 함수, api/visit.js). 저장소(Upstash Redis)를 연결하기 전에는 표시되지 않는다
 window.VISIT_URL = "https://driftbtc.vercel.app/api/visit";
+
+// 달러→원화 환율 중계 주소 (Vercel 서버리스 함수, api/fx.js). 원화 표시·김치 프리미엄 계산에 쓴다
+window.FX_URL = "https://driftbtc.vercel.app/api/fx";

@@ -13,7 +13,19 @@ let titleArrow = "";
 let chart = null;
 
 const $ = (id) => document.getElementById(id);
-const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+// 💱 표시 통화: 달러(USD) 또는 원화(KRW, 환율 환산). 환율을 아직 못 받았으면 달러로 보여준다
+let CUR = "USD";
+try {
+  if (localStorage.getItem("driftbtc_cur") === "KRW") CUR = "KRW";
+} catch (e) {}
+let FX = null; // 1달러 = FX 원
+const krw = () => CUR === "KRW" && FX;
+const usd = (v) => (krw() ? "₩" + Math.round(v * FX).toLocaleString("ko-KR") : "$" + Math.round(v).toLocaleString("en-US"));
+// 그래프 축용 짧은 금액: $83.5k / 1.12억
+const axisMoney = (v) =>
+  krw()
+    ? (v * FX >= 1e8 ? (v * FX / 1e8).toFixed(v * FX >= 1e9 ? 1 : 2) + "억" : Math.round(v * FX / 1e4).toLocaleString("ko-KR") + "만")
+    : "$" + (v / 1000).toFixed(v < 1e5 ? 1 : 0) + "k";
 const pct = (v, d = 2) => {
   const s = Math.abs(v).toFixed(d);
   return (Number(s) === 0 ? "" : v > 0 ? "+" : "-") + s + "%";
@@ -117,11 +129,75 @@ async function pollLive() {
       if (prev != null && Math.round(prev) !== Math.round(live)) titleArrow = live > prev ? " ▲" : " ▼";
       document.title = `${usd(live)}${titleArrow} · DriftBTC`;
       renderLive();
+      renderKimp();
       return;
     } catch (e) {}
   }
   $("live-price").textContent = "연결 실패";
 }
+
+// 🇰🇷 김치 프리미엄 = 업비트 원화 가격 ÷ (바이낸스 달러 가격 × 환율) − 1
+let upbit = null;
+
+async function loadFx() {
+  if (!window.FX_URL) return;
+  try {
+    const r = await fetch(window.FX_URL, { cache: "no-store" });
+    const j = await r.json();
+    if (j.rate) {
+      const first = FX == null;
+      FX = j.rate;
+      if (first && CUR === "KRW") rerenderAll(); // 원화를 골라 둔 상태면 환율을 받자마자 다시 그림
+      renderKimp();
+    }
+  } catch (e) {}
+}
+
+async function pollUpbit() {
+  try {
+    const r = await fetch("https://api.upbit.com/v1/ticker?markets=KRW-BTC", { cache: "no-store" });
+    upbit = (await r.json())[0]?.trade_price ?? upbit;
+    renderKimp();
+  } catch (e) {}
+}
+
+function renderKimp() {
+  const el = $("kimp");
+  if (!upbit) return;
+  let html = `업비트 <b>₩${Math.round(upbit).toLocaleString("ko-KR")}</b>`;
+  if (FX && live) {
+    const p = (upbit / (live * FX) - 1) * 100;
+    html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
+  }
+  if (FX) html += ` <span class="muted">· 환율 ₩${FX.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}</span>`;
+  el.innerHTML = html;
+}
+
+// 통화를 바꾸면 금액이 들어간 화면을 모두 다시 그린다
+let lastPosData = null;
+function rerenderAll() {
+  document.querySelectorAll("#cur-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cur === CUR));
+  if (live != null) {
+    $("live-price").textContent = usd(live);
+    document.title = `${usd(live)}${titleArrow} · DriftBTC`;
+  }
+  if (report) {
+    render();
+    renderTables();
+  }
+  if (lastPosData) renderPositions(lastPosData);
+  renderKimp();
+}
+
+document.querySelectorAll("#cur-toggle button").forEach((b) =>
+  b.addEventListener("click", () => {
+    CUR = b.dataset.cur;
+    try {
+      localStorage.setItem("driftbtc_cur", CUR);
+    } catch (e) {}
+    rerenderAll();
+  })
+);
 
 // "얼마나 움직일까?" 카드: 예측 변동성을 매매에 바로 쓰는 숫자로 바꿔 보여준다
 // 손절·익절 거리 (주기별)
@@ -324,7 +400,7 @@ function renderGame(f) {
 
 // 📊 운영자 실전 포지션: Cloudflare Worker 가 비트겟 조회 전용 키로 읽어 정리한 값을 받는다
 const num = (v, d = 2) => Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-const money = (v) => (v < 0 ? "-$" : "$") + num(Math.abs(v));
+const money = (v) => (krw() ? (v < 0 ? "-₩" : "₩") + Math.round(Math.abs(v) * FX).toLocaleString("ko-KR") : (v < 0 ? "-$" : "$") + num(Math.abs(v)));
 const signed = (v) => `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${money(v).replace("-", "−")}</span>`;
 const sideTag = (s) => `<span class="side-${s}">${s === "long" ? "롱" : "숏"}</span>`;
 const copyTag = (p) => (p.source === "copy" ? ` <span class="copy-tag">카피${p.trader ? " · " + p.trader : ""}</span>` : "");
@@ -345,6 +421,7 @@ async function pollPositions() {
 }
 
 function renderPositions(d) {
+  lastPosData = d;
   $("mypos").hidden = false;
   posUpdated = d.updated;
   const a = d.account || {};
@@ -661,7 +738,7 @@ function renderChart(f) {
         position: "right",
         min: lo - padY,
         max: hi + padY,
-        ticks: { color: css("--muted"), callback: (v) => "$" + (v / 1000).toFixed(v < 1e5 ? 1 : 0) + "k" },
+        ticks: { color: css("--muted"), callback: (v) => axisMoney(v) },
         grid: { color: css("--border") },
       },
     },
@@ -720,6 +797,11 @@ document.querySelectorAll(".tabs button").forEach((b) =>
 
 pollReport().then(pollLive);
 setInterval(pollLive, 5000);
+loadFx();
+setInterval(loadFx, 60 * 1000);
+pollUpbit();
+setInterval(pollUpbit, 5000);
+document.querySelectorAll("#cur-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cur === CUR));
 setInterval(tick, 1000);
 pollPositions();
 setInterval(pollPositions, 5000);
