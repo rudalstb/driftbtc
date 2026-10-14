@@ -344,6 +344,7 @@ function renderPositions(d) {
   posUpdated = d.updated;
   const a = d.account || {};
   $("mp-equity").textContent = a.equity != null ? money(a.equity) : "—";
+  renderSeed(a.equity);
   $("mp-available").textContent = a.available != null ? money(a.available) : "—";
   $("mp-upnl").innerHTML = a.unrealized_pnl != null ? signed(a.unrealized_pnl) : "—";
 
@@ -362,6 +363,22 @@ function renderPositions(d) {
   renderPositionsMobile(pos);
   renderHistory();
   renderMonthly();
+}
+
+// 🏁 시드·출금 요약: 총 수익 = 누적 출금 + 현재 자산 − 시드 (값은 config.js 의 OPERATOR)
+function renderSeed(equity) {
+  const o = window.OPERATOR;
+  const box = $("mp-seed");
+  if (!o || !o.seed) return;
+  box.hidden = false;
+  const withdrawn = o.withdrawn || 0;
+  let total = "";
+  if (equity != null) {
+    const profit = withdrawn + equity - o.seed;
+    total = `<div class="seed-total">총 수익 ${signed(profit)} <span class="${profit >= 0 ? "pos" : "neg"}">(${pct((profit / o.seed) * 100, 0)})</span>
+      <span class="muted small">= 출금 ${usd(withdrawn)} + 현재 자산 ${money(equity)} − 시드 ${usd(o.seed)}</span></div>`;
+  }
+  box.innerHTML = `<div>🏁 시드 <b>${usd(o.seed)}</b>로 시작 · 누적 출금 <b class="pos">${usd(withdrawn)}</b></div>${total}`;
 }
 
 // 🧾 최근 청산 기록: 보관 기록 + 실시간 최근 기록을 합쳐 7일/30일/90일 기간으로 보여준다

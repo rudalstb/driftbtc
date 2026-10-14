@@ -1,3 +1,7 @@
 // 비트겟 포지션 중계 주소 (Vercel 서버리스 함수, api/positions.js)
 // 비워 두면 '운영자 실전 포지션' 카드가 숨겨진다
 window.POSITIONS_URL = "https://driftbtc.vercel.app/api/positions";
+
+// 운영자 시드·출금 기록 (달러). 출금이 늘면 withdrawn 숫자만 바꾸면 된다
+// 총 수익 = 누적 출금 + 현재 자산 − 시드
+window.OPERATOR = { seed: 1700, withdrawn: 3588 };

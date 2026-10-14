@@ -89,6 +89,10 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
+.seed-box { border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+.seed-box b { font-variant-numeric: tabular-nums; }
+.seed-total { margin-top: 4px; font-weight: 700; font-size: 16px; }
+.seed-total .small { font-weight: 400; display: block; margin-top: 2px; }
 .hist-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
 .hist-head .label { margin: 0; }
 .period { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
