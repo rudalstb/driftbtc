@@ -139,6 +139,7 @@ async function pollLive() {
 
 // 🇰🇷 김치 프리미엄 = 업비트 원화 가격 ÷ (바이낸스 달러 가격 × 환율) − 1
 let upbit = null;
+let upbitEth = null;
 
 // 환율과 업비트 가격은 Vercel 중계(api/fx.js)에서 함께 받는다 (업비트를 브라우저에서 직접 부르면 막힘)
 async function loadFx() {
@@ -147,13 +148,44 @@ async function loadFx() {
     const r = await fetch(window.FX_URL, { cache: "no-store" });
     const j = await r.json();
     if (j.upbit) upbit = j.upbit;
+    if (j.upbit_eth) upbitEth = j.upbit_eth;
     if (j.rate) {
       const first = FX == null;
       FX = j.rate;
       if (first && CUR === "KRW") rerenderAll(); // 원화를 골라 둔 상태면 환율을 받자마자 다시 그림
     }
     renderKimp();
+    renderEth();
   } catch (e) {}
+}
+
+// Ξ 이더리움 실시간 시세 한 줄 (예측은 비트코인 전용, 이더리움은 시세만)
+let eth = null; // { price, chg }
+
+async function pollEth() {
+  for (const host of ["https://api.binance.com", "https://data-api.binance.vision"]) {
+    try {
+      const r = await fetch(host + "/api/v3/ticker/24hr?symbol=ETHUSDT", { cache: "no-store" });
+      if (!r.ok) continue;
+      const j = await r.json();
+      eth = { price: Number(j.lastPrice), chg: Number(j.priceChangePercent) };
+      renderEth();
+      return;
+    } catch (e) {}
+  }
+}
+
+function renderEth() {
+  if (!eth) return;
+  let html = `<b class="eth-sym">ETH</b> <b>${usd(eth.price)}</b> <span class="${eth.chg >= 0 ? "pos" : "neg"}">${pct(eth.chg, 2)}</span> <span class="muted">(24시간)</span>`;
+  if (upbitEth) {
+    html += ` · 업비트 ₩${Math.round(upbitEth).toLocaleString("ko-KR")}`;
+    if (FX) {
+      const p = (upbitEth / (eth.price * FX) - 1) * 100;
+      html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
+    }
+  }
+  $("eth-row").innerHTML = html;
 }
 
 function renderKimp() {
@@ -182,6 +214,7 @@ function rerenderAll() {
   }
   if (lastPosData) renderPositions(lastPosData);
   renderKimp();
+  renderEth();
   syncCalcInput();
   renderCalc();
   if (lastFutures) renderFutures(lastFutures);
@@ -975,3 +1008,6 @@ function renderFutures(f) {
 loadFutures();
 setInterval(loadFutures, 60 * 1000);
 renderCalc();
+
+pollEth();
+setInterval(pollEth, 5000);

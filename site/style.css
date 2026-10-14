@@ -35,6 +35,8 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
 .head-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .cur-toggle button { padding: 5px 12px; }
 .kimp { font-size: 13.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.eth-row { font-size: 13.5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.eth-sym { color: #8c9eff; margin-right: 2px; }
 header h1 { margin: 0; font-size: 28px; color: var(--accent); letter-spacing: -0.5px; }
 .sub { margin: 4px 0 8px; color: var(--muted); }
 .visitors { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; font-variant-numeric: tabular-nums; }

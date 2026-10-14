@@ -2,20 +2,22 @@
 // 둘 다 브라우저에서 직접 부르면 막혀서(CORS) 서버에서 받아 전달한다.
 //
 // 환율 1순위: 야후 파이낸스 USD/KRW (1분 단위), 2순위: open.er-api.com (하루 1번) — 1분 동안 재사용
-// 업비트: KRW-BTC 현재가 — 3초 동안 재사용
+// 업비트: KRW-BTC·KRW-ETH 현재가 — 3초 동안 재사용
 
 const ORIGIN = "https://rudalstb.github.io";
 const CACHE_MS = 60 * 1000;
 let cache = { at: 0, fx: null };
 const UPBIT_MS = 3000;
-let upbitCache = { at: 0, price: null };
+let upbitCache = { at: 0, price: null, eth: null };
 
 async function upbitPrice() {
   if (Date.now() - upbitCache.at < UPBIT_MS && upbitCache.price) return upbitCache.price;
   try {
-    const r = await fetch("https://api.upbit.com/v1/ticker?markets=KRW-BTC");
-    const price = (await r.json())?.[0]?.trade_price;
-    if (price) upbitCache = { at: Date.now(), price };
+    const r = await fetch("https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-ETH");
+    const list = await r.json();
+    const price = list?.find((x) => x.market === "KRW-BTC")?.trade_price;
+    const eth = list?.find((x) => x.market === "KRW-ETH")?.trade_price;
+    if (price) upbitCache = { at: Date.now(), price, eth };
   } catch (e) {}
   return upbitCache.price;
 }
@@ -54,5 +56,5 @@ export async function GET() {
   }
   const upbit = await upbitPrice();
   if (!cache.fx && !upbit) return new Response(JSON.stringify({ error: "환율과 업비트 가격을 받지 못했어요" }), { status: 502, headers });
-  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit }), { headers });
+  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit, upbit_eth: upbitCache.eth }), { headers });
 }
