@@ -208,6 +208,30 @@ export default {
       return new Response(JSON.stringify({ error: "비트겟 키(Secret)가 설정되지 않았어요" }), { status: 500, headers: cors });
     }
     try {
+      // ?probe=copy : (임시 점검) 카피트레이딩 관련 API 중 어떤 것이 이 키로 응답하는지 확인
+      if (new URL(request.url).searchParams.get("probe") === "copy") {
+        const tries = [
+          ["v3 트레이더 포지션", "/api/v3/copy/futures/position-summary", {}],
+          ["v3 트레이더 이체가능", "/api/v3/copy/futures/max-transferable", { coin: "USDT" }],
+          ["v3 트레이더 개요", "/api/v3/copy/futures/portfolio-overview", { period: "30D" }],
+          ["v3 트레이더 수익요약", "/api/v3/copy/futures/profit-summary", {}],
+          ["v2 팔로워 트레이더목록", "/api/v2/copy/mix-follower/query-traders", {}],
+          ["v2 팔로워 현재포지션", "/api/v2/copy/mix-follower/query-current-orders", { productType: "USDT-FUTURES" }],
+          ["v2 팔로워 청산기록", "/api/v2/copy/mix-follower/query-history-orders", { productType: "USDT-FUTURES", limit: "5" }],
+          ["v2 트레이더 요약", "/api/v2/copy/mix-trader/order-total-detail", {}],
+          ["v2 전계정 잔고", "/api/v2/account/all-account-balance", {}],
+        ];
+        const out = [];
+        for (const [name, path, params] of tries) {
+          try {
+            const d = await get(env, path, params);
+            out.push({ name, ok: true, data: JSON.stringify(d).slice(0, 400) });
+          } catch (e) {
+            out.push({ name, ok: false, error: String(e.message).slice(0, 160) });
+          }
+        }
+        return new Response(JSON.stringify(out, null, 1), { headers: cors });
+      }
       // ?history=all : 최근 90일 청산 기록 전체 (월별 성적 보관용)
       if (new URL(request.url).searchParams.get("history") === "all") {
         if (!historyCache.body || Date.now() - historyCache.at > HISTORY_CACHE_MS) {
