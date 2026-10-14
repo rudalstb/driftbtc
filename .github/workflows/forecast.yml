@@ -100,6 +100,10 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python trades.py
 
+      - name: 방문자 수 백업
+        if: steps.check.outputs.new == 'true'
+        run: python visits.py
+
       - name: 예측 기록 커밋
         if: steps.check.outputs.new == 'true'
         run: |
