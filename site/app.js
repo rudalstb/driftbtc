@@ -368,7 +368,8 @@ function renderPositions(d) {
   renderMonthly();
 }
 
-// 🤝 카피트레이딩: 따라 하는 트레이더별 현재 금액과 예상 순수익
+// 🤝 카피트레이딩: 트레이더별 원금 → 현재 금액, 손익과 수익률
+// 원금은 비트겟의 누적 투자 금액, config.js 의 COPY_PRINCIPAL 에 값이 있으면 그 값을 쓴다
 function renderCopyProjects(copy) {
   const el = $("mp-copy");
   const list = copy?.projects || [];
@@ -376,12 +377,32 @@ function renderCopyProjects(copy) {
     el.innerHTML = "";
     return;
   }
+  const override = window.COPY_PRINCIPAL || {};
+  let totP = 0, totV = 0, totVKnown = 0, unknown = 0;
+  const items = list.map((p) => {
+    const principal = override[p.id] ?? p.investment;
+    const value = p.value || 0;
+    totV += value;
+    if (!principal) {
+      unknown++;
+      return `<div class="copy-item"><b>${p.trader || p.id}</b>
+        <span>${money(value)}</span>
+        <span class="muted small">원금 정보 없음 <span title="비트겟이 원금을 0으로 줍니다. 원금을 출금한 경우일 수 있어요.">ⓘ</span></span></div>`;
+    }
+    totP += principal;
+    totVKnown += value;
+    const pnl = value - principal;
+    return `<div class="copy-item"><b>${p.trader || p.id}</b>
+      <span class="muted small">원금 ${money(principal)} → <b class="plain">${money(value)}</b></span>
+      <span>${signed(pnl)} <span class="${pnl >= 0 ? "pos" : "neg"} small">(${pct((pnl / principal) * 100, 1)})</span></span></div>`;
+  });
+  const totPnl = totVKnown - totP; // 원금을 아는 트레이더만으로 계산
+  const known = list.length - unknown;
   el.innerHTML =
-    `<div class="label game-sub">카피트레이딩 (팔로우 ${list.length}명)</div><div class="copy-list">` +
-    list.map((p) => `<div class="copy-item"><b>${p.trader || p.id}</b>
-      <span>${p.value != null ? money(p.value) : "—"}</span>
-      <span class="muted small">순수익 ${p.net_profit != null ? signed(p.net_profit) : "—"}</span></div>`).join("") +
-    `</div>`;
+    `<div class="label game-sub">🤝 카피트레이딩 (팔로우 ${list.length}명)</div>` +
+    `<div class="copy-total">원금 <b>${money(totP)}</b>${unknown ? `<span class="muted small"> (원금 모르는 ${unknown}명 제외)</span>` : ""} · 현재 <b>${money(totV)}</b>` +
+    (known ? ` · 손익 ${signed(totPnl)}` : "") + `</div>` +
+    `<div class="copy-list">${items.join("")}</div>`;
 }
 
 // 🏁 시드·출금 요약: 총 수익 = 누적 출금 + 현재 자산 − 시드 (값은 config.js 의 OPERATOR)
