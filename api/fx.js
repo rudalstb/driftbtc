@@ -1,12 +1,24 @@
-// 달러→원화 환율 중계 (김치 프리미엄 계산·원화 표시용)
+// 달러→원화 환율 + 업비트 원화 가격 중계 (김치 프리미엄 계산·원화 표시용)
+// 둘 다 브라우저에서 직접 부르면 막혀서(CORS) 서버에서 받아 전달한다.
 //
-// 1순위: 야후 파이낸스 USD/KRW (1분 단위, 브라우저에서는 직접 못 불러서 서버에서 받는다)
-// 2순위: open.er-api.com (하루 1번 갱신) — 1순위가 실패할 때만
-// 1분 동안은 받아 둔 값을 재사용한다.
+// 환율 1순위: 야후 파이낸스 USD/KRW (1분 단위), 2순위: open.er-api.com (하루 1번) — 1분 동안 재사용
+// 업비트: KRW-BTC 현재가 — 3초 동안 재사용
 
 const ORIGIN = "https://rudalstb.github.io";
 const CACHE_MS = 60 * 1000;
-let cache = { at: 0, body: null };
+let cache = { at: 0, fx: null };
+const UPBIT_MS = 3000;
+let upbitCache = { at: 0, price: null };
+
+async function upbitPrice() {
+  if (Date.now() - upbitCache.at < UPBIT_MS && upbitCache.price) return upbitCache.price;
+  try {
+    const r = await fetch("https://api.upbit.com/v1/ticker?markets=KRW-BTC");
+    const price = (await r.json())?.[0]?.trade_price;
+    if (price) upbitCache = { at: Date.now(), price };
+  } catch (e) {}
+  return upbitCache.price;
+}
 
 const headers = {
   "Access-Control-Allow-Origin": ORIGIN,
@@ -32,19 +44,15 @@ async function erApi() {
 }
 
 export async function GET() {
-  if (!cache.body || Date.now() - cache.at > CACHE_MS) {
-    let fx = null;
+  if (!cache.fx || Date.now() - cache.at > CACHE_MS) {
     for (const f of [yahoo, erApi]) {
       try {
-        fx = await f();
+        cache = { at: Date.now(), fx: await f() };
         break;
       } catch (e) {}
     }
-    if (!fx) {
-      if (cache.body) return new Response(cache.body, { headers }); // 둘 다 실패하면 마지막 값
-      return new Response(JSON.stringify({ error: "환율을 받지 못했어요" }), { status: 502, headers });
-    }
-    cache = { at: Date.now(), body: JSON.stringify(fx) };
   }
-  return new Response(cache.body, { headers });
+  const upbit = await upbitPrice();
+  if (!cache.fx && !upbit) return new Response(JSON.stringify({ error: "환율과 업비트 가격을 받지 못했어요" }), { status: 502, headers });
+  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit }), { headers });
 }

@@ -139,24 +139,18 @@ async function pollLive() {
 // 🇰🇷 김치 프리미엄 = 업비트 원화 가격 ÷ (바이낸스 달러 가격 × 환율) − 1
 let upbit = null;
 
+// 환율과 업비트 가격은 Vercel 중계(api/fx.js)에서 함께 받는다 (업비트를 브라우저에서 직접 부르면 막힘)
 async function loadFx() {
   if (!window.FX_URL) return;
   try {
     const r = await fetch(window.FX_URL, { cache: "no-store" });
     const j = await r.json();
+    if (j.upbit) upbit = j.upbit;
     if (j.rate) {
       const first = FX == null;
       FX = j.rate;
       if (first && CUR === "KRW") rerenderAll(); // 원화를 골라 둔 상태면 환율을 받자마자 다시 그림
-      renderKimp();
     }
-  } catch (e) {}
-}
-
-async function pollUpbit() {
-  try {
-    const r = await fetch("https://api.upbit.com/v1/ticker?markets=KRW-BTC", { cache: "no-store" });
-    upbit = (await r.json())[0]?.trade_price ?? upbit;
     renderKimp();
   } catch (e) {}
 }
@@ -798,9 +792,7 @@ document.querySelectorAll(".tabs button").forEach((b) =>
 pollReport().then(pollLive);
 setInterval(pollLive, 5000);
 loadFx();
-setInterval(loadFx, 60 * 1000);
-pollUpbit();
-setInterval(pollUpbit, 5000);
+setInterval(loadFx, 10 * 1000); // 업비트 가격 때문에 10초마다 (환율은 서버에서 1분 단위)
 document.querySelectorAll("#cur-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cur === CUR));
 setInterval(tick, 1000);
 pollPositions();
