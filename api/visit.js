@@ -76,7 +76,11 @@ async function restoreIfEmpty(cfg, today, yesterday) {
 
 export async function GET(request) {
   const cfg = redisConfig();
-  if (!cfg) return new Response(JSON.stringify({ enabled: false }), { headers });
+  if (!cfg) {
+    // 원인 파악용: 저장소 관련 환경변수 '이름'만 보여준다 (값은 절대 내보내지 않음)
+    const names = Object.keys(process.env).filter((k) => /REDIS|KV|UPSTASH|STORAGE/i.test(k));
+    return new Response(JSON.stringify({ enabled: false, env_names: names }), { headers });
+  }
 
   const q = new URL(request.url).searchParams;
   // 브라우저 번호: 영문·숫자 8~40자만 허용
