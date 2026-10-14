@@ -269,7 +269,8 @@ function renderGame(f) {
         `적중 <b>${sig.hits}/${sig.n}</b> (${(sig.hit_rate * 100).toFixed(0)}%)${streak}<br>` +
         (sig.gross_pct != null ? `방향대로 들고 있었다면 ${money(sig.gross_pct)} · ` : "") +
         `매번 바꿨다면 수수료 후 ${money(sig.return_pct)} ` +
-        `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)})</span>`;
+        `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)}` +
+        (sig.always_short_pct != null ? ` · 항상 숏 ${pct(sig.always_short_pct, 1)}` : "") + `)</span>`;
       $("hit-row").innerHTML = sig.recent
         .map((r) => `<span title="${fmt(new Date(r.t))} ${r.signal === "long" ? "롱" : "숏"} ${pct(r.ret_pct, 2)}">${r.hit ? "✅" : "❌"}</span>`)
         .join("");
@@ -285,7 +286,7 @@ function renderGame(f) {
     `<td>${s.max_drawdown_pct.toFixed(0)}%</td><td>${(s.hit_rate * 100).toFixed(1)}%</td></tr>`;
   $("sig-table").innerHTML =
     `<thead><tr><th></th><th>수수료 전</th><th>수수료 후</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
-    row("관점대로", bt.signal) + row("항상 롱", bt.always_long) + `</tbody>`;
+    row("관점대로", bt.signal) + row("항상 롱", bt.always_long) + (bt.always_short ? row("항상 숏", bt.always_short) : "") + `</tbody>`;
   const flips = bt.signal.flips.toLocaleString();
   $("sig-note").textContent =
     freq === "1w" && bt.signal.flips === 0
@@ -299,7 +300,10 @@ function renderGame(f) {
     labels,
     datasets: [
       { label: "관점대로 (수수료 후)", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
-      { label: "항상 롱", data: bt.series.map((p) => p.long), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
+      { label: "항상 롱", data: bt.series.map((p) => p.long), borderColor: css("--up"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
+      ...(bt.series[0]?.short != null
+        ? [{ label: "항상 숏", data: bt.series.map((p) => p.short), borderColor: css("--down"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] }]
+        : []),
     ],
   };
   const opts = {

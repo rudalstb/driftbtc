@@ -56,6 +56,7 @@ def backtest() -> dict:
         hold = np.ones(len(d))
         eq_sig, _ = _equity(sig, ret)
         eq_hold, _ = _equity(hold, ret)
+        eq_short, _ = _equity(-hold, ret)
         # 그래프용으로 최대 200개 지점만 (결과 확정 시각 기준)
         t = d.index + 2 * STEP[freq]
         idx = np.unique(np.linspace(0, len(d) - 1, min(200, len(d))).astype(int))
@@ -63,8 +64,10 @@ def backtest() -> dict:
             "start": str(t[0]), "end": str(t[-1]), "n": len(d),
             "signal": _stats(sig, ret),
             "always_long": _stats(hold, ret),
+            "always_short": _stats(-hold, ret),
             "series": [{"t": t[i].isoformat(), "signal": round(float(eq_sig[i]), 4),
-                        "long": round(float(eq_hold[i]), 4)} for i in idx],
+                        "long": round(float(eq_hold[i]), 4),
+                        "short": round(float(eq_short[i]), 4)} for i in idx],
         }
     (ROOT / "reports" / "signal_backtest.json").write_text(json.dumps(out), encoding="utf-8")
     return out
@@ -123,6 +126,7 @@ def record_and_score(forecasts: dict, frames: dict[str, pd.DataFrame]) -> dict:
             ret = np.array([s["ret"] for s in scored])
             eq, net = _equity(sig, ret)
             hold, _ = _equity(np.ones(len(ret)), ret)
+            short, _ = _equity(-np.ones(len(ret)), ret)
             hits = [bool(np.sign(s) == np.sign(x)) for s, x in zip(sig, ret)]
             streak = 0
             for h in reversed(hits):
@@ -136,6 +140,7 @@ def record_and_score(forecasts: dict, frames: dict[str, pd.DataFrame]) -> dict:
                 "return_pct": float((eq[-1] - 1) * 100),
                 "gross_pct": float((np.exp(np.sum(sig * ret)) - 1) * 100),
                 "always_long_pct": float((hold[-1] - 1) * 100),
+                "always_short_pct": float((short[-1] - 1) * 100),
                 "streak": streak, "streak_hit": hits[-1],
                 "recent": [{"t": s["target"], "signal": s["signal"], "hit": h,
                             "ret_pct": round(float(sg * s["ret"] * 100), 3)}
