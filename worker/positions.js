@@ -173,6 +173,44 @@ async function readHistoryAll(env) {
     .sort((a, b) => (b.closed || 0) - (a.closed || 0));
 }
 
+// 카피트레이딩(엘리트 트레이더) 계좌: 비트겟은 별도의 "Elite trade API key" 로만 읽을 수 있다
+const copyEnv = (env) => ({
+  BITGET_API_KEY: env.BITGET_COPY_API_KEY,
+  BITGET_API_SECRET: env.BITGET_COPY_API_SECRET,
+  BITGET_PASSPHRASE: env.BITGET_COPY_PASSPHRASE,
+});
+
+async function readCopy(env) {
+  if (!env.BITGET_COPY_API_KEY || !env.BITGET_COPY_API_SECRET || !env.BITGET_COPY_PASSPHRASE) return null;
+  const ce = copyEnv(env);
+  const [pos, overview, transfer] = await Promise.allSettled([
+    get(ce, "/api/v3/copy/futures/position-summary"),
+    get(ce, "/api/v3/copy/futures/portfolio-overview", { period: "30D" }),
+    get(ce, "/api/v3/copy/futures/max-transferable", { coin: "USDT" }),
+  ]);
+  const errors = [pos, overview, transfer].filter((r) => r.status === "rejected").map((r) => String(r.reason?.message || r.reason));
+  const ov = overview.status === "fulfilled" ? overview.value || {} : {};
+  const tr = transfer.status === "fulfilled" ? transfer.value || {} : {};
+  const list = pos.status === "fulfilled" ? (Array.isArray(pos.value) ? pos.value : pos.value?.list || []) : [];
+  const positions = list.map((p) => ({
+    source: "copy", symbol: p.symbol, side: p.holdSide, size: num(p.holdSize), leverage: num(p.leverage),
+    margin_mode: p.marginMode, entry: num(p.avgPrice), mark: num(p.markPrice), liq: liq(p.liqPrice),
+    margin: num(p.margin), upnl: num(p.unrealizedPnl),
+    roe_pct: roe(num(p.unrealizedPnl), num(p.margin), num(p.roi)),
+    opened: null,
+  }));
+  const upnl = positions.reduce((a, p) => a + (p.upnl || 0), 0);
+  return {
+    equity: num(ov.asset),
+    available: num(tr.available),
+    unrealized_pnl: positions.length ? upnl : 0,
+    roi_30d_pct: ov.roi != null ? num(ov.roi) * (Math.abs(num(ov.roi)) <= 5 ? 100 : 1) : null,
+    total_profit: num(ov.totalProfit),
+    positions,
+    errors,
+  };
+}
+
 async function read(env) {
   let utaError = null;
   if (mode !== "classic") {
@@ -208,30 +246,6 @@ export default {
       return new Response(JSON.stringify({ error: "비트겟 키(Secret)가 설정되지 않았어요" }), { status: 500, headers: cors });
     }
     try {
-      // ?probe=copy : (임시 점검) 카피트레이딩 관련 API 중 어떤 것이 이 키로 응답하는지 확인
-      if (new URL(request.url).searchParams.get("probe") === "copy") {
-        const tries = [
-          ["v3 트레이더 포지션", "/api/v3/copy/futures/position-summary", {}],
-          ["v3 트레이더 이체가능", "/api/v3/copy/futures/max-transferable", { coin: "USDT" }],
-          ["v3 트레이더 개요", "/api/v3/copy/futures/portfolio-overview", { period: "30D" }],
-          ["v3 트레이더 수익요약", "/api/v3/copy/futures/profit-summary", {}],
-          ["v2 팔로워 트레이더목록", "/api/v2/copy/mix-follower/query-traders", {}],
-          ["v2 팔로워 현재포지션", "/api/v2/copy/mix-follower/query-current-orders", { productType: "USDT-FUTURES" }],
-          ["v2 팔로워 청산기록", "/api/v2/copy/mix-follower/query-history-orders", { productType: "USDT-FUTURES", limit: "5" }],
-          ["v2 트레이더 요약", "/api/v2/copy/mix-trader/order-total-detail", {}],
-          ["v2 전계정 잔고", "/api/v2/account/all-account-balance", {}],
-        ];
-        const out = [];
-        for (const [name, path, params] of tries) {
-          try {
-            const d = await get(env, path, params);
-            out.push({ name, ok: true, data: JSON.stringify(d).slice(0, 400) });
-          } catch (e) {
-            out.push({ name, ok: false, error: String(e.message).slice(0, 160) });
-          }
-        }
-        return new Response(JSON.stringify(out, null, 1), { headers: cors });
-      }
       // ?history=all : 최근 90일 청산 기록 전체 (월별 성적 보관용)
       if (new URL(request.url).searchParams.get("history") === "all") {
         if (!historyCache.body || Date.now() - historyCache.at > HISTORY_CACHE_MS) {
@@ -242,7 +256,20 @@ export default {
       }
       if (!cache.body || Date.now() - cache.at > CACHE_MS) {
         const d = await read(env);
-        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d }) };
+        let copy = null;
+        try {
+          copy = await readCopy(env);
+        } catch (e) {
+          copy = { errors: [String(e.message || e)], positions: [] };
+        }
+        if (copy) {
+          d.positions = [...d.positions.map((p) => ({ source: "main", ...p })), ...copy.positions];
+          // 총 자산 = 일반(통합) 계좌 + 카피트레이딩 계좌
+          d.account.main_equity = d.account.equity;
+          if (copy.equity != null) d.account.equity = (d.account.equity || 0) + copy.equity;
+          d.account.unrealized_pnl = (d.account.unrealized_pnl || 0) + (copy.unrealized_pnl || 0);
+        }
+        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined } }) };
       }
       return new Response(cache.body, { headers: cors });
     } catch (e) {

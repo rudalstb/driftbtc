@@ -323,6 +323,7 @@ const num = (v, d = 2) => Number(v).toLocaleString("en-US", { minimumFractionDig
 const money = (v) => (v < 0 ? "-$" : "$") + num(Math.abs(v));
 const signed = (v) => `<span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${money(v).replace("-", "−")}</span>`;
 const sideTag = (s) => `<span class="side-${s}">${s === "long" ? "롱" : "숏"}</span>`;
+const copyTag = (p) => (p.source === "copy" ? ` <span class="copy-tag">카피</span>` : "");
 const shortTime = (ms) =>
   new Date(Number(ms)).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 let posUpdated = 0;
@@ -344,6 +345,9 @@ function renderPositions(d) {
   posUpdated = d.updated;
   const a = d.account || {};
   $("mp-equity").textContent = a.equity != null ? money(a.equity) : "—";
+  // 카피트레이딩 계좌가 연결돼 있으면 총 자산을 일반 / 카피로 나눠 보여준다
+  $("mp-equity-split").textContent =
+    d.copy && d.copy.equity != null && a.main_equity != null ? `일반 ${money(a.main_equity)} · 카피 ${money(d.copy.equity)}` : "";
   renderSeed(a.equity);
   $("mp-available").textContent = a.available != null ? money(a.available) : "—";
   $("mp-upnl").innerHTML = a.unrealized_pnl != null ? signed(a.unrealized_pnl) : "—";
@@ -353,7 +357,7 @@ function renderPositions(d) {
   if (report) renderLeverage(report.forecasts[freq]);
   $("mp-positions").innerHTML = pos.length
     ? `<thead><tr><th>종목</th><th>방향</th><th>레버리지</th><th>수량</th><th>진입가</th><th>현재가</th><th>청산가</th><th>증거금</th><th>손익</th><th>수익률</th><th>진입</th></tr></thead><tbody>` +
-      pos.map((p) => `<tr><td>${p.symbol}</td><td>${sideTag(p.side)}</td><td>${p.leverage}x ${p.margin_mode === "isolated" ? "격리" : p.margin_mode === "crossed" ? "교차" : ""}</td>
+      pos.map((p) => `<tr><td>${p.symbol}${copyTag(p)}</td><td>${sideTag(p.side)}</td><td>${p.leverage}x ${p.margin_mode === "isolated" ? "격리" : p.margin_mode === "crossed" ? "교차" : ""}</td>
         <td>${p.size}</td><td>${num(p.entry)}</td><td>${num(p.mark)}</td><td>${p.liq ? num(p.liq) : "—"}</td><td>${money(p.margin)}</td>
         <td>${signed(p.upnl)}</td><td class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</td><td>${p.opened ? shortTime(p.opened) : "—"}</td></tr>`).join("") +
       `</tbody>`
@@ -492,7 +496,7 @@ function renderPositionsMobile(pos) {
   $("mp-positions-m").innerHTML = pos.length
     ? pos.map((p) => `<div class="pcard">
         <div class="pcard-head">
-          <div><b>${p.symbol}</b> ${sideTag(p.side)} <span class="muted">${p.leverage}x ${mode(p.margin_mode)}</span></div>
+          <div><b>${p.symbol}</b>${copyTag(p)} ${sideTag(p.side)} <span class="muted">${p.leverage}x ${mode(p.margin_mode)}</span></div>
           <div class="pcard-pnl">${signed(p.upnl)}<span class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</span></div>
         </div>
         <div class="pcard-grid">

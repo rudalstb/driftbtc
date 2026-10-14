@@ -13,6 +13,10 @@ const env = () => ({
   BITGET_API_SECRET: clean(process.env.BITGET_API_SECRET),
   BITGET_PASSPHRASE: clean(process.env.BITGET_PASSPHRASE),
   ALLOW_ORIGIN: clean(process.env.ALLOW_ORIGIN),
+  // 카피트레이딩(엘리트 트레이더) 계좌 전용 키 (없으면 카피 계좌는 건너뜀)
+  BITGET_COPY_API_KEY: apiKey(clean(process.env.BITGET_COPY_API_KEY)),
+  BITGET_COPY_API_SECRET: clean(process.env.BITGET_COPY_API_SECRET),
+  BITGET_COPY_PASSPHRASE: clean(process.env.BITGET_COPY_PASSPHRASE),
 });
 
 // 키 값 자체는 내보내지 않고 '모양'만 점검한다 (오류일 때만 응답에 붙음)
