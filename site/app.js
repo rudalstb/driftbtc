@@ -101,7 +101,7 @@ async function loadReport() {
   const next = await r.json();
   if (report && next.generated_at === report.generated_at) return;
   report = next;
-  $("generated").textContent = "예측 생성 " + new Date(report.generated_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + " KST";
+  renderMeta();
   renderTables();
   render();
 }
@@ -193,15 +193,27 @@ function renderEth() {
   $("eth-kimp").innerHTML = html;
 }
 
+// BTC 카드 아래 회색 줄: 환율 · 예측 생성 시각 (10/14 17:33)
+function renderMeta() {
+  const parts = [];
+  if (FX) parts.push(`환율 ₩${FX.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}`);
+  if (report) {
+    const k = new Date(new Date(report.generated_at).getTime() + 9 * 3600 * 1000);
+    const hm = `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
+    parts.push(`예측 생성 ${k.getUTCMonth() + 1}/${k.getUTCDate()} ${hm}`);
+  }
+  $("generated").textContent = parts.join(" · ");
+}
+
 function renderKimp() {
   const el = $("kimp");
+  renderMeta();
   if (!upbit) return;
   let html = `업비트 <b>₩${Math.round(upbit).toLocaleString("ko-KR")}</b>`;
   if (FX && live) {
     const p = (upbit / (live * FX) - 1) * 100;
     html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
   }
-  if (FX) html += ` <span class="muted">· 환율 ₩${FX.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}</span>`;
   el.innerHTML = html;
 }
 
