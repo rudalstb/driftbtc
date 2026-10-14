@@ -175,9 +175,22 @@ async function readHistoryAll(env) {
 
 // 카피트레이딩 팔로워 계좌: 프로젝트(따라 하는 트레이더)마다 잔고와 포지션을 일반 키로 읽는다
 // current-positions 는 마크가격·미실현손익을 주지 않아 공개 시세로 직접 계산한다
-const COPY_CACHE_MS = 15000; // 포지션 조회가 초당 1회 제한이라 카피 정보는 15초에 한 번만
+const COPY_CACHE_MS = 20000; // 포지션 조회가 초당 1회 제한이라 카피 정보는 20초에 한 번만
 let copyCache = { at: 0, data: null };
+const lastGood = new Map(); // 프로젝트별 마지막 성공 값 (일시적인 호출 제한 때 대신 보여줌)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 호출 제한(429)이면 잠깐 기다렸다가 다시 시도
+async function getRetry(env, path, params, tries = 3) {
+  for (let i = 0; ; i++) {
+    try {
+      return await get(env, path, params);
+    } catch (e) {
+      if (i + 1 >= tries || !/429/.test(String(e.message))) throw e;
+      await sleep(1200 * (i + 1));
+    }
+  }
+}
 
 async function markPrices() {
   const res = await fetch(HOST + "/api/v2/mix/market/tickers?productType=USDT-FUTURES");
@@ -194,32 +207,42 @@ async function readCopy(env) {
   const marks = await markPrices().catch(() => ({}));
   const out = { equity: 0, available: 0, unrealized_pnl: 0, projects: [], positions: [], errors: [] };
   for (const [i, id] of projects.entries()) {
+    let project, positions;
     try {
-      const c = (await get(env, "/api/v3/copy/futures/current-copy", { projectId: id })) || {};
+      const c = (await getRetry(env, "/api/v3/copy/futures/current-copy", { projectId: id })) || {};
       if (i) await sleep(1100); // current-positions: 초당 1회 제한
-      const cp = await get(env, "/api/v3/copy/futures/current-positions", { projectId: id });
-      out.equity += num(c.estValue) || 0;
-      out.available += num(c.available) || 0;
-      out.projects.push({
+      const cp = await getRetry(env, "/api/v3/copy/futures/current-positions", { projectId: id });
+      project = {
         id, trader: c.eliteTrader, value: num(c.estValue), available: num(c.available),
         net_profit: num(c.estNetProfit), investment: num(c.currentInvestment), profit_share: num(c.profitShare),
-      });
-      for (const p of cp?.list || []) {
+      };
+      positions = (cp?.list || []).map((p) => {
         const size = num(p.total), entry = num(p.avgPrice), lev = num(p.leverage) || 1;
         const mark = marks[p.symbol] ?? null;
         const dir = p.posSide === "short" ? -1 : 1;
         const upnl = mark != null && size != null && entry != null ? (mark - entry) * size * dir : null;
         const margin = size != null && entry != null ? (entry * size) / lev : null;
-        if (upnl != null) out.unrealized_pnl += upnl;
-        out.positions.push({
+        return {
           source: "copy", trader: c.eliteTrader, symbol: p.symbol, side: p.posSide, size, leverage: lev,
           margin_mode: p.marginMode, entry, mark, liq: null, margin, upnl,
           roe_pct: upnl != null && margin ? (upnl / margin) * 100 : null, opened: num(p.createdTime),
-        });
-      }
+        };
+      });
+      lastGood.set(id, { project, positions });
     } catch (e) {
-      // 팔로우를 끊은 프로젝트 등은 건너뛰고 오류만 기록
       out.errors.push(`${id}: ${String(e.message || e).slice(0, 120)}`);
+      // 일시적인 실패면 마지막으로 성공한 값을 대신 쓴다 (팔로우를 끊은 경우엔 이전 값이 없어 건너뜀)
+      const prev = lastGood.get(id);
+      if (!prev) continue;
+      project = { ...prev.project, stale: true };
+      positions = prev.positions;
+    }
+    out.equity += project.value || 0;
+    out.available += project.available || 0;
+    out.projects.push(project);
+    for (const p of positions) {
+      if (p.upnl != null) out.unrealized_pnl += p.upnl;
+      out.positions.push(p);
     }
   }
   copyCache = { at: Date.now(), data: out };
