@@ -92,7 +92,7 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
-.acc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 12px; }
+.acc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 10px 0 12px; }
 .acc-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .acc-title { font-weight: 700; font-size: 15px; }
 .acc-nums { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; }

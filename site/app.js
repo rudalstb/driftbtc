@@ -671,9 +671,9 @@ function renderChart(f) {
   chart = new Chart($("chart"), { type: "line", data: { labels, datasets }, options: opts, plugins: [endLabels] });
 }
 
-// 정확도 한눈에 보기: 범위 적중, 방향 적중, btcgpt.info 대비 오차
+// 정확도 한눈에 보기: 범위 적중, 방향 적중
 function renderAccuracySummary() {
-  const s = report.summary, c = report.btcgpt_compare;
+  const s = report.summary;
   const F = ["1h", "1d", "1w"];
   const cards = [];
   if (s) {
@@ -685,16 +685,6 @@ function renderAccuracySummary() {
     cards.push(`<div class="acc-card"><div class="acc-title">🎲 오를지 내릴지는 누구도 못 맞혀요</div>
       <div class="muted small">다음에 오를지 내릴지 맞힌 비율 · 50%면 동전 던지기</div>
       <div class="acc-nums">${dir}</div><div class="small">사실상 <b>동전 던지기 수준</b>이에요. 그래서 방향보다 범위를 보세요.</div></div>`);
-  }
-  if (c) {
-    const map = { "1h": "1h", "1d": "1d", "1w": "1w" };
-    const rows = F.filter((k) => c[map[k]]).map((k) => {
-      const r = c[map[k]];
-      const better = Math.round((1 - r.naive / r.btcgpt) * 100);
-      return `<div class="acc-vs"><span class="muted">${UNIT[k]}</span><span><b class="pos">${r.naive.toFixed(2)}%</b> <span class="muted">vs ${r.btcgpt.toFixed(2)}%</span></span><b class="pos">${better}% ↑</b></div>`;
-    }).join("");
-    cards.push(`<div class="acc-card"><div class="acc-title">🏆 btcgpt.info보다 정확해요</div>
-      <div class="muted small">같은 시점의 가격 예측 평균 오차 · 낮을수록 좋음<br><b class="pos">우리</b> vs btcgpt.info · 오른쪽은 얼마나 더 정확한지</div>${rows}</div>`);
   }
   $("acc-summary").innerHTML = cards.join("");
 }
@@ -717,16 +707,6 @@ function renderTables() {
     $("bt-table").innerHTML = `<thead><tr><th>주기</th><th>기준선 MAPE</th><th>Ridge</th><th>LightGBM</th>
       <th>방향 적중</th><th>DM p</th><th>95% 구간 포함</th><th>표본</th></tr></thead><tbody>${rows.join("")}</tbody>`;
     $("bt-note").textContent = "DM p: 기준선과 오차 차이가 우연인지 검정한 p값 (0.05 미만이어야 유의). 95% 구간 포함: GARCH 95% 구간 안에 실제 가격이 들어간 비율 (목표 95%).";
-  }
-  const c = report.btcgpt_compare;
-  if (c) {
-    const rows = ["1h", "1d", "1w"].filter((k) => c[k]).map((k) => {
-      const r = c[k];
-      const vals = ["btcgpt", "naive", "ridge", "lgbm"].map((m) => r[m]);
-      const best = Math.min(...vals);
-      return `<tr><td>${UNIT[k]}</td>${vals.map((v) => `<td class="${v === best ? "best" : ""}">${v.toFixed(3)}%</td>`).join("")}<td>${r.n}</td></tr>`;
-    });
-    $("cmp-table").innerHTML = `<thead><tr><th>주기</th><th>btcgpt.info</th><th>기준선</th><th>Ridge</th><th>LightGBM</th><th>표본</th></tr></thead><tbody>${rows.join("")}</tbody>`;
   }
 }
 

@@ -131,7 +131,7 @@ def main(update: bool = True) -> None:
         c = r["current"]
         print(f"{freq} 신호: {c['signal'] if c else '-'}  운영 성적 {r.get('hits', 0)}/{r['n']}")
 
-    for name in ["summary.json", "btcgpt_compare.json", "signal_backtest.json"]:
+    for name in ["summary.json", "signal_backtest.json"]:
         p = ROOT / "reports" / name
         if p.exists():
             out[name.removesuffix(".json")] = json.loads(p.read_text(encoding="utf-8"))
