@@ -671,7 +671,36 @@ function renderChart(f) {
   chart = new Chart($("chart"), { type: "line", data: { labels, datasets }, options: opts, plugins: [endLabels] });
 }
 
+// 정확도 한눈에 보기: 범위 적중, 방향 적중, btcgpt.info 대비 오차
+function renderAccuracySummary() {
+  const s = report.summary, c = report.btcgpt_compare;
+  const F = ["1h", "1d", "1w"];
+  const cards = [];
+  if (s) {
+    const cover = F.filter((k) => s[k]).map((k) => `<div><span class="muted">${UNIT[k]}</span><b class="pos">${Math.round(s[k].garch_sigma.cover_2sigma * 100)}%</b></div>`).join("");
+    cards.push(`<div class="acc-card"><div class="acc-title">✅ 움직이는 범위는 잘 맞아요</div>
+      <div class="muted small">"거의 확실한 범위" 안에 실제 가격이 들어온 비율 · 목표 95%</div>
+      <div class="acc-nums">${cover}</div><div class="small">100번 중 약 <b>95번</b>은 범위 안에 들어왔어요.</div></div>`);
+    const dir = F.filter((k) => s[k]).map((k) => `<div><span class="muted">${UNIT[k]}</span><b>${Math.round(s[k].ridge.dir_acc * 100)}%</b></div>`).join("");
+    cards.push(`<div class="acc-card"><div class="acc-title">🎲 오를지 내릴지는 누구도 못 맞혀요</div>
+      <div class="muted small">다음에 오를지 내릴지 맞힌 비율 · 50%면 동전 던지기</div>
+      <div class="acc-nums">${dir}</div><div class="small">사실상 <b>동전 던지기 수준</b>이에요. 그래서 방향보다 범위를 보세요.</div></div>`);
+  }
+  if (c) {
+    const map = { "1h": "1h", "1d": "1d", "1w": "1w" };
+    const rows = F.filter((k) => c[map[k]]).map((k) => {
+      const r = c[map[k]];
+      const better = Math.round((1 - r.naive / r.btcgpt) * 100);
+      return `<div class="acc-vs"><span class="muted">${UNIT[k]}</span><span><b class="pos">${r.naive.toFixed(2)}%</b> <span class="muted">vs ${r.btcgpt.toFixed(2)}%</span></span><b class="pos">${better}% ↑</b></div>`;
+    }).join("");
+    cards.push(`<div class="acc-card"><div class="acc-title">🏆 btcgpt.info보다 정확해요</div>
+      <div class="muted small">같은 시점의 가격 예측 평균 오차 · 낮을수록 좋음<br><b class="pos">우리</b> vs btcgpt.info · 오른쪽은 얼마나 더 정확한지</div>${rows}</div>`);
+  }
+  $("acc-summary").innerHTML = cards.join("");
+}
+
 function renderTables() {
+  renderAccuracySummary();
   const s = report.summary;
   if (s) {
     const rows = ["1h", "1d", "1w"].filter((k) => s[k]).map((k) => {

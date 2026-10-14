@@ -92,6 +92,15 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
+.acc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 12px; }
+.acc-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.acc-title { font-weight: 700; font-size: 15px; }
+.acc-nums { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; }
+.acc-nums div { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.acc-nums b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.acc-vs { display: grid; grid-template-columns: 3em 1fr auto; gap: 6px; font-size: 14px; align-items: baseline; font-variant-numeric: tabular-nums; padding: 3px 0; white-space: nowrap; }
+.acc-details summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.acc-details[open] summary { margin-bottom: 8px; }
 .copy-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .copy-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
 .copy-total { font-size: 13.5px; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
@@ -205,6 +214,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }
   .mp-stats .strong { font-size: 15px; }
   .pc-only { display: none; }
+  .acc-grid { grid-template-columns: 1fr; }
   .hide-m { display: none; }
   .m-only { display: block; }
   .big { font-size: 28px; }

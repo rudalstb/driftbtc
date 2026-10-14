@@ -145,14 +145,19 @@
 
     <section class="card">
       <h2>정확도는 얼마나 되나요?</h2>
-      <p class="muted">걷기식 백테스트 결과입니다. 각 시점에서 그때까지의 데이터로만 학습한 뒤 다음 캔들을 예측했습니다.
-        <b>기준선</b>은 "다음 가격 = 현재 가격"입니다.</p>
-      <div class="table-wrap"><table id="bt-table"></table></div>
-      <p class="muted small" id="bt-note"></p>
+      <p class="muted small">과거 데이터로 "그때 예측했다면 맞았을까?"를 하나씩 확인한 결과예요.</p>
+      <div class="acc-grid" id="acc-summary"></div>
 
-      <h3>btcgpt.info와 같은 시점 비교</h3>
-      <div class="table-wrap"><table id="cmp-table"></table></div>
-      <p class="muted small">btcgpt.info가 공개한 과거 예측 100개와 같은 목표 시점에서 평균 오차(MAPE)를 비교했습니다. 낮을수록 좋습니다.</p>
+      <details class="acc-details">
+        <summary>자세한 수치 보기 (전문가용)</summary>
+        <p class="muted small">걷기식 백테스트: 각 시점에서 그때까지의 데이터로만 학습한 뒤 다음 캔들을 예측했습니다.
+          <b>기준선</b>은 "다음 가격 = 현재 가격"입니다. MAPE 는 평균 오차(%)로 낮을수록 좋습니다.</p>
+        <div class="table-wrap"><table id="bt-table"></table></div>
+        <p class="muted small" id="bt-note"></p>
+        <h3>btcgpt.info와 같은 시점 비교</h3>
+        <div class="table-wrap"><table id="cmp-table"></table></div>
+        <p class="muted small">btcgpt.info가 공개한 과거 예측 100개와 같은 목표 시점에서 평균 오차(MAPE)를 비교했습니다. 낮을수록 좋습니다.</p>
+      </details>
     </section>
 
     <section class="card">
