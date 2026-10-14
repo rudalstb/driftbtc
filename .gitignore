@@ -4,3 +4,4 @@ __pycache__/
 reports/predictions_*.csv
 node_modules/
 site/og.png
+.claude/settings.local.json
