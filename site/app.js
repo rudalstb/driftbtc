@@ -356,16 +356,14 @@ function renderPositions(d) {
   const pos = d.positions || [];
   lastPositions = pos;
   if (report) renderLeverage(report.forecasts[freq]);
-  $("mp-positions").innerHTML = pos.length
-    ? `<thead><tr><th>종목</th><th>방향</th><th>레버리지</th><th>수량</th><th>진입가</th><th>현재가</th><th>청산가</th><th>증거금</th><th>손익</th><th>수익률</th><th>진입</th></tr></thead><tbody>` +
-      pos.map((p) => `<tr><td>${p.symbol}${copyTag(p)}</td><td>${sideTag(p.side)}</td><td>${p.leverage}x ${p.margin_mode === "isolated" ? "격리" : p.margin_mode === "crossed" ? "교차" : ""}</td>
-        <td>${p.size}</td><td>${num(p.entry)}</td><td>${num(p.mark)}</td><td>${p.liq ? num(p.liq) : "—"}</td><td>${money(p.margin)}</td>
-        <td>${signed(p.upnl)}</td><td class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</td><td>${p.opened ? shortTime(p.opened) : "—"}</td></tr>`).join("") +
-      `</tbody>`
-    : `<tbody><tr><td class="mp-empty">지금은 포지션이 없어요 (관망 중)</td></tr></tbody>`;
+  // 내 포지션과 카피 포지션을 나눠서 보여준다
+  const mine = pos.filter((p) => p.source !== "copy");
+  const copied = pos.filter((p) => p.source === "copy");
+  renderPosGroup("mp-positions", "mp-positions-m", "mp-pos-sum", mine, false, "지금은 내 포지션이 없어요 (관망 중)");
+  renderPosGroup("mp-copypos", "mp-copypos-m", "mp-copypos-sum", copied, true, "지금은 카피 포지션이 없어요");
+  $("mp-copypos-wrap").hidden = !d.copy?.projects?.length;
 
   recentHistory = d.history || [];
-  renderPositionsMobile(pos);
   renderHistory();
   renderMonthly();
 }
@@ -509,19 +507,30 @@ function renderMonthly() {
 const mode = (m) => (m === "isolated" ? "격리" : m === "crossed" ? "교차" : "");
 const kv = (k, v) => `<div><span class="muted">${k}</span><b>${v}</b></div>`;
 
-function renderPositionsMobile(pos) {
-  $("mp-positions-m").innerHTML = pos.length
-    ? pos.map((p) => `<div class="pcard">
+// 포지션 묶음 하나(내 포지션 / 카피 포지션)를 PC 표 + 모바일 카드로 그린다
+function renderPosGroup(tableId, cardsId, sumId, list, isCopy, emptyText) {
+  const upnl = list.reduce((a, p) => a + (p.upnl || 0), 0);
+  $(sumId).innerHTML = list.length ? `· ${list.length}개 · 미실현 ${signed(upnl)}` : "";
+  const trader = (p) => (isCopy ? `<td class="muted">${p.trader || "—"}</td>` : "");
+  $(tableId).innerHTML = list.length
+    ? `<thead><tr><th>종목</th>${isCopy ? "<th>트레이더</th>" : ""}<th>방향</th><th>레버리지</th><th>수량</th><th>진입가</th><th>현재가</th>${isCopy ? "" : "<th>청산가</th>"}<th>증거금</th><th>손익</th><th>수익률</th><th>진입</th></tr></thead><tbody>` +
+      list.map((p) => `<tr><td>${p.symbol}</td>${trader(p)}<td>${sideTag(p.side)}</td><td>${p.leverage}x ${mode(p.margin_mode)}</td>
+        <td>${p.size}</td><td>${num(p.entry)}</td><td>${p.mark != null ? num(p.mark) : "—"}</td>${isCopy ? "" : `<td>${p.liq ? num(p.liq) : "—"}</td>`}<td>${p.margin != null ? money(p.margin) : "—"}</td>
+        <td>${p.upnl != null ? signed(p.upnl) : "—"}</td><td class="${p.roe_pct >= 0 ? "pos" : "neg"}">${p.roe_pct != null ? pct(p.roe_pct, 2) : "—"}</td><td>${p.opened ? shortTime(p.opened) : "—"}</td></tr>`).join("") +
+      `</tbody>`
+    : `<tbody><tr><td class="mp-empty">${emptyText}</td></tr></tbody>`;
+  $(cardsId).innerHTML = list.length
+    ? list.map((p) => `<div class="pcard">
         <div class="pcard-head">
-          <div><b>${p.symbol}</b>${copyTag(p)} ${sideTag(p.side)} <span class="muted">${p.leverage}x ${mode(p.margin_mode)}</span></div>
-          <div class="pcard-pnl">${signed(p.upnl)}<span class="${p.roe_pct >= 0 ? "pos" : "neg"}">${pct(p.roe_pct, 2)}</span></div>
+          <div><b>${p.symbol}</b> ${sideTag(p.side)} <span class="muted">${p.leverage}x ${mode(p.margin_mode)}</span>${isCopy && p.trader ? `<div class="muted small">${p.trader}</div>` : ""}</div>
+          <div class="pcard-pnl">${p.upnl != null ? signed(p.upnl) : "—"}<span class="${p.roe_pct >= 0 ? "pos" : "neg"}">${p.roe_pct != null ? pct(p.roe_pct, 2) : ""}</span></div>
         </div>
         <div class="pcard-grid">
-          ${kv("진입가", num(p.entry))}${kv("현재가", num(p.mark))}
-          ${kv("청산가", p.liq ? num(p.liq) : "—")}${kv("증거금", money(p.margin))}
+          ${kv("진입가", num(p.entry))}${kv("현재가", p.mark != null ? num(p.mark) : "—")}
+          ${isCopy ? "" : kv("청산가", p.liq ? num(p.liq) : "—")}${kv("증거금", p.margin != null ? money(p.margin) : "—")}
           ${kv("수량", p.size)}${kv("진입", p.opened ? shortTime(p.opened) : "—")}
         </div></div>`).join("")
-    : `<div class="mp-empty">지금은 포지션이 없어요 (관망 중)</div>`;
+    : `<div class="mp-empty">${emptyText}</div>`;
 }
 
 // 최근 청산 기록 합계: 승패, 순손익 합계, 수수료·펀딩 합계
