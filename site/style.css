@@ -95,7 +95,27 @@ h3 { margin: 24px 0 8px; font-size: 15px; }
 .total-row td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
 .total-row td:first-child { white-space: normal; }
 .m-only { display: none; }
-.acc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 10px 0 12px; }
+.live-dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+.live-dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.live-dots i.d2 { background: var(--up); }
+.live-dots i.d1 { background: var(--accent); }
+.live-dots i.d0 { background: var(--down); }
+.calc-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 8px; }
+.calc-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); flex: 1; min-width: 150px; }
+.calc-field input, .calc-field select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; }
+.calc-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.calc-quick button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.calc-quick button:hover { color: var(--accent); border-color: var(--accent); }
+.calc-result { display: flex; flex-direction: column; gap: 4px; }
+.calc-big { font-size: 17px; }
+.calc-big b.pos, .calc-big b.warn, .calc-big b.neg { font-size: 24px; }
+.fut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.fut-tile { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.fut-val { font-size: 19px; font-variant-numeric: tabular-nums; }
+.ls-bar { height: 8px; border-radius: 4px; background: var(--down); overflow: hidden; margin-top: 6px; }
+.ls-bar i { display: block; height: 100%; background: var(--up); }
+.ls-label { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; }
+.acc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 12px; }
 .acc-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .acc-title { font-weight: 700; font-size: 15px; }
 .acc-nums { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; }

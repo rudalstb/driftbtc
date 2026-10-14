@@ -130,6 +130,7 @@ async function pollLive() {
       document.title = `${usd(live)}${titleArrow} · DriftBTC`;
       renderLive();
       renderKimp();
+      renderCalc();
       return;
     } catch (e) {}
   }
@@ -181,6 +182,9 @@ function rerenderAll() {
   }
   if (lastPosData) renderPositions(lastPosData);
   renderKimp();
+  syncCalcInput();
+  renderCalc();
+  if (lastFutures) renderFutures(lastFutures);
 }
 
 document.querySelectorAll("#cur-toggle button").forEach((b) =>
@@ -757,6 +761,21 @@ function renderAccuracySummary() {
       <div class="muted small">다음에 오를지 내릴지 맞힌 비율 · 50%면 동전 던지기</div>
       <div class="acc-nums">${dir}</div><div class="small">사실상 <b>동전 던지기 수준</b>이에요. 그래서 방향보다 범위를 보세요.</div></div>`);
   }
+  const lr = report.live_record;
+  if (lr && F.some((k) => lr[k]?.n)) {
+    const rows = F.filter((k) => lr[k]?.n).map((k) => {
+      const r = lr[k];
+      return `<div class="acc-vs"><span class="muted">${UNIT[k]}</span><span>95% 범위 <b class="pos">${Math.round((r.hit95 / r.n) * 100)}%</b> <span class="muted">· 68% ${Math.round((r.hit68 / r.n) * 100)}%</span></span><span class="muted">${r.n}번</span></div>`;
+    }).join("");
+    const h = lr["1h"];
+    const dots = h?.recent?.length
+      ? `<div class="live-dots" title="최근 1시간 예측">${h.recent.map((x) => `<i class="d${x.r}"></i>`).join("")}</div>`
+      : "";
+    const since = h?.since ? new Date(h.since).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" }) : "";
+    cards.push(`<div class="acc-card"><div class="acc-title">📈 실제 운영 기록</div>
+      <div class="muted small">사이트를 연 뒤(${since}부터) 실제로 낸 예측이 범위 안에 들어온 비율 · 매시간 채점</div>
+      ${rows}${dots}<div class="muted small">점: 최근 1시간 예측 (초록 68% 안 · 노랑 95% 안 · 빨강 밖)</div></div>`);
+  }
   $("acc-summary").innerHTML = cards.join("");
 }
 
@@ -834,3 +853,125 @@ pingVisit(true);
 setInterval(() => {
   if (document.visibilityState === "visible") pingVisit(false);
 }, 3 * 60 * 1000);
+
+// 🎯 "이 가격 될까?" 계산기: 기간별 예측 변동성으로 목표 가격 도달 확률을 계산한다
+// 기간 = 예측 주기:캔들 수 (예: "1h:24" = 1시간 예측의 24번째 캔들까지)
+let calcTargetUsd = null;
+
+function calcSigma(key) {
+  const [fq, k] = key.split(":");
+  const f = report?.forecasts?.[fq];
+  const p = f?.future?.[Number(k) - 1];
+  return p ? Math.log(p.hi68 / f.price) / 0.9945 : null;
+}
+
+function renderCalc() {
+  const el = $("calc-result");
+  $("calc-unit").textContent = krw() ? "(₩)" : "($)";
+  if (!report || live == null) {
+    el.innerHTML = `<span class="muted">가격을 불러오는 중…</span>`;
+    return;
+  }
+  if (!calcTargetUsd) {
+    el.innerHTML = `<span class="muted">목표 가격을 넣거나 위의 % 버튼을 눌러 보세요.</span>`;
+    return;
+  }
+  const sel = $("calc-period");
+  const label = sel.options[sel.selectedIndex].text;
+  const sigma = calcSigma(sel.value);
+  if (!sigma) return;
+  const d = Math.log(calcTargetUsd / live);
+  const z = Math.abs(d) / sigma;
+  // 기간 안에 한 번이라도 닿을 확률 (무작위 행보 근사, 반사 원리) / 기간이 끝났을 때 그 가격 너머에 있을 확률
+  const touch = d === 0 ? 1 : Math.min(1, 2 * (1 - normCdf(z)));
+  const end = 1 - normCdf(z);
+  const up = d >= 0;
+  const p = Math.round(touch * 100);
+  const [word, cls] = p >= 50 ? ["충분히 가능해요", "pos"] : p >= 20 ? ["가능성 있어요", "warn"] : p >= 5 ? ["쉽지 않아요", "warn"] : ["거의 어려워요", "neg"];
+  el.innerHTML =
+    `<div class="muted small">지금 ${usd(live)} → 목표 <b>${usd(calcTargetUsd)}</b> (${pct(d * 100, 2)})</div>` +
+    `<div class="calc-big"><b>${label}</b> 안에 한 번이라도 닿을 확률 <b class="${cls}">${p}%</b> <span class="${cls}">${word}</span></div>` +
+    `<div class="small">${label} 뒤에 그 가격 ${up ? "이상" : "이하"}일 확률 <b>${Math.round(end * 100)}%</b></div>` +
+    `<div class="muted small">예측 범위(변동성)로 계산한 근사치예요. 큰 뉴스가 있으면 더 크게 움직일 수 있어요.</div>`;
+}
+
+// 통화를 바꾸면 입력칸의 숫자도 그 통화로 바꿔 보여준다
+function syncCalcInput() {
+  if (calcTargetUsd == null) return;
+  $("calc-target").value = krw() ? Math.round(calcTargetUsd * FX) : Math.round(calcTargetUsd);
+}
+
+$("calc-target").addEventListener("input", (e) => {
+  const v = parseFloat(e.target.value);
+  calcTargetUsd = v > 0 ? (krw() ? v / FX : v) : null;
+  renderCalc();
+});
+$("calc-period").addEventListener("change", renderCalc);
+document.querySelectorAll("#calc-quick button").forEach((b) =>
+  b.addEventListener("click", () => {
+    if (live == null) return;
+    calcTargetUsd = live * (1 + Number(b.dataset.p) / 100);
+    syncCalcInput();
+    renderCalc();
+  })
+);
+
+// 📊 선물 시장 지표 (바이낸스 공개 데이터, 1분마다)
+const FAPI = "https://fapi.binance.com";
+const getJson = async (path) => (await fetch(FAPI + path, { cache: "no-store" })).json();
+let lastFutures = null;
+
+async function loadFutures() {
+  try {
+    const [prem, oiHist, lsr, top, taker] = await Promise.all([
+      getJson("/fapi/v1/premiumIndex?symbol=BTCUSDT"),
+      getJson("/futures/data/openInterestHist?symbol=BTCUSDT&period=1h&limit=25"),
+      getJson("/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1h&limit=1"),
+      getJson("/futures/data/topLongShortPositionRatio?symbol=BTCUSDT&period=1h&limit=1"),
+      getJson("/futures/data/takerlongshortRatio?symbol=BTCUSDT&period=1h&limit=1"),
+    ]);
+    renderFutures({ prem, oiHist, lsr: lsr[0], top: top[0], taker: taker[0] });
+  } catch (e) {
+    // 바이낸스 선물이 막힌 지역 등에서는 카드를 숨긴 채로 둔다
+  }
+}
+
+function renderFutures(f) {
+  lastFutures = f;
+  $("futures").hidden = false;
+  const fr = Number(f.prem.lastFundingRate) * 100;
+  const nextMin = Math.max(0, Math.round((Number(f.prem.nextFundingTime) - Date.now()) / 60000));
+  const first = f.oiHist[0], last = f.oiHist[f.oiHist.length - 1];
+  const oiBtc = Number(last.sumOpenInterest), oiUsd = Number(last.sumOpenInterestValue);
+  const oiChg = (oiBtc / Number(first.sumOpenInterest) - 1) * 100;
+  const longP = Number(f.lsr.longAccount) * 100, topLong = Number(f.top.longAccount) * 100;
+  const tk = Number(f.taker.buySellRatio);
+  const bar = (l) => `<div class="ls-bar"><i style="width:${l.toFixed(1)}%"></i></div><div class="ls-label"><span class="pos">롱 ${l.toFixed(0)}%</span><span class="neg">숏 ${(100 - l).toFixed(0)}%</span></div>`;
+  const big = (v) => (krw() ? (v * FX / 1e12).toFixed(1) + "조 원" : "$" + (v / 1e9).toFixed(2) + "B");
+  const tiles = [
+    {
+      t: "펀딩비", v: `<b class="${fr >= 0 ? "pos" : "neg"}">${fr >= 0 ? "+" : ""}${fr.toFixed(4)}%</b>`,
+      sub: `다음 정산까지 ${Math.floor(nextMin / 60)}시간 ${nextMin % 60}분`,
+      x: fr > 0.03 ? "롱이 숏에게 많이 내는 중 → 롱 과열 주의" : fr > 0 ? "롱이 숏에게 조금 내는 중 (보통 수준)" : fr < -0.01 ? "숏이 롱에게 내는 중 → 숏 과열 주의" : "숏이 롱에게 조금 내는 중",
+    },
+    {
+      t: "미결제약정", v: `<b>${oiBtc.toLocaleString("ko-KR", { maximumFractionDigits: 0 })} BTC</b>`,
+      sub: `${big(oiUsd)} · 24시간 <span class="${oiChg >= 0 ? "pos" : "neg"}">${pct(oiChg, 1)}</span>`,
+      x: oiChg > 3 ? "새 포지션이 빠르게 늘고 있어요 → 큰 움직임 가능" : oiChg < -3 ? "포지션 정리가 많아요 → 청산·이탈 진행 중" : "포지션 규모가 크게 변하지 않았어요",
+    },
+    { t: "롱/숏 비율 (전체 계정)", v: bar(longP), x: longP > 65 ? "롱 쏠림이 커요 → 하락 시 연쇄 청산 주의" : longP < 35 ? "숏 쏠림이 커요 → 상승 시 숏 스퀴즈 주의" : "한쪽으로 크게 쏠리지 않았어요" },
+    { t: "롱/숏 비율 (상위 트레이더 포지션)", v: bar(topLong), x: "큰손 계좌들의 포지션 방향이에요" },
+    {
+      t: "매수/매도 체결 비율 (1시간)", v: `<b class="${tk >= 1 ? "pos" : "neg"}">${tk.toFixed(2)}</b>`,
+      x: tk >= 1.1 ? "시장가 매수가 강해요" : tk <= 0.9 ? "시장가 매도가 강해요" : "매수·매도가 비슷해요",
+    },
+  ];
+  $("fut-grid").innerHTML = tiles
+    .map((x) => `<div class="fut-tile"><div class="label">${x.t}</div><div class="fut-val">${x.v}</div>${x.sub ? `<div class="small">${x.sub}</div>` : ""}<div class="muted small">${x.x}</div></div>`)
+    .join("");
+  $("fut-updated").textContent = new Date().toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" }) + " 기준";
+}
+
+loadFutures();
+setInterval(loadFutures, 60 * 1000);
+renderCalc();

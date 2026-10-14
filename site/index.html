@@ -91,6 +91,36 @@
       </div>
     </section>
 
+    <section class="card calc">
+      <h2>🎯 이 가격 될까?</h2>
+      <p class="muted small">목표 가격과 기간을 고르면, 지금 가격에서 그 안에 도달할 확률을 계산해요.</p>
+      <div class="calc-row">
+        <label class="calc-field"><span>목표 가격 <span class="muted" id="calc-unit">($)</span></span>
+          <input id="calc-target" type="number" inputmode="decimal" step="any" placeholder="예: 86000">
+        </label>
+        <label class="calc-field"><span>기간</span>
+          <select id="calc-period">
+            <option value="1h:1">1시간</option><option value="1h:4">4시간</option><option value="1h:12">12시간</option>
+            <option value="1h:24" selected>24시간</option><option value="1d:3">3일</option><option value="1d:7">7일</option>
+            <option value="1w:2">2주</option><option value="1w:4">4주</option>
+          </select>
+        </label>
+      </div>
+      <div class="calc-quick" id="calc-quick">
+        <button data-p="-5">-5%</button><button data-p="-3">-3%</button><button data-p="-1">-1%</button>
+        <button data-p="1">+1%</button><button data-p="3">+3%</button><button data-p="5">+5%</button>
+      </div>
+      <div id="calc-result" class="calc-result"></div>
+    </section>
+
+    <section class="card futures" id="futures" hidden>
+      <div class="game-head">
+        <h2>📊 선물 시장 지표 <span class="muted small">바이낸스 BTCUSDT</span></h2>
+        <span class="muted small" id="fut-updated"></span>
+      </div>
+      <div class="fut-grid" id="fut-grid"></div>
+    </section>
+
     <section class="card mypos" id="mypos" hidden>
       <div class="game-head">
         <h2>📊 운영자 실전 포지션 <span class="exp live-tag">● 실시간</span></h2>

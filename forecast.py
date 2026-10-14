@@ -113,6 +113,51 @@ def _round(o, nd: int = 4):
     return o
 
 
+def live_record() -> dict:
+    """실제 운영 적중 기록: 매시간 남긴 예측(forecast_log.jsonl)을 실제 가격과 비교해 채점한다.
+
+    같은 목표 시각(t)에 대한 예측이 여러 번 남았으면 처음 것만 쓴다 (나중 것은 정보가 더 많아 공정하지 않음).
+    """
+    path = SITE_DATA / "forecast_log.jsonl"
+    if not path.exists():
+        return {}
+    seen, logs = set(), []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        e = json.loads(line)
+        key = (e["freq"], e["t"])
+        if key not in seen:
+            seen.add(key)
+            logs.append(e)
+    out = {}
+    for freq in ["1h", "1d", "1w"]:
+        df = data.load(freq)
+        # 목표 시각 T 의 가격 = T - step 에 시작한 캔들의 종가
+        close_at = df["close"].copy()
+        close_at.index = close_at.index + STEP[freq]
+        scored = []
+        for e in (x for x in logs if x["freq"] == freq):
+            t = pd.Timestamp(e["t"])
+            if t not in close_at.index:
+                continue
+            a = float(close_at[t])
+            scored.append({"t": e["t"], "actual": a,
+                           "in95": e["lo95"] <= a <= e["hi95"], "in68": e["lo68"] <= a <= e["hi68"]})
+        if not scored:
+            out[freq] = {"n": 0}
+            continue
+        out[freq] = {
+            "n": len(scored),
+            "since": scored[0]["t"],
+            "hit95": sum(x["in95"] for x in scored),
+            "hit68": sum(x["in68"] for x in scored),
+            # 최근 30개: 2 = 68% 안, 1 = 95% 안, 0 = 범위 밖
+            "recent": [{"t": x["t"], "r": 2 if x["in68"] else 1 if x["in95"] else 0} for x in scored[-30:]],
+        }
+    return out
+
+
 def main(update: bool = True) -> None:
     if update:
         data.update("1h")
@@ -127,6 +172,7 @@ def main(update: bool = True) -> None:
     # 🎲 롱/숏 게임: 새 신호 기록 + 확정된 신호 채점
     frames = {freq: data.load(freq) for freq in signals.SIGNAL_FREQS}
     out["signals"] = signals.record_and_score(out["forecasts"], frames)
+    out["live_record"] = live_record()
     for freq, r in out["signals"].items():
         c = r["current"]
         print(f"{freq} 신호: {c['signal'] if c else '-'}  운영 성적 {r.get('hits', 0)}/{r['n']}")
