@@ -1,7 +1,7 @@
 // api.binance.com 은 일부 지역(미국 등)에서 차단되므로 시세 전용 도메인으로 대체
 const TICKERS = [
-  "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
-  "https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT",
+  "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
+  "https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT",
 ];
 const UNIT = { "1h": "1시간", "1d": "1일", "1w": "1주" };
 const MODEL_NAME = { naive: "기준선", drift: "Drift", ridge: "Ridge", lgbm: "LightGBM" };
@@ -123,7 +123,9 @@ async function pollLive() {
       const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) continue;
       const prev = live;
-      live = parseFloat((await r.json()).price);
+      const j = await r.json();
+      live = parseFloat(j.lastPrice ?? j.price);
+      if (j.priceChangePercent != null) $("btc-chg").innerHTML = chgTag(Number(j.priceChangePercent));
       $("live-price").textContent = usd(live);
       // 가격이 그대로면 직전 방향 표시를 유지한다
       if (prev != null && Math.round(prev) !== Math.round(live)) titleArrow = live > prev ? " ▲" : " ▼";
@@ -175,17 +177,20 @@ async function pollEth() {
   }
 }
 
+// 카드 제목 옆 24시간 등락률
+const chgTag = (c) => `<span class="${c >= 0 ? "pos" : "neg"}">· 24시간 ${pct(c, 2)}</span>`;
+
 function renderEth() {
   if (!eth) return;
-  let html = `<b class="eth-sym">ETH</b> <b>${usd(eth.price)}</b> <span class="${eth.chg >= 0 ? "pos" : "neg"}">${pct(eth.chg, 2)}</span> <span class="muted">(24시간)</span>`;
-  if (upbitEth) {
-    html += ` · 업비트 ₩${Math.round(upbitEth).toLocaleString("ko-KR")}`;
-    if (FX) {
-      const p = (upbitEth / (eth.price * FX) - 1) * 100;
-      html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
-    }
+  $("eth-price").textContent = usd(eth.price);
+  $("eth-chg").innerHTML = chgTag(eth.chg);
+  if (!upbitEth) return;
+  let html = `업비트 <b>₩${Math.round(upbitEth).toLocaleString("ko-KR")}</b>`;
+  if (FX) {
+    const p = (upbitEth / (eth.price * FX) - 1) * 100;
+    html += ` · 김프 <b class="${p >= 0 ? "pos" : "neg"}">${pct(p, 2)}</b>`;
   }
-  $("eth-row").innerHTML = html;
+  $("eth-kimp").innerHTML = html;
 }
 
 function renderKimp() {
