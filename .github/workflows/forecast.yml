@@ -128,28 +128,7 @@ jobs:
       - name: 스크립트 합치기 · 버전 표시
         if: steps.check.outputs.new == 'true'
         run: |
-          v=${GITHUB_SHA::7}
-          python - "$v" <<'PY'
-          import re, sys
-          from pathlib import Path
-          v = sys.argv[1]
-          site = Path("site")
-          html = (site / "index.html").read_text(encoding="utf-8")
-          names = re.findall(r'<script src="([a-z]+\.js)"></script>', html)
-          bundle = "
-;
-".join(f"// ===== {n} =====
-" + (site / n).read_text(encoding="utf-8") for n in names)
-          (site / "bundle.js").write_text(bundle, encoding="utf-8")
-          tags = "".join(f'  <script src="{n}"></script>
-' for n in names)
-          assert tags in html, "스크립트 태그 묶음을 못 찾음"
-          html = html.replace(tags, f'  <script src="bundle.js?v={v}"></script>
-')
-          html = html.replace('href="style.css"', f'href="style.css?v={v}"')
-          (site / "index.html").write_text(html, encoding="utf-8")
-          print("합친 파일:", names, "→ bundle.js", (site / "bundle.js").stat().st_size, "바이트")
-          PY
+          python bundle.py "${GITHUB_SHA::7}"
           grep -E "style.css|bundle.js" site/index.html
 
       - uses: actions/configure-pages@v5
