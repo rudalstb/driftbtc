@@ -108,25 +108,32 @@ async function shareCard(btn) {
 document.querySelectorAll(".share-btn").forEach((b) => b.addEventListener("click", () => shareCard(b)));
 
 // 📈 화면 이용 집계: 어떤 영역이 화면에 들어왔는지 영역 이름만 하루 1번 보낸다 (입력값·개인정보 없음)
+// 스크롤·크기 변경 때 직접 위치를 재서, 카드의 40% 또는 화면의 40% 중 작은 쪽이 보이면 본 것으로 친다
 function trackSections() {
-  if (!window.VISIT_URL || !("IntersectionObserver" in window)) return;
+  if (!window.VISIT_URL) return;
   let seen = {};
   try { seen = JSON.parse(sessionStorage.getItem("driftbtc_seen") || "{}"); } catch (e) {}
-  // 긴 카드는 화면보다 커서 '40% 보임'에 못 미치므로, 카드의 40% 또는 화면의 40% 중 작은 쪽이 보이면 본 것으로 친다
-  const io = new IntersectionObserver((entries) => {
-    for (const en of entries) {
-      if (!en.isIntersecting) continue;
-      const need = Math.min(0.4 * en.boundingClientRect.height, 0.4 * innerHeight);
-      if (en.intersectionRect.height < need) continue;
-      const id = en.target.dataset.sec;
-      if (seen[id]) continue;
+  let pending = false;
+  const check = () => {
+    pending = false;
+    const vh = innerHeight || document.documentElement.clientHeight;
+    for (const el of document.querySelectorAll("[data-sec]")) {
+      const id = el.dataset.sec;
+      if (seen[id] || el.hidden || el.classList.contains("group-hidden")) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.height) continue;
+      const visible = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+      if (visible < Math.min(0.4 * r.height, 0.4 * vh)) continue;
       seen[id] = 1;
       try { sessionStorage.setItem("driftbtc_seen", JSON.stringify(seen)); } catch (e) {}
       try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=" + encodeURIComponent(id)); } catch (e) {}
-      io.unobserve(en.target);
     }
-  }, { threshold: [0.05, 0.15, 0.25, 0.4, 0.6] });
-  document.querySelectorAll("[data-sec]").forEach((el) => io.observe(el));
+  };
+  const schedule = () => { if (!pending) { pending = true; requestAnimationFrame(check); } };
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule);
+  setTimeout(check, 1500); // 첫 화면 (데이터가 채워진 뒤)
+  setInterval(check, 15000); // 접기·펼치기나 늦게 나타나는 카드
 }
 
 buildGroups();
