@@ -41,7 +41,8 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
 .cur-toggle button { padding: 5px 12px; }
 .kimp { font-size: 13.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .eth-sym { color: #8c9eff; font-weight: 700; }
-header h1 { margin: 0; font-size: 28px; color: var(--accent); letter-spacing: -0.5px; }
+header h1 { margin: 0; font-size: 28px; color: var(--accent); letter-spacing: -0.5px; display: flex; align-items: center; gap: 7px; }
+.ai-tag { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: #0d1117; background: var(--accent); border-radius: 5px; padding: 2px 5px; line-height: 1; }
 .sub { margin: 4px 0 8px; color: var(--muted); }
 .visitors { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; font-variant-numeric: tabular-nums; }
 .visitors b { color: var(--text); }

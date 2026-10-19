@@ -77,7 +77,7 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
     today = now.strftime("%Y-%m-%d")
     if now.hour == 9 and state.get("brief_date") != today:
         lines = [
-            f"☀️ <b>DriftBTC 아침 브리핑</b> {now:%m/%d %H:%M} KST",
+            f"☀️ <b>BTC Agent 아침 브리핑</b> {now:%m/%d %H:%M} KST",
             f"BTC {fmt_usd(price)}",
             f"오늘(1일) 95% 범위: {fmt_usd(nxt['lo95'])} ~ {fmt_usd(nxt['hi95'])}",
             f"1일 관점: {sig_side} (상승 확률 {sig1d['p_up'] * 100:.0f}%)" if sig1d else "",

@@ -1,4 +1,4 @@
-// DriftBTC 예측 실행 알람 (Cloudflare Worker Cron Trigger)
+// BTC Agent 예측 실행 알람 (Cloudflare Worker Cron Trigger)
 //
 // GitHub Actions 의 예약 실행(schedule)이 몇 시간씩 누락돼서, Cloudflare 의 정시 실행 기능으로
 // 매시간 GitHub 워크플로(forecast.yml)를 직접 실행시킨다. 새 캔들이 없으면 워크플로가 알아서 바로 끝난다.

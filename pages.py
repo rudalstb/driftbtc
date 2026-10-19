@@ -16,7 +16,7 @@ UPDATED = "2026년 10월 19일"
 FOOT = """<footer>
   <a href="{p}index.html">홈</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
   <a href="{p}guide/forecast-range.html">예측 범위 읽는 법</a><a href="{p}guide/kimchi-premium.html">김치 프리미엄</a><a href="{p}guide/funding-rate.html">펀딩비</a><a href="{p}guide/liquidation-price.html">청산가</a>
-  <div style="margin-top:8px">DriftBTC 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
 
 
@@ -28,11 +28,11 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title} · DriftBTC</title>
+  <title>{title} · BTC Agent</title>
   <meta name="description" content="{desc}">
   <link rel="canonical" href="{BASE}{path}">
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="DriftBTC">
+  <meta property="og:site_name" content="BTC Agent">
   <meta property="og:title" content="{title}">
   <meta property="og:description" content="{desc}">
   <meta property="og:url" content="{BASE}{path}">
@@ -44,7 +44,7 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 </head>
 <body>
 <main class="page">
-  <header><a class="home" href="{p}index.html">DriftBTC</a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
+  <header><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
 {body}
 {FOOT.format(p=p)}
 </main>
@@ -55,8 +55,8 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 
 PAGES: dict[str, tuple[str, str, str]] = {}
 
-PAGES["about.html"] = ("DriftBTC 소개", "비트코인이 1시간·1일·1주 안에 어디까지 움직일 수 있는지 통계 모델로 예측하고, 예측이 맞았는지 매시간 공개 채점하는 사이트입니다.", """
-<p><b>DriftBTC</b>는 "비트코인이 오를까 내릴까"보다 <b>"얼마나 움직일 수 있을까"</b>에 집중하는 사이트입니다. 가격은 아무도 못 맞히지만, 움직임의 크기(변동성)는 통계적으로 꽤 잘 잡힙니다. 그래서 1시간·1일·1주 뒤 가격이 들어올 가능성이 높은 <b>범위</b>를 보여 주고, 그 범위가 실제로 맞았는지 매시간 자동으로 채점해 그대로 공개합니다.</p>
+PAGES["about.html"] = ("BTC Agent 소개", "비트코인이 1시간·1일·1주 안에 어디까지 움직일 수 있는지 통계 모델로 예측하고, 예측이 맞았는지 매시간 공개 채점하는 사이트입니다.", """
+<p><b>BTC Agent</b>는 "비트코인이 오를까 내릴까"보다 <b>"얼마나 움직일 수 있을까"</b>에 집중하는 사이트입니다. 가격은 아무도 못 맞히지만, 움직임의 크기(변동성)는 통계적으로 꽤 잘 잡힙니다. 그래서 1시간·1일·1주 뒤 가격이 들어올 가능성이 높은 <b>범위</b>를 보여 주고, 그 범위가 실제로 맞았는지 매시간 자동으로 채점해 그대로 공개합니다.</p>
 <h2>무엇을 볼 수 있나</h2>
 <ul>
   <li><b>예측 범위</b> — 68%·95% 확률로 가격이 머물 구간. 바이낸스 BTC/USDT 1시간 캔들로 15분마다 다시 계산합니다.</li>
@@ -80,10 +80,10 @@ PAGES["about.html"] = ("DriftBTC 소개", "비트코인이 1시간·1일·1주 �
 <a class="cta" href="index.html">사이트로 돌아가기 →</a>
 """)
 
-PAGES["disclaimer.html"] = ("면책 조항", "DriftBTC 의 모든 정보는 참고용이며 투자 권유·자문이 아닙니다. 암호화폐 선물 거래의 위험과 이용 시 유의사항을 안내합니다.", """
+PAGES["disclaimer.html"] = ("면책 조항", "BTC Agent 의 모든 정보는 참고용이며 투자 권유·자문이 아닙니다. 암호화폐 선물 거래의 위험과 이용 시 유의사항을 안내합니다.", """
 <div class="box"><b>요약:</b> 이 사이트의 어떤 내용도 특정 자산을 사거나 팔라는 권유가 아닙니다. 모든 투자 판단과 그 결과에 대한 책임은 이용자 본인에게 있습니다.</div>
 <h2>1. 정보 제공 목적</h2>
-<p>DriftBTC 가 제공하는 예측 범위, 상승·하락 확률, 롱/숏 관점, 상황 신호등, 계산기 결과, 운영자 포지션 공개 등 모든 콘텐츠는 통계 모델과 공개 시장 데이터를 바탕으로 한 <b>정보 제공·교육 목적</b>의 자료입니다. 금융투자업자의 투자 자문, 일임, 권유에 해당하지 않으며 운영자는 금융 관련 자격을 보유하고 있지 않습니다.</p>
+<p>BTC Agent 가 제공하는 예측 범위, 상승·하락 확률, 롱/숏 관점, 상황 신호등, 계산기 결과, 운영자 포지션 공개 등 모든 콘텐츠는 통계 모델과 공개 시장 데이터를 바탕으로 한 <b>정보 제공·교육 목적</b>의 자료입니다. 금융투자업자의 투자 자문, 일임, 권유에 해당하지 않으며 운영자는 금융 관련 자격을 보유하고 있지 않습니다.</p>
 <h2>2. 정확성과 미래 성과</h2>
 <p>예측은 과거 데이터에 기반한 확률적 추정이며 실제 가격은 범위를 벗어날 수 있습니다. 사이트에 공개된 과거 적중률·백테스트·가상 계좌 성적은 미래 성과를 보장하지 않습니다. 데이터 제공처(거래소 API 등)의 장애, 지연, 오류로 정보가 부정확하거나 늦게 반영될 수 있습니다.</p>
 <h2>3. 암호화폐 선물 거래의 위험</h2>
@@ -96,7 +96,7 @@ PAGES["disclaimer.html"] = ("면책 조항", "DriftBTC 의 모든 정보는 참�
 <p>사이트에는 제3자 광고나 외부 사이트 링크가 포함될 수 있습니다. 해당 콘텐츠는 운영자가 보증하지 않으며, 외부 사이트 이용은 각 사이트의 약관을 따릅니다.</p>
 """)
 
-PAGES["privacy.html"] = ("개인정보처리방침", "DriftBTC 가 수집하는 정보와 수집하지 않는 정보, 쿠키·광고·브라우저 저장소 이용에 대한 안내입니다.", """
+PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는 정보와 수집하지 않는 정보, 쿠키·광고·브라우저 저장소 이용에 대한 안내입니다.", """
 <div class="box"><b>요약:</b> 회원 가입이 없고, 이름·이메일·IP 같은 개인정보를 저장하지 않습니다. 방문자 수는 익명 번호로만 셉니다. 거래 내역 파일은 브라우저 안에서만 처리되고 서버로 전송되지 않습니다.</div>
 <h2>1. 수집하는 정보</h2>
 <ul>
@@ -120,8 +120,8 @@ PAGES["privacy.html"] = ("개인정보처리방침", "DriftBTC 가 수집하는 
 <p>개인정보 관련 문의는 <a href="https://github.com/rudalstb/driftbtc/issues" target="_blank" rel="noopener">GitHub 이슈</a>로 남겨 주세요. 이 방침은 변경될 수 있으며, 변경 시 이 페이지에 수정일을 표시합니다.</p>
 """)
 
-PAGES["guide/forecast-range.html"] = ("비트코인 예측 범위 읽는 법 (68%·95% 구간)", "DriftBTC 의 예측 범위가 무엇을 뜻하는지, 68%와 95% 구간의 차이, 범위를 매매에 어떻게 쓰는지 쉽게 설명합니다.", """
-<p>DriftBTC 의 첫 화면에는 "±$318 (±0.39%) 안에서 움직여요" 같은 문장과 두 겹의 띠가 있습니다. 이 글은 그 숫자를 읽는 법입니다.</p>
+PAGES["guide/forecast-range.html"] = ("비트코인 예측 범위 읽는 법 (68%·95% 구간)", "BTC Agent 의 예측 범위가 무엇을 뜻하는지, 68%와 95% 구간의 차이, 범위를 매매에 어떻게 쓰는지 쉽게 설명합니다.", """
+<p>BTC Agent 의 첫 화면에는 "±$318 (±0.39%) 안에서 움직여요" 같은 문장과 두 겹의 띠가 있습니다. 이 글은 그 숫자를 읽는 법입니다.</p>
 <h2>범위는 "맞힌다"가 아니라 "가둔다"</h2>
 <p>가격이 정확히 어디로 갈지는 아무도 모릅니다. 대신 <b>얼마나 멀리 갈 수 있는지</b>는 최근 변동성으로 꽤 잘 추정됩니다. 예측 범위는 "이 안에 들어올 가능성이 68%(또는 95%)인 구간"입니다.</p>
 <table><tr><th>구간</th><th>뜻</th><th>쓰임</th></tr>
@@ -143,7 +143,7 @@ PAGES["guide/forecast-range.html"] = ("비트코인 예측 범위 읽는 법 (68
 PAGES["guide/kimchi-premium.html"] = ("김치 프리미엄이란? 계산법과 보는 법", "김치 프리미엄의 뜻, 계산 공식, 높을 때와 마이너스일 때의 의미, 환율이 미치는 영향을 설명합니다.", """
 <p><b>김치 프리미엄(김프)</b>은 한국 거래소(업비트 등)의 비트코인 원화 가격이 해외 거래소 달러 가격보다 얼마나 비싼지를 퍼센트로 나타낸 값입니다.</p>
 <div class="formula">김프(%) = ( 업비트 원화 가격 ÷ ( 바이낸스 달러 가격 × 원·달러 환율 ) − 1 ) × 100</div>
-<p>예: 업비트 1억 1,100만 원, 바이낸스 82,000달러, 환율 1,340원이면 82,000 × 1,340 = 1억 988만 원이므로 김프는 약 +1.0%입니다. DriftBTC 첫 화면의 BTC·ETH 카드에 실시간으로 표시됩니다.</p>
+<p>예: 업비트 1억 1,100만 원, 바이낸스 82,000달러, 환율 1,340원이면 82,000 × 1,340 = 1억 988만 원이므로 김프는 약 +1.0%입니다. BTC Agent 첫 화면의 BTC·ETH 카드에 실시간으로 표시됩니다.</p>
 <h2>왜 생기나</h2>
 <ul>
   <li>한국은 외환 규제로 달러를 해외 거래소로 쉽게 보내기 어려워 차익 거래가 제한됩니다.</li>
@@ -156,7 +156,7 @@ PAGES["guide/kimchi-premium.html"] = ("김치 프리미엄이란? 계산법과 �
 <tr><td>마이너스</td><td>국내 투자 심리 위축. 바닥 근처에서 자주 관찰되지만 확정 신호는 아님</td></tr></table>
 <h2>주의할 점</h2>
 <ul>
-  <li><b>환율이 핵심 변수</b>입니다. 환율이 10원 오르면 같은 가격이라도 김프는 약 0.75%p 내려갑니다. DriftBTC 는 1분 단위 환율을 씁니다.</li>
+  <li><b>환율이 핵심 변수</b>입니다. 환율이 10원 오르면 같은 가격이라도 김프는 약 0.75%p 내려갑니다. BTC Agent 는 1분 단위 환율을 씁니다.</li>
   <li>거래소마다 가격이 조금씩 달라 어느 거래소를 기준으로 하느냐에 따라 0.1~0.3%p 차이가 납니다.</li>
   <li>김프 자체로 방향을 맞히려 하기보다 시장 심리를 읽는 보조 지표로 쓰는 것이 안전합니다.</li>
 </ul>
@@ -175,7 +175,7 @@ PAGES["guide/funding-rate.html"] = ("펀딩비(펀딩 레이트)란? 롱·숏 �
 <p>레버리지를 높여도 명목 금액 기준으로 내기 때문에, 증거금 1,000달러로 10배 롱을 들고 있으면 증거금 대비 하루 0.9%가 빠져나갑니다. 오래 들고 있을수록 무시 못 할 비용입니다.</p>
 <h2>과열 판단에 쓰기</h2>
 <ul>
-  <li><b>+0.05% 이상</b>이 이어지면 롱이 비싸게 버티는 중입니다. 작은 하락에도 롱 청산이 연쇄로 터지기 쉬워 DriftBTC 의 상황 신호등은 이때 "롱 신호 끔"으로 바꿉니다.</li>
+  <li><b>+0.05% 이상</b>이 이어지면 롱이 비싸게 버티는 중입니다. 작은 하락에도 롱 청산이 연쇄로 터지기 쉬워 BTC Agent 의 상황 신호등은 이때 "롱 신호 끔"으로 바꿉니다.</li>
   <li><b>−0.02% 이하</b>면 숏 과밀입니다. 급등 시 숏 스퀴즈가 나기 쉽습니다.</li>
   <li>펀딩비는 군중이 어디에 몰렸는지 보여 주는 지표이지, 방향을 알려 주는 지표가 아닙니다. 극단일수록 "군중 반대편"을 경계하는 용도로 쓰세요.</li>
 </ul>
@@ -207,7 +207,7 @@ PAGES["guide/liquidation-price.html"] = ("청산가 계산법: 레버리지별 �
   <li>수량 = 잃어도 되는 돈 ÷ 손절 거리. 레버리지는 그 수량을 열기 위한 수단일 뿐이다.</li>
   <li>손절가가 청산가보다 <b>항상 진입가에 가까워야</b> 한다. 반대면 손절 전에 청산된다.</li>
 </ol>
-<p>DriftBTC 의 "얼마나 들어갈까?" 계산기는 이 순서대로 수량·증거금·청산가와 하루 안에 청산될 확률을 계산해 줍니다.</p>
+<p>BTC Agent 의 "얼마나 들어갈까?" 계산기는 이 순서대로 수량·증거금·청산가와 하루 안에 청산될 확률을 계산해 줍니다.</p>
 <a class="cta" href="../index.html#risk">리스크 계산기 열기 →</a>
 """)
 

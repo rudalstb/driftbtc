@@ -75,8 +75,11 @@ def main() -> None:
 
     # 머리글
     bitcoin_logo(d, 92, 92, 34)
-    d.text((142, 92), "DriftBTC", font=font(46, "Bold"), fill=ACCENT, anchor="lm")
-    d.text((64, 160), "비트코인이 어디까지 움직일 수 있는지 예측합니다", font=font(30, "Medium"), fill=MUTED)
+    d.text((142, 92), "BTC Agent", font=font(46, "Bold"), fill=ACCENT, anchor="lm")
+    # 'AI' 작은 배지
+    d.rounded_rectangle([392, 74, 446, 110], radius=8, fill=ACCENT)
+    d.text((419, 92), "AI", font=font(22, "Bold"), fill=BG, anchor="mm")
+    d.text((64, 160), "비트코인이 어디까지 움직일 수 있는지 AI로 예측하고 매시간 공개 채점합니다", font=font(30, "Medium"), fill=MUTED)
 
     # 현재가와 예상 움직임
     d.text((64, 222), "BTC/USDT", font=font(26, "Medium"), fill=MUTED)

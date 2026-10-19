@@ -129,7 +129,7 @@ async function pollLive() {
       $("live-price").textContent = usd(live);
       // 가격이 그대로면 직전 방향 표시를 유지한다
       if (prev != null && Math.round(prev) !== Math.round(live)) titleArrow = live > prev ? " ▲" : " ▼";
-      document.title = `${usd(live)}${titleArrow} · DriftBTC`;
+      document.title = `${usd(live)}${titleArrow} · BTC Agent`;
       renderLive();
       renderKimp();
       renderCalc();
@@ -240,7 +240,7 @@ function rerenderAll() {
   document.querySelectorAll("#cur-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cur === CUR));
   if (live != null) {
     $("live-price").textContent = usd(live);
-    document.title = `${usd(live)}${titleArrow} · DriftBTC`;
+    document.title = `${usd(live)}${titleArrow} · BTC Agent`;
   }
   if (report) {
     render();

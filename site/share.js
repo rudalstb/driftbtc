@@ -70,7 +70,7 @@ function loadHtml2canvas() {
 
 async function shareCard(btn) {
   const card = btn.closest(".card");
-  const name = btn.dataset.name || "driftbtc";
+  const name = btn.dataset.name || "btcagent";
   btn.disabled = true;
   const old = btn.textContent;
   btn.textContent = "만드는 중…";
@@ -86,11 +86,11 @@ async function shareCard(btn) {
     ctx.fillStyle = css("--card"); ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(canvas, 0, 0);
     ctx.fillStyle = css("--muted"); ctx.font = "24px sans-serif";
-    ctx.fillText(`DriftBTC · rudalstb.github.io/driftbtc · ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })} KST · 투자 권유 아님`, 24, out.height - 20);
+    ctx.fillText(`BTC Agent · rudalstb.github.io/driftbtc · ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })} KST · 투자 권유 아님`, 24, out.height - 20);
     const blob = await new Promise((r) => out.toBlob(r, "image/png"));
     const file = new File([blob], `${name}-${Date.now()}.png`, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "DriftBTC", text: "비트코인 움직임 예측 · DriftBTC" });
+      await navigator.share({ files: [file], title: "BTC Agent", text: "비트코인 AI 예측 범위 · BTC Agent" });
     } else {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob); a.download = file.name; a.click();

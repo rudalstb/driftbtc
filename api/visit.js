@@ -14,13 +14,14 @@
 // - Upstash: ..._REST_API_URL / ..._REST_API_TOKEN → HTTP 요청
 import { createClient } from "redis";
 
-const ORIGIN = "https://rudalstb.github.io";
+// 허용하는 사이트 주소들 (옛 깃허브 주소 + 새 도메인)
+const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const BACKUP_URL = "https://rudalstb.github.io/driftbtc/data/visits.json";
 const ONLINE_MS = 5 * 60 * 1000;
 const DAY_TTL = 60 * 60 * 24 * 40; // 날짜별 키는 40일 뒤 자동 삭제
 
-const headers = {
-  "Access-Control-Allow-Origin": ORIGIN,
+const baseHeaders = {
   "Access-Control-Allow-Methods": "GET, POST",
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -103,6 +104,7 @@ async function restoreIfEmpty(cfg, today, yesterday) {
 }
 
 export async function GET(request) {
+  const headers = { ...baseHeaders, "Access-Control-Allow-Origin": pickOrigin(request) };
   const cfg = redisConfig();
   if (!cfg) return new Response(JSON.stringify({ enabled: false }), { headers });
 

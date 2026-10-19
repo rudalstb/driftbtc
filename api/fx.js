@@ -5,7 +5,9 @@
 // 업비트: KRW-BTC·KRW-ETH 현재가 — 3초 동안 재사용
 // 나스닥100 선물(NQ=F): 야후 파이낸스 (약 10분 지연) — 30초 동안 재사용
 
-const ORIGIN = "https://rudalstb.github.io";
+// 허용하는 사이트 주소들 (옛 깃허브 주소 + 새 도메인). 요청한 곳이 목록에 있으면 그 주소를 그대로 돌려준다
+const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const CACHE_MS = 60 * 1000;
 let cache = { at: 0, fx: null };
 const UPBIT_MS = 3000;
@@ -43,8 +45,7 @@ async function nasdaq() {
   return nqCache.nq;
 }
 
-const headers = {
-  "Access-Control-Allow-Origin": ORIGIN,
+const baseHeaders = {
   "Access-Control-Allow-Methods": "GET",
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -66,7 +67,8 @@ async function erApi() {
   return { rate: j.rates.KRW, time: j.time_last_update_unix * 1000, source: "er-api" };
 }
 
-export async function GET() {
+export async function GET(request) {
+  const headers = { ...baseHeaders, "Access-Control-Allow-Origin": pickOrigin(request) };
   if (!cache.fx || Date.now() - cache.at > CACHE_MS) {
     for (const f of [yahoo, erApi]) {
       try {

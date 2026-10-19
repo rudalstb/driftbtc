@@ -142,6 +142,6 @@ $("my-ana-sample")?.addEventListener("click", (e) => {
   const csv = "symbol,side,entry,exit,size,pnl,fee,opened,closed\nBTCUSDT,long,82000,83000,0.01,10,0.5,2026-10-12 09:00,2026-10-12 15:30\nETHUSDT,short,2500,2550,0.5,-25,0.6,2026-10-13 21:00,2026-10-14 02:00\n";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
-  a.download = "driftbtc_sample.csv";
+  a.download = "btcagent_sample.csv";
   a.click();
 });

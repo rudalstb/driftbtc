@@ -1,4 +1,4 @@
-// DriftBTC 포지션 중계 Cloudflare Worker
+// BTC Agent 포지션 중계 Cloudflare Worker
 //
 // 비트겟 "조회 전용" API 키로 USDT-M 선물 포지션 / 자산 / 최근 청산 기록을 읽어
 // 사이트가 쓰는 공통 형식으로 정리해 돌려준다. 키는 Worker 의 Secret 에만 있고
@@ -271,10 +271,18 @@ async function read(env) {
   }
 }
 
+// 허용 주소: ALLOW_ORIGIN(쉼표로 여러 개) 또는 기본 목록. 요청한 곳이 목록에 있으면 그 주소를 돌려준다
+const DEFAULT_ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+function pickOrigin(request, env) {
+  const list = env.ALLOW_ORIGIN ? env.ALLOW_ORIGIN.split(",").map((x) => x.trim()).filter(Boolean) : DEFAULT_ORIGINS;
+  const o = request.headers.get("origin");
+  return list.includes(o) ? o : list[0];
+}
+
 export default {
   async fetch(request, env) {
     const cors = {
-      "Access-Control-Allow-Origin": env.ALLOW_ORIGIN || "https://rudalstb.github.io",
+      "Access-Control-Allow-Origin": pickOrigin(request, env),
       "Access-Control-Allow-Methods": "GET",
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
