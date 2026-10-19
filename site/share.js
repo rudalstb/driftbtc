@@ -112,9 +112,12 @@ function trackSections() {
   if (!window.VISIT_URL || !("IntersectionObserver" in window)) return;
   let seen = {};
   try { seen = JSON.parse(sessionStorage.getItem("driftbtc_seen") || "{}"); } catch (e) {}
+  // 긴 카드는 화면보다 커서 '40% 보임'에 못 미치므로, 카드의 40% 또는 화면의 40% 중 작은 쪽이 보이면 본 것으로 친다
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) {
       if (!en.isIntersecting) continue;
+      const need = Math.min(0.4 * en.boundingClientRect.height, 0.4 * innerHeight);
+      if (en.intersectionRect.height < need) continue;
       const id = en.target.dataset.sec;
       if (seen[id]) continue;
       seen[id] = 1;
@@ -122,7 +125,7 @@ function trackSections() {
       try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=" + encodeURIComponent(id)); } catch (e) {}
       io.unobserve(en.target);
     }
-  }, { threshold: 0.4 });
+  }, { threshold: [0.05, 0.15, 0.25, 0.4, 0.6] });
   document.querySelectorAll("[data-sec]").forEach((el) => io.observe(el));
 }
 
