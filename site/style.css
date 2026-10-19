@@ -195,6 +195,14 @@ table.monthly td { vertical-align: middle; }
 .rk-val { font-size: 18px; font-variant-numeric: tabular-nums; }
 .rk-line { font-size: 13.5px; margin: 10px 0 4px; font-variant-numeric: tabular-nums; line-height: 1.7; }
 .rk-warn { margin-top: 8px; }
+/* 🚦 상황 필터 */
+.fl-head { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 17px; }
+.fl-light { font-size: 30px; line-height: 1; }
+.fl-red { border-color: var(--down); background: rgba(248, 81, 73, 0.08); }
+.fl-yellow { border-color: var(--accent); background: rgba(247, 147, 26, 0.08); }
+.fl-green { border-color: var(--up); background: rgba(63, 185, 80, 0.08); }
+.ana-diag li.ana-info { border-color: #4fc3f7; }
+.paper-tiles { grid-template-columns: repeat(5, 1fr); }
 .paper-recent { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
@@ -276,7 +284,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .pair { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
-  .ana-tiles, .rk-tiles { grid-template-columns: repeat(2, 1fr); }
+  .ana-tiles, .rk-tiles, .paper-tiles { grid-template-columns: repeat(2, 1fr); }
   .ana-grid { grid-template-columns: 1fr; }
   .ana-row { grid-template-columns: 74px 64px 1fr 74px; gap: 6px; font-size: 12.5px; }
   .ana-w { display: none; }

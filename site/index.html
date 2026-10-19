@@ -170,6 +170,13 @@
       <div class="fut-grid" id="fut-grid"></div>
     </section>
 
+    <section class="card" id="filter" hidden>
+      <h2>🚦 지금 들어가도 될까?</h2>
+      <p class="muted small">변동성·발표 일정·펀딩·쏠림·운영자 약점 시간대를 매시간 자동으로 점검해요. 신호를 더 맞히는 장치가 아니라, <b>신호를 꺼야 할 때</b>를 알려 주는 장치예요.</p>
+      <div id="filter-box"></div>
+      <p class="muted small">기준: 24시간 변동성이 지난 1년 상위 10% · FOMC/CPI 발표 12시간 전~2시간 후 · 펀딩 +0.05% 초과/−0.02% 미만 · 전체 계정 롱 비율 65% 초과/35% 미만 · 미결제약정 24시간 ±10% · 운영자 손실 시간대/방향. 기준값은 통상 쓰는 값이며 아래 "가상 계좌"의 필터 적용 결과로 검증해요.</p>
+    </section>
+
     <section class="card mypos" id="mypos" hidden>
       <div class="game-head">
         <h2>📊 운영자 실전 포지션 <span class="exp live-tag">● 실시간</span></h2>
@@ -216,6 +223,7 @@
           <div class="label">다음 갱신까지 관점</div>
           <div id="sig-big" class="sig-big">—</div>
           <div class="small" id="sig-detail"></div>
+          <div class="small" id="sig-filter"></div>
           <div class="label game-sub">실제 운영 성적</div>
           <div id="live-record" class="small"></div>
           <div id="hit-row" class="hit-row"></div>
@@ -274,5 +282,6 @@
   <script src="app.js"></script>
   <script src="analysis.js"></script>
   <script src="risk.js"></script>
+  <script src="filter.js"></script>
 </body>
 </html>

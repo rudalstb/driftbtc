@@ -122,7 +122,7 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: |
           v=${GITHUB_SHA::7}
-          sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|; s|src=\"config.js\"|src=\"config.js?v=$v\"|; s|src=\"analysis.js\"|src=\"analysis.js?v=$v\"|; s|src=\"risk.js\"|src=\"risk.js?v=$v\"|" site/index.html
+          sed -i "s|href=\"style.css\"|href=\"style.css?v=$v\"|; s|src=\"app.js\"|src=\"app.js?v=$v\"|; s|src=\"config.js\"|src=\"config.js?v=$v\"|; s|src=\"analysis.js\"|src=\"analysis.js?v=$v\"|; s|src=\"risk.js\"|src=\"risk.js?v=$v\"|; s|src=\"filter.js\"|src=\"filter.js?v=$v\"|" site/index.html
           grep -E "style.css|app.js" site/index.html
 
       - uses: actions/configure-pages@v5

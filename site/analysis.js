@@ -189,7 +189,7 @@ function renderAnalysis() {
     `</div>`;
 
   drawCurve(a);
-  window.renderRisk?.();
+  window.renderFilter?.(); // 필터가 리스크 계산기까지 이어서 다시 그린다
 }
 
 function drawCurve(a) {

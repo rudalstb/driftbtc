@@ -489,7 +489,8 @@ function renderPaper() {
     tile("지금 자산", `<b>${money(p.equity)}</b>`, `<span class="${p.return_pct >= 0 ? "pos" : "neg"}">${pct(p.return_pct, 2)}</span> · ${sinceTxt}부터`) +
     tile("들고만 있었다면", `<b>${money(p.hold_equity)}</b>`, `<span class="${p.hold_return_pct >= 0 ? "pos" : "neg"}">${pct(p.hold_return_pct, 2)}</span> · 관점 쪽이 <span class="${diff >= 0 ? "pos" : "neg"}">${pct(diff, 2)}p</span>`) +
     tile("최대 낙폭", `<span class="neg">${p.max_drawdown_pct.toFixed(1)}%</span>`, `거래 ${p.trades}번${p.win_rate != null ? ` · 승률 ${Math.round(p.win_rate * 100)}%` : ""}`) +
-    tile("낸 비용", `<b>${money(p.cost_total)}</b>`, `수수료 ${money(c.fee)} · 슬리피지 ${money(c.slip)} · 펀딩 ${money(c.funding)}${c.funding < 0 ? " (받음)" : ""}`);
+    tile("낸 비용", `<b>${money(p.cost_total)}</b>`, `수수료 ${money(c.fee)} · 슬리피지 ${money(c.slip)} · 펀딩 ${money(c.funding)}${c.funding < 0 ? " (받음)" : ""}`) +
+    (p.filtered ? tile("🚦 필터 적용 시", `<b>${money(p.filtered.equity)}</b>`, `<span class="${p.filtered.return_pct >= 0 ? "pos" : "neg"}">${pct(p.filtered.return_pct, 2)}</span> · 관점대로보다 <span class="${p.filtered.return_pct - p.return_pct >= 0 ? "pos" : "neg"}">${pct(p.filtered.return_pct - p.return_pct, 2)}p</span> · 쉰 시간 ${p.filtered.rest_hours}h`) : "");
   const o = p.open;
   const openLine = o
     ? `<div class="rk-line">지금 ${sideTag(o.side)} 보유 중 · 진입 ${usd(o.entry)} · ${o.hours}시간째 · 평가 <b class="${o.pnl_pct >= 0 ? "pos" : "neg"}">${pct(o.pnl_pct, 2)}</b></div>`
@@ -497,7 +498,7 @@ function renderPaper() {
   const recent = p.recent?.length
     ? `<div class="paper-recent">${[...p.recent].reverse().map((t) => `<span>${sideTag(t.side)} <span class="muted">${lab(t.open_t)}</span> <b class="${t.pnl_pct >= 0 ? "pos" : "neg"}">${pct(t.pnl_pct, 2)}</b></span>`).join("")}</div>`
     : "";
-  box.innerHTML = `<div class="rk-tiles">${tiles}</div>${openLine}<div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
+  box.innerHTML = `<div class="rk-tiles paper-tiles">${tiles}</div>${openLine}<div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
     `<div class="muted small">레버리지 1배, 자산 전부를 관점 방향으로. 관점이 바뀔 때만 매매하고 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간(롱이 냄)을 가정해요. 실제 체결과는 다를 수 있어요.</div>`;
 
   const data = {
@@ -505,6 +506,7 @@ function renderPaper() {
     datasets: [
       { label: "관점대로", data: p.series.map((x) => x.v), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
       { label: "들고만 있기", data: p.series.map((x) => x.hold), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
+      ...(p.series[0]?.f != null ? [{ label: "필터 적용 (쉬는 구간엔 현금)", data: p.series.map((x) => x.f), borderColor: css("--up"), borderWidth: 1.5, pointRadius: 0 }] : []),
     ],
   };
   const opts = {
@@ -521,6 +523,7 @@ function renderPaper() {
   };
   if (paperChart) paperChart.destroy();
   paperChart = new Chart($("paper-chart"), { type: "line", data, options: opts });
+  window.renderFilter?.();
 }
 
 // 📊 운영자 실전 포지션: Cloudflare Worker 가 비트겟 조회 전용 키로 읽어 정리한 값을 받는다
@@ -1068,6 +1071,7 @@ async function loadFutures() {
 
 function renderFutures(f) {
   lastFutures = f;
+  setTimeout(() => window.renderFilter?.(), 0);
   $("futures").hidden = false;
   const fr = Number(f.prem.lastFundingRate) * 100;
   const nextMin = Math.max(0, Math.round((Number(f.prem.nextFundingTime) - Date.now()) / 60000));

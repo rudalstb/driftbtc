@@ -81,6 +81,12 @@ function renderRisk(sync = false) {
   if (isBtc && tLiq != null && tLiq >= 10) warn.push({ lv: "bad", text: `하루 안에 <b>청산</b>될 확률이 ${Math.round(tLiq)}%예요. 레버리지를 낮추세요.` });
   if (i.riskPct > 2) warn.push({ lv: "warn", text: `한 번에 잔고의 ${i.riskPct}%를 거는 건 커요. ${Math.ceil(50 / i.riskPct)}연패면 잔고 절반이 사라져요. 보통 1~2%를 권해요.` });
 
+  // 🚦 상황 필터 결과
+  const fs = window.filterState;
+  if (fs?.level === "red") warn.unshift({ lv: "bad", text: `지금은 <b>쉬는 구간</b>이에요 (${fs.reasons.filter((r) => r.lv === "bad").length}가지 이유, 위 "지금 들어가도 될까?" 참고). 이 계산 결과를 쓰지 마세요.` });
+  else if (fs && ((long && fs.blockLong) || (!long && fs.blockShort))) warn.unshift({ lv: "bad", text: `지금 ${long ? "롱" : "숏"} 쪽은 군중이 몰려 있어 <b>${long ? "롱" : "숏"} 신호가 꺼진 상태</b>예요. 반대편에서 청산이 터지면 가장 먼저 당하는 자리예요.` });
+  else if (fs?.level === "yellow") warn.unshift({ lv: "warn", text: `🚦 주의 구간 — 수량을 절반(<b>${(qty / 2).toFixed(qty < 0.01 ? 4 : 3)}개</b>)으로 줄이고 손절 거리는 평소보다 넓게 잡으세요.` });
+
   const a = window.lastAnalysis;
   if (a) {
     if (a.avgWin > 0 && maxLoss > a.avgWin * 1.2)
