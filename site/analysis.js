@@ -153,6 +153,7 @@ function renderAnalysis() {
     return;
   }
   const a = analyze(list);
+  window.lastAnalysis = a; // 리스크 계산기가 경고에 쓴다
   const since = new Date(Math.min(...list.map((t) => t.closed)) + KST);
   $("mp-analysis-since").textContent = `· ${since.getUTCMonth() + 1}/${since.getUTCDate()}부터 ${a.n}건`;
 
@@ -188,6 +189,7 @@ function renderAnalysis() {
     `</div>`;
 
   drawCurve(a);
+  window.renderRisk?.();
 }
 
 function drawCurve(a) {

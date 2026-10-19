@@ -252,6 +252,7 @@ function rerenderAll() {
   renderEth();
   syncCalcInput();
   renderCalc();
+  window.renderRisk?.(true);
   if (lastFutures) renderFutures(lastFutures);
 }
 
@@ -488,6 +489,7 @@ async function pollPositions() {
 
 function renderPositions(d) {
   lastPosData = d;
+  window.renderRisk?.(true); // 총 자산이 들어오면 리스크 계산기 잔고 기본값으로
   $("mypos").hidden = false;
   posUpdated = d.updated;
   const a = d.account || {};

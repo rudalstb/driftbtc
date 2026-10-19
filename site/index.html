@@ -130,6 +130,38 @@
       <div id="calc-result" class="calc-result"></div>
     </section>
 
+    <section class="card risk" id="risk">
+      <h2>🛡️ 얼마나 들어갈까?</h2>
+      <p class="muted small">잃어도 되는 돈과 손절 거리를 먼저 정하면, 들어갈 수량·증거금·청산가가 나와요. 수량을 먼저 정하고 손절을 맞추는 순서가 아니라, 그 반대예요.</p>
+      <div class="calc-row">
+        <label class="calc-field"><span>계좌 잔고 <span class="muted" id="rk-bal-unit">($)</span></span>
+          <input id="rk-bal" type="number" inputmode="decimal" step="any" placeholder="예: 1000">
+        </label>
+        <label class="calc-field"><span>이번 거래 허용 손실 (잔고의 %)</span>
+          <input id="rk-risk" type="number" inputmode="decimal" step="0.25" min="0.1" max="50" value="1">
+          <span class="rk-quick"><button data-for="rk-risk" data-v="0.5">0.5%</button><button data-for="rk-risk" data-v="1">1%</button><button data-for="rk-risk" data-v="2">2%</button></span>
+        </label>
+        <label class="calc-field"><span>방향</span>
+          <span class="period rk-side" id="rk-side" role="group"><button data-side="long" aria-pressed="true">롱</button><button data-side="short" aria-pressed="false">숏</button></span>
+        </label>
+      </div>
+      <div class="calc-row">
+        <label class="calc-field"><span>진입가 <span class="muted" id="rk-entry-unit">($)</span> <span class="muted">· 비우면 실시간 BTC</span></span>
+          <input id="rk-entry" type="number" inputmode="decimal" step="any" placeholder="실시간 BTC">
+        </label>
+        <label class="calc-field"><span>손절 거리 (진입가에서 %)</span>
+          <input id="rk-stop" type="number" inputmode="decimal" step="0.1" min="0.1" max="50" value="1">
+          <span class="rk-quick"><button data-for="rk-stop" data-v="0.5">0.5%</button><button data-for="rk-stop" data-v="1">1%</button><button data-for="rk-stop" data-v="2">2%</button><button data-for="rk-stop" data-v="3">3%</button></span>
+        </label>
+        <label class="calc-field"><span>레버리지 (배)</span>
+          <input id="rk-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
+          <span class="rk-quick"><button data-for="rk-lev" data-v="3">3</button><button data-for="rk-lev" data-v="5">5</button><button data-for="rk-lev" data-v="10">10</button><button data-for="rk-lev" data-v="20">20</button></span>
+        </label>
+      </div>
+      <div id="rk-result" class="calc-result"></div>
+      <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
+    </section>
+
     <section class="card futures" id="futures" hidden>
       <div class="game-head">
         <h2>📊 선물 시장 지표 <span class="muted small">바이낸스 BTCUSDT</span></h2>
@@ -239,5 +271,6 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="analysis.js"></script>
+  <script src="risk.js"></script>
 </body>
 </html>

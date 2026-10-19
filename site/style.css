@@ -181,6 +181,20 @@ table.monthly td { vertical-align: middle; }
 .ana-bar i.down { background: var(--down); margin-left: auto; }
 .ana-net { text-align: right; }
 .ana-sep { margin-top: 6px; }
+/* 🛡️ 리스크 계산기 */
+.rk-quick { display: flex; gap: 4px; }
+.rk-quick button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 5px; padding: 2px 8px; font: inherit; font-size: 11.5px; cursor: pointer; }
+.rk-quick button:hover { color: var(--accent); border-color: var(--accent); }
+.rk-side { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; align-self: flex-start; }
+.rk-side button { padding: 9px 18px; font-size: 15px; }
+.rk-side button[data-side="long"][aria-pressed="true"] { color: var(--up); }
+.rk-side button[data-side="short"][aria-pressed="true"] { color: var(--down); }
+.rk-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+.rk-tile { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.rk-tile .label { margin-bottom: 2px; font-size: 12px; }
+.rk-val { font-size: 18px; font-variant-numeric: tabular-nums; }
+.rk-line { font-size: 13.5px; margin: 10px 0 4px; font-variant-numeric: tabular-nums; line-height: 1.7; }
+.rk-warn { margin-top: 8px; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
 .game-head h2 { margin: 0; }
@@ -261,7 +275,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .pair { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
-  .ana-tiles { grid-template-columns: repeat(2, 1fr); }
+  .ana-tiles, .rk-tiles { grid-template-columns: repeat(2, 1fr); }
   .ana-grid { grid-template-columns: 1fr; }
   .ana-row { grid-template-columns: 74px 64px 1fr 74px; gap: 6px; font-size: 12.5px; }
   .ana-w { display: none; }
