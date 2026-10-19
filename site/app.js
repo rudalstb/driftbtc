@@ -326,8 +326,28 @@ function renderLeverage(f) {
     : `${lev}배 레버리지라면 보통 손익이 <b>±${(move * lev).toFixed(1)}%</b> 흔들려요.`;
 }
 
+// 🧭 맨 위 한 줄 요약: 가격 · 오늘 95% 범위 · 신호등 · 1일 관점
+function renderBrief() {
+  const el = $("brief");
+  if (!el || !report) return;
+  const f = report.forecasts["1d"];
+  const n = f?.next;
+  const st = window.filterState;
+  const light = st ? { red: "🔴 쉬는 구간", yellow: "🟡 주의 구간", green: "🟢 들어가도 되는 구간" }[st.level] : "⚪ 신호등 확인 중";
+  const sig = report.signals?.["1d"]?.current;
+  const parts = [
+    live != null ? `지금 <b>${usd(live)}</b>` : "",
+    n ? `오늘 95% 범위 <a href="#forecast-anchor" class="plain">${usd(n.lo95)} ~ ${usd(n.hi95)}</a>` : "",
+    `<a href="#filter" class="plain">${light}</a>`,
+    sig ? `1일 관점 ${sideTag(sig.signal)}` : "",
+  ].filter(Boolean);
+  el.innerHTML = parts.join(`<span class="muted"> · </span>`);
+}
+window.renderBrief = renderBrief;
+
 function renderLive() {
   if (!report || live == null) return;
+  renderBrief();
   const f = report.forecasts[freq];
   const diff = (live / f.price - 1) * 100;
   $("live-in-band").innerHTML = `지금 ${usd(live)} · 기준가 ${usd(f.price)} 대비 ${pct(diff)}`;
@@ -340,6 +360,7 @@ function render() {
   const n = f.next;
   const endFmt = freq === "1h" ? clock : dayClock;
   $("range-end").textContent = `· ${endFmt(new Date(n.t))} KST까지`;
+  renderBrief();
   renderMove(f);
 
   renderDirection(f);
@@ -545,6 +566,12 @@ async function pollPositions() {
     renderPositions(d);
   } catch (e) {
     $("mp-updated").textContent = "연결 실패, 다시 시도 중…";
+    if (!lastPosData) {
+      // 한 번도 못 받았으면 카드를 비워 둔 채 숨기지 말고 상태를 알려 준다
+      $("mypos").hidden = false;
+      $("mp-positions-m").innerHTML = `<div class="mp-empty">운영자 계좌 정보를 지금은 받을 수 없어요. 1분 안에 다시 시도해요.</div>`;
+      $("mp-positions").innerHTML = `<tbody><tr><td class="mp-empty">운영자 계좌 정보를 지금은 받을 수 없어요. 1분 안에 다시 시도해요.</td></tr></tbody>`;
+    }
   }
 }
 
@@ -1065,7 +1092,11 @@ async function loadFutures() {
     ]);
     renderFutures({ prem, oiHist, lsr: lsr[0], top: top[0], taker: taker[0] });
   } catch (e) {
-    // 바이낸스 선물이 막힌 지역 등에서는 카드를 숨긴 채로 둔다
+    // 바이낸스 선물이 막힌 지역·일시 장애: 한 번도 못 받았으면 이유를 보여 준다
+    if (!lastFutures) {
+      $("futures").hidden = false;
+      $("fut-grid").innerHTML = `<div class="mp-empty">선물 지표를 지금은 받을 수 없어요. 바이낸스 선물 접속이 막힌 지역이거나 일시 장애일 수 있어요. 신호등은 변동성·발표 일정만으로 판정합니다.</div>`;
+    }
   }
 }
 
@@ -1118,3 +1149,6 @@ if (window.TELEGRAM_URL) {
   $("tg-link").href = window.TELEGRAM_URL;
   $("tg-link").hidden = false;
 }
+
+// 나스닥 시세가 40초 넘게 안 오면 이유를 보여 준다
+setTimeout(() => { if (!nq && $("nq-price").textContent === "—") $("nq-time").innerHTML = `<span class="muted">지금은 시세를 받을 수 없어요</span>`; }, 40000);

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DriftBTC</title>
-  <meta name="description" content="비트코인이 1시간·1일·1주 안에 어디까지 움직일 수 있는지 예측합니다. 실시간 가격, 예측 범위, 운영자 실전 포지션.">
+  <meta name="description" content="비트코인 예측 범위(1시간·1일·1주), 실시간 시세와 김치 프리미엄, 청산가·수량 계산기, 지금 들어가도 될지 알려주는 상황 신호등, 내 매매 해부까지. 운영자 실전 포지션도 그대로 공개합니다.">
   <!-- 카톡·텔레그램 등 공유 미리보기 -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="DriftBTC">
@@ -41,6 +41,7 @@
       <button role="tab" data-freq="1w" aria-selected="false">1주</button>
     </nav>
     <nav class="group-nav" id="group-nav" aria-label="바로 가기"></nav>
+    <div class="brief" id="brief" data-sec="brief"><span class="muted">지금 상황을 불러오는 중…</span></div>
 
     <section class="pair">
     <div class="live card">
@@ -85,7 +86,7 @@
     </div>
     </section>
 
-    <section class="grid" data-sec="forecast">
+    <section class="grid" id="forecast-anchor" data-sec="forecast">
       <div class="card">
         <button class="share-btn" data-name="forecast" title="이 카드를 이미지로 저장·공유">📸 공유</button>
         <div class="move-head">
@@ -255,8 +256,15 @@
           <div class="muted small" id="sig-note"></div>
         </div>
       </div>
-      <div class="label game-sub">💵 가상 계좌 $1,000 <span class="muted">· 사이트가 실제로 낸 관점을 그대로 따랐다면 · 실제 돈 아님</span></div>
-      <div id="paper-box"></div>
+    </section>
+
+    <section class="card paper-card" id="paper" data-sec="paper">
+      <div class="game-head">
+        <h2>💵 가상 계좌 $1,000 <span class="exp">실제 돈 아님</span></h2>
+        <span class="muted small">위 관점을 그대로 따랐다면 · 매시간 1시간 종가로 평가</span>
+      </div>
+      <p class="muted small">사이트가 실제로 낸 롱/숏 관점을 그대로 따른 가상의 계좌예요. 신호가 비용(수수료·슬리피지·펀딩)을 이기는지, 상황 신호등이 손실을 줄이는지 몇 달에 걸쳐 검증하는 용도입니다. 탭(1시간/1일/1주)을 바꾸면 계좌도 바뀝니다.</p>
+      <div id="paper-box"><div class="mp-empty">불러오는 중…</div></div>
     </section>
 
     <section class="card chart-card" data-sec="chart">
@@ -288,12 +296,13 @@
     </section>
 
     <section class="card method-card">
-      <h2>방법</h2>
+      <h2>어떻게 만들었나</h2>
       <ul class="method">
-        <li><b>중앙값은 현재 가격입니다.</b> Ridge·LightGBM 등 여러 모델을 시험했지만, 기준선보다 통계적으로 유의하게 정확한 모델은 없었습니다.</li>
-        <li><b>예측 구간은 GARCH(1,1)-t 변동성 모델</b>로 만듭니다. 백테스트에서 95% 구간에 실제 가격이 들어간 비율은 94~95%로 목표에 맞았습니다.</li>
-        <li>데이터: Binance BTCUSDT 캔들. 아직 마감되지 않은 캔들은 사용하지 않습니다.</li>
-        <li>예측은 매 실행마다 기록되어 실제 운영 성적으로 쌓입니다.</li>
+        <li><b>예측 범위</b>는 GARCH(1,1)-t 변동성 모델로 만듭니다. 중앙값은 현재 가격이에요. 릿지·LightGBM 등 방향 예측 모델도 시험했지만 기준선보다 통계적으로 유의하게 낫지 않았고, 그 결과를 "정확도" 카드에 그대로 공개합니다.</li>
+        <li><b>롱/숏 관점</b>은 릿지 회귀 예측의 부호로 내는 실험이며, 가상 계좌가 비용 포함 성적을 매시간 채점합니다. 1시간 관점은 비용 때문에 실제 매매에 쓸 수 없다는 것이 백테스트로 확인됐어요.</li>
+        <li><b>상황 신호등</b>은 24시간 실현 변동성의 1년 백분위, FOMC·CPI 발표 창, 바이낸스 펀딩비·롱숏 비율·미결제약정으로 판정합니다. 기준값은 통상 쓰는 값이며 가상 계좌의 "필터 적용" 성적으로 검증합니다.</li>
+        <li><b>데이터</b>: 바이낸스 BTCUSDT 1시간·1일 캔들(마감된 캔들만), 업비트 원화 시세, 야후 파이낸스 환율·나스닥100 선물, 비트겟 조회 전용 API. 15분마다 다시 계산합니다.</li>
+        <li><b>기록</b>: 모든 예측·관점·채점은 자동으로 저장되고 운영자가 고칠 수 없습니다. 틀린 기록도 지우지 않아요.</li>
       </ul>
       <p class="disclaimer">이 사이트는 예측 실험이며 투자 권유가 아닙니다. 정보 사용에 따른 책임은 이용자에게 있습니다.</p>
     </section>

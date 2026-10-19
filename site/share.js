@@ -6,12 +6,13 @@ const GROUPS = [
   { id: "g-market", name: "📊 시장 상황", desc: "선물 지표 · 지금 들어가도 될까", members: ["#futures", "#filter"] },
   { id: "g-mine", name: "🔍 내 매매 해부", desc: "내 거래 내역 파일로 약점 찾기", members: ["#my-analysis"] },
   { id: "g-operator", name: "🧑‍💻 운영자 실전 공개", desc: "실제 포지션 · 청산 기록 · 매매 해부", members: ["#mypos"] },
-  { id: "g-verify", name: "✅ 검증", desc: "롱/숏 게임 · 가상 계좌 · 가격 차트 · 정확도 · 방법", members: [".game", ".chart-card", "#accuracy", ".method-card"] },
+  { id: "g-verify", name: "✅ 검증", desc: "롱/숏 게임 · 가상 계좌 · 가격 차트 · 정확도 · 어떻게 만들었나", members: [".game", "#paper", ".chart-card", "#accuracy", ".method-card"] },
 ];
 
 function buildGroups() {
-  let collapsed = {};
-  try { collapsed = JSON.parse(localStorage.getItem("driftbtc_groups") || "{}"); } catch (e) {}
+  // 처음 온 사람에겐 '운영자 실전 공개'와 '검증'을 접어 두어 첫 화면을 가볍게 (한 번이라도 손대면 그 상태를 기억)
+  let collapsed = { "g-operator": true, "g-verify": true };
+  try { const saved = localStorage.getItem("driftbtc_groups"); if (saved) collapsed = JSON.parse(saved); } catch (e) {}
   const nav = $("group-nav");
   for (const g of GROUPS) {
     const first = g.members.map((s) => document.querySelector(s)).find(Boolean);

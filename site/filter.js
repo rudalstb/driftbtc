@@ -100,6 +100,7 @@ function renderFilter() {
   const sf = $("sig-filter");
   if (sf) sf.innerHTML = v ? `🚦 필터 적용 시 <b class="${v.act === "관점대로" ? "pos" : v.act === "관망" ? "neg" : "warn"}">${v.act}</b> <span class="muted">· ${v.why}</span>` : "";
   window.renderRisk?.();
+  window.renderBrief?.();
 }
 
 window.renderFilter = renderFilter;
