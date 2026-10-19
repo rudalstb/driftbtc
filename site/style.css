@@ -22,6 +22,11 @@
     --down: #cf222e;
     --past: rgba(89, 99, 110, 0.18);
   }
+  /* 밝은 배경에서 대비가 약한 강조색 */
+  .eth-sym { color: #3f51b5; }
+  .nq-sym, .tg-link { color: #0277bd; }
+  .tg-link { border-color: rgba(2, 119, 189, 0.4); }
+  .ana-diag li.ana-info { border-color: #0277bd; }
 }
 
 * { box-sizing: border-box; }
