@@ -21,7 +21,7 @@ const DAY_TTL = 60 * 60 * 24 * 40; // 날짜별 키는 40일 뒤 자동 삭제
 
 const headers = {
   "Access-Control-Allow-Origin": ORIGIN,
-  "Access-Control-Allow-Methods": "GET",
+  "Access-Control-Allow-Methods": "GET, POST",
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
 };
@@ -170,4 +170,9 @@ export async function GET(request) {
   } catch (e) {
     return new Response(JSON.stringify({ enabled: true, error: String(e.message || e) }), { status: 502, headers });
   }
+}
+
+// 화면 이용 집계는 navigator.sendBeacon(POST) 으로 오므로 같은 처리기를 쓴다
+export async function POST(request) {
+  return GET(request);
 }
