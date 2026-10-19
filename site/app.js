@@ -411,7 +411,7 @@ function renderGame(f) {
       $("live-record").innerHTML =
         `적중 <b>${sig.hits}/${sig.n}</b> (${(sig.hit_rate * 100).toFixed(0)}%)${streak}<br>` +
         (sig.gross_pct != null ? `방향대로 들고 있었다면 ${money(sig.gross_pct)} · ` : "") +
-        `매번 바꿨다면 수수료 후 ${money(sig.return_pct)} ` +
+        `매번 바꿨다면 비용 후 ${money(sig.return_pct)} ` +
         `<span class="muted">(같은 기간 항상 롱 ${pct(sig.always_long_pct, 1)}` +
         (sig.always_short_pct != null ? ` · 항상 숏 ${pct(sig.always_short_pct, 1)}` : "") + `)</span>`;
       $("hit-row").innerHTML = sig.recent
@@ -428,21 +428,25 @@ function renderGame(f) {
     `<tr><td>${name}</td>${cell(s.gross_return_pct ?? s.return_pct)}${cell(s.return_pct)}` +
     `<td>${s.max_drawdown_pct.toFixed(0)}%</td><td>${(s.hit_rate * 100).toFixed(1)}%</td></tr>`;
   $("sig-table").innerHTML =
-    `<thead><tr><th></th><th>수수료 전</th><th>수수료 후</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
+    `<thead><tr><th></th><th>비용 전</th><th>비용 후</th><th>최대 손실 구간</th><th>적중률</th></tr></thead><tbody>` +
     row("관점대로", bt.signal) + row("항상 롱", bt.always_long) + (bt.always_short ? row("항상 숏", bt.always_short) : "") + `</tbody>`;
   const flips = bt.signal.flips.toLocaleString();
+  const s = bt.signal;
+  const costLine = s.cost_fee_pct != null
+    ? ` 비용 가정: 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간 → 관점대로 했을 때 비용 합계 ${(s.cost_fee_pct + s.cost_slip_pct + s.cost_funding_pct).toFixed(1)}% (수수료 ${s.cost_fee_pct.toFixed(1)} · 슬리피지 ${s.cost_slip_pct.toFixed(1)} · 펀딩 ${s.cost_funding_pct.toFixed(1)}).`
+    : "";
   $("sig-note").textContent =
-    freq === "1w" && bt.signal.flips === 0
+    (freq === "1w" && bt.signal.flips === 0
       ? "주간 관점은 과거 3년 내내 '롱'이었어요. 그래서 항상 롱과 결과가 같아요."
       : freq === "1h"
-        ? `방향만 보면 수수료 전 ${pct(bt.signal.gross_return_pct, 0)}였지만, 매시간 롱↔숏을 ${flips}번 바꾸면 수수료로 ${pct(bt.signal.return_pct, 0)}가 돼요. 진입 방향 참고용으로만 보세요.`
-        : `관점이 롱↔숏으로 ${flips}번 바뀌었어요. 과거 성적이 앞으로도 같다는 보장은 없어요.`;
+        ? `방향만 보면 비용 전 ${pct(bt.signal.gross_return_pct, 0)}였지만, 매시간 롱↔숏을 ${flips}번 바꾸면 비용 때문에 ${pct(bt.signal.return_pct, 0)}가 돼요. 진입 방향 참고용으로만 보세요.`
+        : `관점이 롱↔숏으로 ${flips}번 바뀌었어요. 과거 성적이 앞으로도 같다는 보장은 없어요.`) + costLine;
 
   const labels = bt.series.map((p) => ym(p.t));
   const data = {
     labels,
     datasets: [
-      { label: "관점대로 (수수료 후)", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
+      { label: "관점대로 (비용 후)", data: bt.series.map((p) => p.signal), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
       { label: "항상 롱", data: bt.series.map((p) => p.long), borderColor: css("--up"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
       ...(bt.series[0]?.short != null
         ? [{ label: "항상 숏", data: bt.series.map((p) => p.short), borderColor: css("--down"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] }]
@@ -463,6 +467,60 @@ function renderGame(f) {
   };
   if (eqChart) eqChart.destroy();
   eqChart = new Chart($("eq-chart"), { type: "line", data, options: opts });
+  renderPaper();
+}
+
+// 💵 가상 계좌: forecast.json 의 paper[freq] (paper.py 가 매시간 1시간 종가로 평가)
+let paperChart = null;
+
+function renderPaper() {
+  const box = $("paper-box");
+  const p = report.paper?.[freq];
+  if (!p) {
+    box.innerHTML = `<div class="mp-empty">아직 평가할 관점이 없어요. 첫 관점이 나오면 매시간 평가해요.</div>`;
+    return;
+  }
+  const diff = p.return_pct - p.hold_return_pct;
+  const c = p.costs;
+  const tile = (k, v, sub = "") => `<div class="rk-tile"><div class="label">${k}</div><div class="rk-val">${v}</div>${sub ? `<div class="muted small">${sub}</div>` : ""}</div>`;
+  const lab = (t) => { const d = new Date(new Date(t).getTime() + 9 * 3600e3); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+  const sinceTxt = lab(p.since);
+  const tiles =
+    tile("지금 자산", `<b>${money(p.equity)}</b>`, `<span class="${p.return_pct >= 0 ? "pos" : "neg"}">${pct(p.return_pct, 2)}</span> · ${sinceTxt}부터`) +
+    tile("들고만 있었다면", `<b>${money(p.hold_equity)}</b>`, `<span class="${p.hold_return_pct >= 0 ? "pos" : "neg"}">${pct(p.hold_return_pct, 2)}</span> · 관점 쪽이 <span class="${diff >= 0 ? "pos" : "neg"}">${pct(diff, 2)}p</span>`) +
+    tile("최대 낙폭", `<span class="neg">${p.max_drawdown_pct.toFixed(1)}%</span>`, `거래 ${p.trades}번${p.win_rate != null ? ` · 승률 ${Math.round(p.win_rate * 100)}%` : ""}`) +
+    tile("낸 비용", `<b>${money(p.cost_total)}</b>`, `수수료 ${money(c.fee)} · 슬리피지 ${money(c.slip)} · 펀딩 ${money(c.funding)}${c.funding < 0 ? " (받음)" : ""}`);
+  const o = p.open;
+  const openLine = o
+    ? `<div class="rk-line">지금 ${sideTag(o.side)} 보유 중 · 진입 ${usd(o.entry)} · ${o.hours}시간째 · 평가 <b class="${o.pnl_pct >= 0 ? "pos" : "neg"}">${pct(o.pnl_pct, 2)}</b></div>`
+    : "";
+  const recent = p.recent?.length
+    ? `<div class="paper-recent">${[...p.recent].reverse().map((t) => `<span>${sideTag(t.side)} <span class="muted">${lab(t.open_t)}</span> <b class="${t.pnl_pct >= 0 ? "pos" : "neg"}">${pct(t.pnl_pct, 2)}</b></span>`).join("")}</div>`
+    : "";
+  box.innerHTML = `<div class="rk-tiles">${tiles}</div>${openLine}<div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
+    `<div class="muted small">레버리지 1배, 자산 전부를 관점 방향으로. 관점이 바뀔 때만 매매하고 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간(롱이 냄)을 가정해요. 실제 체결과는 다를 수 있어요.</div>`;
+
+  const data = {
+    labels: p.series.map((x) => lab(x.t)),
+    datasets: [
+      { label: "관점대로", data: p.series.map((x) => x.v), borderColor: css("--accent"), borderWidth: 2, pointRadius: 0 },
+      { label: "들고만 있기", data: p.series.map((x) => x.hold), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0, borderDash: [4, 3] },
+    ],
+  };
+  const opts = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { labels: { color: css("--muted"), boxWidth: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: (i) => `${i.dataset.label} ${money(i.raw)}` } },
+    },
+    scales: {
+      x: { ticks: { color: css("--muted"), maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } },
+      y: { position: "right", ticks: { color: css("--muted"), callback: (v) => money(v) }, grid: { color: css("--border") } },
+    },
+  };
+  if (paperChart) paperChart.destroy();
+  paperChart = new Chart($("paper-chart"), { type: "line", data, options: opts });
 }
 
 // 📊 운영자 실전 포지션: Cloudflare Worker 가 비트겟 조회 전용 키로 읽어 정리한 값을 받는다

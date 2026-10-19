@@ -26,6 +26,7 @@ import backtest
 import data
 import features
 import models
+import paper
 import signals
 
 ROOT = Path(__file__).parent
@@ -173,6 +174,8 @@ def main(update: bool = True) -> None:
     frames = {freq: data.load(freq) for freq in signals.SIGNAL_FREQS}
     out["signals"] = signals.record_and_score(out["forecasts"], frames)
     out["live_record"] = live_record()
+    # 💵 가상 계좌: 관점을 그대로 따랐다면 $1,000 이 어떻게 됐을지 (paper.py)
+    out["paper"] = paper.run(frames["1h"])
     for freq, r in out["signals"].items():
         c = r["current"]
         print(f"{freq} 신호: {c['signal'] if c else '-'}  운영 성적 {r.get('hits', 0)}/{r['n']}")

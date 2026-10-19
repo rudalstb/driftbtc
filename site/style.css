@@ -195,6 +195,7 @@ table.monthly td { vertical-align: middle; }
 .rk-val { font-size: 18px; font-variant-numeric: tabular-nums; }
 .rk-line { font-size: 13.5px; margin: 10px 0 4px; font-variant-numeric: tabular-nums; line-height: 1.7; }
 .rk-warn { margin-top: 8px; }
+.paper-recent { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
 .game-head h2 { margin: 0; }
