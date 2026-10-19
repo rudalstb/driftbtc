@@ -161,6 +161,26 @@ table.monthly td { vertical-align: middle; }
 .hrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
 .hrow-r { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mp-empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
+/* 🔍 매매 분석 */
+.ana-diag { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ana-diag li { border-left: 3px solid var(--border); padding: 6px 10px; font-size: 13.5px; line-height: 1.5; background: var(--bg); border-radius: 0 6px 6px 0; }
+.ana-diag li.ana-bad { border-color: var(--down); }
+.ana-diag li.ana-warn { border-color: var(--accent); }
+.ana-diag li.ana-good { border-color: var(--up); }
+.ana-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.ana-tile { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.ana-tile .label { margin-bottom: 2px; font-size: 12px; }
+.ana-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ana-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-top: 14px; }
+.ana-block .label { margin-bottom: 6px; }
+.ana-row { display: grid; grid-template-columns: 90px 96px 1fr 84px; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.ana-name { font-weight: 600; }
+.ana-bar { display: block; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.ana-bar i { display: block; height: 100%; }
+.ana-bar i.up { background: var(--up); }
+.ana-bar i.down { background: var(--down); margin-left: auto; }
+.ana-net { text-align: right; }
+.ana-sep { margin-top: 6px; }
 
 .game-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
 .game-head h2 { margin: 0; }
@@ -241,6 +261,10 @@ td.best { color: var(--accent); font-weight: 700; }
   .pair { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
+  .ana-tiles { grid-template-columns: repeat(2, 1fr); }
+  .ana-grid { grid-template-columns: 1fr; }
+  .ana-row { grid-template-columns: 74px 64px 1fr 74px; gap: 6px; font-size: 12.5px; }
+  .ana-w { display: none; }
   .grid, .pair { grid-template-columns: 1fr; gap: 0; }
   .game-grid { grid-template-columns: 1fr; gap: 16px; }
   .mp-stats .strong { font-size: 15px; }

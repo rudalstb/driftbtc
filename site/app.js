@@ -247,6 +247,7 @@ function rerenderAll() {
     renderTables();
   }
   if (lastPosData) renderPositions(lastPosData);
+  window.renderAnalysis?.(); // 통화가 바뀌면 분석 금액도 다시
   renderKimp();
   renderEth();
   syncCalcInput();
@@ -512,6 +513,7 @@ function renderPositions(d) {
   recentHistory = d.history || [];
   renderHistory();
   renderMonthly();
+  window.renderAnalysis?.();
 }
 
 // 🤝 카피트레이딩: 트레이더별 원금 → 현재 금액, 손익과 수익률
@@ -624,6 +626,7 @@ async function loadTrades() {
   } catch (e) {}
   renderHistory();
   renderMonthly();
+  window.renderAnalysis?.();
 }
 
 const kstMonth = (ms) => {
