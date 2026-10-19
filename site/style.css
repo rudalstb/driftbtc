@@ -204,6 +204,7 @@ table.monthly td { vertical-align: middle; }
 .ana-diag li.ana-info { border-color: #4fc3f7; }
 .paper-tiles { grid-template-columns: repeat(5, 1fr); }
 /* 방문자용: 목차 칩 · 영역 접기 · 공유 · 파일 올리기 · 꼬리글 */
+.tg-link[hidden] { display: none; }
 .tg-link { display: inline-block; margin-top: 8px; font-size: 13px; color: #4fc3f7; text-decoration: none; border: 1px solid rgba(79, 195, 247, 0.4); border-radius: 999px; padding: 4px 12px; }
 .group-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 14px; }
 .group-nav a { font-size: 12.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; text-decoration: none; background: var(--card); }
