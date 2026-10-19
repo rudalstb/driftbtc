@@ -1112,3 +1112,9 @@ renderCalc();
 
 pollEth();
 setInterval(pollEth, 5000);
+
+// ✈️ 텔레그램 채널 버튼 (config.js 의 TELEGRAM_URL 이 있을 때만)
+if (window.TELEGRAM_URL) {
+  $("tg-link").href = window.TELEGRAM_URL;
+  $("tg-link").hidden = false;
+}

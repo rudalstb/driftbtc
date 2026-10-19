@@ -107,6 +107,32 @@ export async function GET(request) {
   if (!cfg) return new Response(JSON.stringify({ enabled: false }), { headers });
 
   const q = new URL(request.url).searchParams;
+  const now0 = Date.now();
+  // 화면 이용 집계: 영역 이름(영문·숫자·-·_ 40자 이내)과 횟수만 센다
+  const sec = /^[a-zA-Z0-9_-]{1,40}$/.test(q.get("sec") || "") ? q.get("sec") : null;
+  if (sec) {
+    try {
+      const d = kstDate(now0);
+      await redis(cfg, [["HINCRBY", `sec:${d}`, sec, 1], ["EXPIRE", `sec:${d}`, DAY_TTL]]);
+    } catch (e) {}
+    return new Response(JSON.stringify({ ok: true }), { headers });
+  }
+  if (q.get("stats") === "1") {
+    try {
+      const days = [...Array(7)].map((_, i) => kstDate(now0 - i * 86400000)).reverse();
+      const res = await redis(cfg, [...days.map((d) => ["HGETALL", `sec:${d}`]), ["PFCOUNT", `uv:${days[6]}`], ["PFCOUNT", `uv:${days[5]}`]]);
+      const toObj = (arr) => {
+        if (!arr) return {};
+        if (!Array.isArray(arr)) return Object.fromEntries(Object.entries(arr).map(([k, v]) => [k, Number(v)]));
+        const o = {};
+        for (let i = 0; i < arr.length; i += 2) o[arr[i]] = Number(arr[i + 1]);
+        return o;
+      };
+      return new Response(JSON.stringify({ days: days.map((d, i) => ({ date: d, sections: toObj(res[i]) })), today: Number(res[7]) || 0, yesterday: Number(res[8]) || 0 }), { headers });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers });
+    }
+  }
   // 브라우저 번호: 영문·숫자 8~40자만 허용
   const vid = /^[a-zA-Z0-9]{8,40}$/.test(q.get("vid") || "") ? q.get("vid") : null;
   const isNewView = q.get("view") === "1"; // 페이지를 새로 연 경우만 조회수 +1 (3분마다 오는 신호는 제외)

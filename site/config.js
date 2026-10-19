@@ -17,3 +17,6 @@ window.VISIT_URL = "https://driftbtc.vercel.app/api/visit";
 
 // 달러→원화 환율 중계 주소 (Vercel 서버리스 함수, api/fx.js). 원화 표시·김치 프리미엄 계산에 쓴다
 window.FX_URL = "https://driftbtc.vercel.app/api/fx";
+
+// 텔레그램 공개 채널 주소 (예: "https://t.me/driftbtc"). 비워 두면 버튼이 숨겨진다
+window.TELEGRAM_URL = "";

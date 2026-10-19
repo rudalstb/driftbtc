@@ -32,6 +32,7 @@
       </div>
       <p class="sub">비트코인 가격이 <strong>어디로 갈지</strong>가 아니라 <strong>어디까지 움직일 수 있는지</strong>를 예측합니다.</p>
       <div class="visitors" id="visitors" hidden></div>
+      <a id="tg-link" class="tg-link" hidden target="_blank" rel="noopener">✈️ 텔레그램 채널에서 아침 브리핑·쉬는 구간 알림 받기</a>
     </header>
 
     <nav class="tabs" role="tablist">
@@ -39,6 +40,7 @@
       <button role="tab" data-freq="1d" aria-selected="false">1일</button>
       <button role="tab" data-freq="1w" aria-selected="false">1주</button>
     </nav>
+    <nav class="group-nav" id="group-nav" aria-label="바로 가기"></nav>
 
     <section class="pair">
     <div class="live card">
@@ -83,8 +85,9 @@
     </div>
     </section>
 
-    <section class="grid">
+    <section class="grid" data-sec="forecast">
       <div class="card">
+        <button class="share-btn" data-name="forecast" title="이 카드를 이미지로 저장·공유">📸 공유</button>
         <div class="move-head">
           <div class="label">이번 <span class="unit"></span>, 얼마나 움직일까? <span class="muted" id="range-end"></span></div>
           <span class="vol-badge" id="vol-badge"></span>
@@ -108,7 +111,7 @@
       </div>
     </section>
 
-    <section class="card calc">
+    <section class="card calc" data-sec="calc">
       <h2>🎯 이 가격 될까?</h2>
       <p class="muted small">목표 가격과 기간을 고르면, 지금 가격에서 그 안에 도달할 확률을 계산해요.</p>
       <div class="calc-row">
@@ -130,7 +133,7 @@
       <div id="calc-result" class="calc-result"></div>
     </section>
 
-    <section class="card risk" id="risk">
+    <section class="card risk" id="risk" data-sec="risk">
       <h2>🛡️ 얼마나 들어갈까?</h2>
       <p class="muted small">잃어도 되는 돈과 손절 거리를 먼저 정하면, 들어갈 수량·증거금·청산가가 나와요. 수량을 먼저 정하고 손절을 맞추는 순서가 아니라, 그 반대예요.</p>
       <div class="calc-row">
@@ -162,7 +165,7 @@
       <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
     </section>
 
-    <section class="card futures" id="futures" hidden>
+    <section class="card futures" id="futures" data-sec="futures" hidden>
       <div class="game-head">
         <h2>📊 선물 시장 지표 <span class="muted small">바이낸스 BTCUSDT</span></h2>
         <span class="muted small" id="fut-updated"></span>
@@ -170,14 +173,30 @@
       <div class="fut-grid" id="fut-grid"></div>
     </section>
 
-    <section class="card" id="filter" hidden>
+    <section class="card" id="filter" data-sec="filter" hidden>
+      <button class="share-btn" data-name="filter" title="이 카드를 이미지로 저장·공유">📸 공유</button>
       <h2>🚦 지금 들어가도 될까?</h2>
       <p class="muted small">변동성·발표 일정·펀딩·쏠림·운영자 약점 시간대를 매시간 자동으로 점검해요. 신호를 더 맞히는 장치가 아니라, <b>신호를 꺼야 할 때</b>를 알려 주는 장치예요.</p>
       <div id="filter-box"></div>
       <p class="muted small">기준: 24시간 변동성이 지난 1년 상위 10% · FOMC/CPI 발표 12시간 전~2시간 후 · 펀딩 +0.05% 초과/−0.02% 미만 · 전체 계정 롱 비율 65% 초과/35% 미만 · 미결제약정 24시간 ±10% · 운영자 손실 시간대/방향. 기준값은 통상 쓰는 값이며 아래 "가상 계좌"의 필터 적용 결과로 검증해요.</p>
     </section>
 
-    <section class="card mypos" id="mypos" hidden>
+    <section class="card my-analysis" id="my-analysis" data-sec="my-analysis">
+      <h2>🔍 내 매매 해부</h2>
+      <p class="muted small">거래소에서 내려받은 <b>포지션(청산) 내역</b> 파일을 올리면 손익비·진입 시간대·보유 시간·수수료 비중과 한 줄 진단을 보여드려요. <b>파일은 내 브라우저 안에서만 읽고 어디로도 보내지 않아요.</b></p>
+      <label class="drop" id="my-ana-drop">
+        <input id="my-ana-file" type="file" accept=".csv,text/csv,.txt" hidden>
+        <span>📂 CSV 파일을 여기에 끌어다 놓거나 눌러서 선택</span>
+        <span class="muted small">비트겟·바이낸스 등 선물 "포지션 내역" 내보내기 파일 · 종목·손익·청산 시각 열이 있으면 자동으로 알아봐요 · <a href="#" id="my-ana-sample">견본 파일 받기</a></span>
+      </label>
+      <div class="small" id="my-ana-status"></div>
+      <div id="my-ana"></div>
+      <span class="muted small" id="my-ana-since"></span>
+      <button class="rk-clear" id="my-ana-clear" hidden>지우기</button>
+      <p class="muted small">5건 넘는 기록이 필요해요. 진입 시각이 없으면 청산 시각을 대신 씁니다. 체결 하나하나가 줄로 나오는 "체결 내역" 파일은 아직 지원하지 않아요.</p>
+    </section>
+
+    <section class="card mypos" id="mypos" data-sec="mypos" hidden>
       <div class="game-head">
         <h2>📊 운영자 실전 포지션 <span class="exp live-tag">● 실시간</span></h2>
         <span class="muted small" id="mp-updated"></span>
@@ -197,9 +216,10 @@
         <div class="table-wrap pc-only"><table id="mp-copypos" class="compact"></table></div>
         <div id="mp-copypos-m" class="m-only"></div>
       </div>
-      <div class="label game-sub">🔍 매매 분석 <span class="muted" id="mp-analysis-since"></span></div>
-      <div class="muted small">최근 90일 청산 기록으로 어디서 벌고 어디서 잃는지 자동으로 짚어드려요 (진입 시각 기준, 한국 시간)</div>
+      <div class="label game-sub">🔍 운영자 매매 해부 <span class="muted" id="mp-analysis-since"></span></div>
+      <div class="muted small">운영자의 최근 90일 청산 기록으로 어디서 벌고 어디서 잃는지 그대로 공개해요 (진입 시각 기준, 한국 시간). 내 거래 내역으로 같은 분석을 받고 싶으면 위의 "내 매매 해부"에 파일을 올리세요.</div>
       <div id="mp-analysis"></div>
+      <div class="muted small" id="mp-operator-note"></div>
       <div class="label game-sub">월별 성적 <span class="muted" id="mp-monthly-since"></span></div>
       <div id="mp-monthly"></div>
       <div class="hist-head game-sub">
@@ -213,7 +233,7 @@
       <p class="muted small" id="mp-note">비트겟 계정의 실제 포지션을 조회 전용 키로 그대로 보여줍니다. 투자 권유가 아닙니다.</p>
     </section>
 
-    <section class="card game">
+    <section class="card game" data-sec="game">
       <div class="game-head">
         <h2>🎲 롱/숏 게임 <span class="exp">🧪 실험 중</span></h2>
         <span class="muted small">재미로 보는 실험이에요 · 투자 권유 아님</span>
@@ -239,7 +259,7 @@
       <div id="paper-box"></div>
     </section>
 
-    <section class="card chart-card">
+    <section class="card chart-card" data-sec="chart">
       <div class="chart-head">
         <div class="label">지금까지의 가격과 앞으로 움직일 수 있는 범위</div>
         <div class="muted small" id="cover"></div>
@@ -253,7 +273,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="accuracy" data-sec="accuracy">
       <h2>정확도는 얼마나 되나요?</h2>
       <p class="muted small">과거 데이터로 "그때 예측했다면 맞았을까?"를 하나씩 확인한 결과예요.</p>
       <div class="acc-grid" id="acc-summary"></div>
@@ -267,7 +287,7 @@
       </details>
     </section>
 
-    <section class="card">
+    <section class="card method-card">
       <h2>방법</h2>
       <ul class="method">
         <li><b>중앙값은 현재 가격입니다.</b> Ridge·LightGBM 등 여러 모델을 시험했지만, 기준선보다 통계적으로 유의하게 정확한 모델은 없었습니다.</li>
@@ -277,11 +297,21 @@
       </ul>
       <p class="disclaimer">이 사이트는 예측 실험이며 투자 권유가 아닙니다. 정보 사용에 따른 책임은 이용자에게 있습니다.</p>
     </section>
+
+    <footer class="site-foot">
+      <div class="foot-links">
+        <a href="about.html">소개</a><a href="disclaimer.html">면책 조항</a><a href="privacy.html">개인정보처리방침</a>
+        <a href="guide/forecast-range.html">예측 범위 읽는 법</a><a href="guide/kimchi-premium.html">김치 프리미엄이란</a><a href="guide/funding-rate.html">펀딩비란</a><a href="guide/liquidation-price.html">청산가 계산법</a>
+      </div>
+      <div class="muted small">© DriftBTC · 데이터: 바이낸스 · 업비트 · 야후 파이낸스 · 비트겟 · 정보 제공 목적이며 투자 권유가 아닙니다.</div>
+    </footer>
   </main>
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="analysis.js"></script>
   <script src="risk.js"></script>
   <script src="filter.js"></script>
+  <script src="csvtrades.js"></script>
+  <script src="share.js"></script>
 </body>
 </html>

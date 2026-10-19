@@ -1,6 +1,6 @@
 // 🚦 상황 필터: "지금 들어가도 될까?" 신호등.
 // 서버(regime.py)가 준 변동성 백분위·이벤트 창 + 브라우저가 받은 바이낸스 선물 지표(펀딩·롱숏 비율·미결제약정)
-// + 매매 분석(analysis.js)에서 나온 개인 약점을 합쳐 🟢 들어가도 됨 / 🟡 수량 절반 / 🔴 쉬는 구간 으로 판정한다.
+// 를 합쳐 🟢 들어가도 됨 / 🟡 수량 절반 / 🔴 쉬는 구간 으로 판정한다.
 // 판정 결과는 window.filterState 에 두고, 롱/숏 게임·리스크 계산기·가상 계좌가 함께 쓴다.
 
 const FUNDING_HI = 0.05;  // 8시간 펀딩 % — 이 위면 롱 과밀
@@ -60,18 +60,7 @@ function judge() {
     if (!blockLong && !blockShort && Math.abs(oiChg) < OI_JUMP) reasons.push({ lv: "good", text: `펀딩 ${fr >= 0 ? "+" : ""}${fr.toFixed(3)}% · 롱 비율 ${longP.toFixed(0)}% · 미결제약정 24시간 ${pct(oiChg, 1)} — 쏠림 없음.` });
   }
 
-  // 4) 개인 약점 (매매 분석)
-  const a = window.lastAnalysis;
   const cur = report?.signals?.[freq]?.current?.signal || null;
-  if (a) {
-    const h = new Date(Date.now() + 9 * 3600e3).getUTCHours();
-    const band = a.byHour.find((g) => { const m = g.name.match(/(\d+)~(\d+)시/); return m && h >= Number(m[1]) && h < Number(m[2]); });
-    const bandNet = band ? band.list.reduce((s, t) => s + t.net, 0) : 0;
-    if (band && band.list.length >= 5 && bandNet < 0) { halve = true; reasons.push({ lv: "warn", text: `지금은 <b>${band.name}</b> — 운영자가 지난 90일 이 시간대 진입으로 ${money(bandNet)} 잃은 약점 시간대예요. 수량 절반.` }); }
-    const sideG = cur ? a.bySide.find((g) => g.name === (cur === "long" ? "롱" : "숏")) : null;
-    const sideNet = sideG ? sideG.list.reduce((s, t) => s + t.net, 0) : 0;
-    if (sideG && sideG.list.length >= 5 && sideNet < 0) { halve = true; reasons.push({ lv: "warn", text: `지금 관점은 <b>${sideG.name}</b>인데, 운영자가 지난 90일 ${sideG.name}에서 ${money(sideNet)} 잃었어요. 수량 절반.` }); }
-  }
 
   const level = red ? "red" : (halve || blockLong || blockShort) ? "yellow" : "green";
   // 지금 관점에 적용하면?

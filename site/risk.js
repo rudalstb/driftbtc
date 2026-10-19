@@ -3,7 +3,8 @@
 // 매매 분석(analysis.js)에서 나온 나쁜 습관 경고를 붙인다. app.js 뒤에 로드되며 $, usd, money, krw, FX, live, calcSigma, normCdf 를 쓴다.
 
 const MMR = 0.005; // 유지증거금률 근사(비트코인 소액 구간 0.4~0.5%) — 청산가는 거래소마다 조금 다르니 "대략"으로만
-let riskBalUsd = null; // 사용자가 직접 넣기 전에는 운영자 총 자산을 기본값으로
+let riskBalUsd = null; // 방문자가 넣은 잔고 — 본인 브라우저(localStorage)에만 저장, 서버로 보내지 않는다
+try { riskBalUsd = Number(localStorage.getItem("driftbtc_rk_bal")) || null; } catch (e) {}
 let riskEntryUsd = null; // 비워 두면 실시간 BTC 가격
 let riskTouched = { bal: false, entry: false };
 
@@ -24,7 +25,6 @@ function riskInputs() {
 
 // 통화를 바꾸거나 자산이 들어오면 입력칸 숫자를 다시 쓴다
 function syncRiskInputs() {
-  if (!riskTouched.bal && typeof lastPosData !== "undefined" && lastPosData?.account?.equity != null) riskBalUsd = lastPosData.account.equity;
   if (riskBalUsd != null) $("rk-bal").value = fmtIn(riskBalUsd);
   if (!riskTouched.entry) $("rk-entry").value = live != null ? fmtIn(live) : "";
   else if (riskEntryUsd != null) $("rk-entry").value = fmtIn(riskEntryUsd);
@@ -87,28 +87,18 @@ function renderRisk(sync = false) {
   else if (fs && ((long && fs.blockLong) || (!long && fs.blockShort))) warn.unshift({ lv: "bad", text: `지금 ${long ? "롱" : "숏"} 쪽은 군중이 몰려 있어 <b>${long ? "롱" : "숏"} 신호가 꺼진 상태</b>예요. 반대편에서 청산이 터지면 가장 먼저 당하는 자리예요.` });
   else if (fs?.level === "yellow") warn.unshift({ lv: "warn", text: `🚦 주의 구간 — 수량을 절반(<b>${(qty / 2).toFixed(qty < 0.01 ? 4 : 3)}개</b>)으로 줄이고 손절 거리는 평소보다 넓게 잡으세요.` });
 
-  const a = window.lastAnalysis;
-  if (a) {
-    if (a.avgWin > 0 && maxLoss > a.avgWin * 1.2)
-      warn.push({ lv: "warn", text: `이번 손절 금액(${money(maxLoss)})이 지난 90일 평균 이익(${money(a.avgWin)})보다 커요. 지금 손익비 ${a.rr?.toFixed(2)}가 더 나빠져요. 허용 손실을 ${Math.max(0.25, Math.floor(((a.avgWin / i.bal) * 100) * 4) / 4)}% 아래로.` });
-    const sideG = a.bySide.find((g) => g.name === (long ? "롱" : "숏"));
-    const sideNet = sideG ? sideG.list.reduce((s, t) => s + t.net, 0) : 0;
-    if (sideG && sideG.list.length >= 5 && sideNet < 0)
-      warn.push({ lv: "warn", text: `지난 90일 <b>${sideG.name}</b> ${sideG.list.length}건 합계가 ${money(sideNet)}예요. 이 방향은 수량을 절반(${(qty / 2).toFixed(3)}개)으로 줄여 보세요.` });
-    const h = new Date(Date.now() + 9 * 3600e3).getUTCHours();
-    const band = a.byHour.find((g) => { const m = g.name.match(/(\d+)~(\d+)시/); return m && h >= Number(m[1]) && h < Number(m[2]); });
-    const bandNet = band ? band.list.reduce((s, t) => s + t.net, 0) : 0;
-    if (band && band.list.length >= 5 && bandNet < 0)
-      warn.push({ lv: "warn", text: `지금은 <b>${band.name}</b>, 지난 90일 이 시간대 진입이 ${money(bandNet)}였어요. 꼭 들어가야 하면 수량을 절반으로.` });
-    if (a.maxStreak >= 3) warn.push({ lv: "info", text: `지난 90일 최대 ${a.maxStreak}연패. 오늘 2번 연속 손절했다면 여기서 멈추는 걸 권해요.` });
-  }
   if (!warn.length) warn.push({ lv: "good", text: "손절·청산·수량 모두 무리 없는 범위예요. 손절가를 주문에 같이 넣고 들어가세요." });
   html += `<ul class="ana-diag rk-warn">${warn.map((w) => `<li class="ana-${w.lv}">${w.text}</li>`).join("")}</ul>`;
   el.innerHTML = html;
 }
 
 // 입력 연결
-$("rk-bal").addEventListener("input", (e) => { riskTouched.bal = true; riskBalUsd = toUsd(Number(e.target.value)) || null; renderRisk(); });
+$("rk-bal").addEventListener("input", (e) => {
+  riskTouched.bal = true;
+  riskBalUsd = toUsd(Number(e.target.value)) || null;
+  try { riskBalUsd ? localStorage.setItem("driftbtc_rk_bal", String(riskBalUsd)) : localStorage.removeItem("driftbtc_rk_bal"); } catch (e2) {}
+  renderRisk();
+});
 $("rk-entry").addEventListener("input", (e) => { riskTouched.entry = true; riskEntryUsd = toUsd(Number(e.target.value)) || null; renderRisk(); });
 ["rk-risk", "rk-stop", "rk-lev"].forEach((id) => $(id).addEventListener("input", () => renderRisk()));
 document.querySelectorAll("#rk-side button").forEach((b) =>

@@ -2,7 +2,7 @@
 // 누적 손익 곡선·최대 낙폭·손익비·요일/시간대·보유 시간·수수료 비중을 계산해 "어디서 돈이 새는지" 보여준다.
 // app.js 뒤에 로드되며 그쪽의 $, money, signed, pct, css, mergedTrades 를 그대로 쓴다.
 
-let anaChart = null;
+const anaCharts = {}; // 캔버스 id 별 차트 (운영자용·방문자용 두 군데서 쓴다)
 const KST = 9 * 3600 * 1000;
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const HOUR_BANDS = [
@@ -144,21 +144,30 @@ function diagnose(a) {
   return out;
 }
 
+// 운영자 계좌(비트겟 기록)용
 function renderAnalysis() {
-  const el = $("mp-analysis");
-  if (!el) return;
+  if (!$("mp-analysis")) return;
   const list = mergedTrades().filter((t) => t.closed && t.opened && t.net != null);
+  const a = renderAnalysisInto(list, { box: "mp-analysis", since: "mp-analysis-since", chart: "ana-chart", seed: window.OPERATOR?.seed });
+  if (!a) return;
+  window.lastAnalysis = a;
+  renderOperatorNote(a);
+}
+
+// 청산 기록 목록 → 분석 화면. ids: { box, since, chart, seed }. 방문자가 올린 파일(csvtrades.js)도 같은 함수를 쓴다
+function renderAnalysisInto(list, ids) {
+  const el = $(ids.box);
+  if (!el) return null;
   if (list.length < 5) {
-    el.innerHTML = `<div class="mp-empty">청산 기록이 5건 넘게 쌓이면 분석을 보여드려요 (지금 ${list.length}건)</div>`;
-    return;
+    el.innerHTML = `<div class="mp-empty">청산 기록이 5건 넘게 있어야 분석할 수 있어요 (지금 ${list.length}건)</div>`;
+    return null;
   }
   const a = analyze(list);
-  window.lastAnalysis = a; // 리스크 계산기가 경고에 쓴다
   const since = new Date(Math.min(...list.map((t) => t.closed)) + KST);
-  $("mp-analysis-since").textContent = `· ${since.getUTCMonth() + 1}/${since.getUTCDate()}부터 ${a.n}건`;
+  if ($(ids.since)) $(ids.since).textContent = `· ${since.getUTCMonth() + 1}/${since.getUTCDate()}부터 ${a.n}건`;
 
   const tile = (k, v, sub = "") => `<div class="ana-tile"><div class="label">${k}</div><div class="ana-val">${v}</div>${sub ? `<div class="muted small">${sub}</div>` : ""}</div>`;
-  const mddPct = window.OPERATOR?.seed ? `시드의 ${Math.round((a.mdd / window.OPERATOR.seed) * 100)}% · ` : "";
+  const mddPct = ids.seed ? `시드의 ${Math.round((a.mdd / ids.seed) * 100)}% · ` : "";
   const tiles =
     tile("순손익", signed(a.net), `수수료 전 ${money(a.gross)}`) +
     tile("승률", a.rate != null ? `${a.rate}%` : "—", `<span class="pos">${a.wins}승</span> <span class="neg">${a.losses}패</span>`) +
@@ -180,7 +189,7 @@ function renderAnalysis() {
     `<ul class="ana-diag">${diag}</ul>` +
     `<div class="ana-tiles">${tiles}</div>` +
     `<div class="label" style="margin-top:14px">누적 순손익 곡선 <span class="muted">· 청산할 때마다 한 점, 빨간 구간이 최대 낙폭</span></div>` +
-    `<div class="eq-wrap"><canvas id="ana-chart"></canvas></div>` +
+    `<div class="eq-wrap"><canvas id="${ids.chart}"></canvas></div>` +
     `<div class="ana-grid">` +
     block("진입 시간대 (한국 시간)", groupRows(a.byHour, maxAbs)) +
     block("진입 요일", groupRows(a.byDow, maxAbs)) +
@@ -188,11 +197,27 @@ function renderAnalysis() {
     block("방향 · 종목", groupRows(a.bySide, maxAbs) + `<div class="muted small ana-sep">가장 번 종목</div>` + symRows) +
     `</div>`;
 
-  drawCurve(a);
-  window.renderFilter?.(); // 필터가 리스크 계산기까지 이어서 다시 그린다
+  drawCurve(a, ids.chart);
+  return a;
 }
 
-function drawCurve(a) {
+// 운영자 본인용 참고 한 줄: 지금 시간대·지금 관점 방향이 운영자의 약점인지 (공용 신호등과는 분리)
+function renderOperatorNote(a) {
+  const el = $("mp-operator-note");
+  if (!el) return;
+  const notes = [];
+  const h = new Date(Date.now() + KST).getUTCHours();
+  const band = a.byHour.find((g) => { const m = g.name.match(/(\d+)~(\d+)시/); return m && h >= Number(m[1]) && h < Number(m[2]); });
+  const bandNet = band ? sum(band.list, (t) => t.net) : 0;
+  if (band && band.list.length >= 5 && bandNet < 0) notes.push(`지금은 <b>${band.name}</b> — 운영자가 이 시간대 진입으로 ${money(bandNet)} 잃은 약점 시간대`);
+  const cur = typeof report !== "undefined" ? report?.signals?.[freq]?.current?.signal : null;
+  const sideG = cur ? a.bySide.find((g) => g.name === (cur === "long" ? "롱" : "숏")) : null;
+  const sideNet = sideG ? sum(sideG.list, (t) => t.net) : 0;
+  if (sideG && sideG.list.length >= 5 && sideNet < 0) notes.push(`지금 ${UNIT[freq]} 관점은 <b>${sideG.name}</b> — 운영자가 ${sideG.name}에서 ${money(sideNet)} 잃은 방향`);
+  el.innerHTML = notes.length ? `🧑‍💻 운영자 참고: ${notes.join(" · ")} → 운영자는 수량 절반 규칙 적용 중` : "";
+}
+
+function drawCurve(a, canvasId) {
   const pts = [{ t: a.curve[0].t - 1, v: 0 }, ...a.curve];
   const inDd = (p) => a.mddFrom != null && p.t >= a.mddFrom && p.t <= a.mddTo;
   const data = {
@@ -214,8 +239,9 @@ function drawCurve(a) {
       y: { position: "right", ticks: { color: css("--muted"), callback: (v) => money(v) }, grid: { color: css("--border") } },
     },
   };
-  if (anaChart) anaChart.destroy();
-  anaChart = new Chart($("ana-chart"), { type: "line", data, options: opts });
+  if (anaCharts[canvasId]) anaCharts[canvasId].destroy();
+  anaCharts[canvasId] = new Chart($(canvasId), { type: "line", data, options: opts });
 }
 
 window.renderAnalysis = renderAnalysis;
+window.renderAnalysisInto = renderAnalysisInto;

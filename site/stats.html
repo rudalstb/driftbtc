@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>화면 이용 집계 · DriftBTC</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+<main class="page">
+  <header><a class="home" href="index.html">DriftBTC</a><h1>화면 이용 집계</h1><div class="updated">어떤 영역이 얼마나 보였는지 (영역 이름과 횟수만, 개인정보 없음) · 최근 7일</div></header>
+  <div id="out" class="box">불러오는 중…</div>
+  <footer><a href="index.html">홈</a></footer>
+</main>
+<script src="config.js"></script>
+<script>
+(async () => {
+  const out = document.getElementById("out");
+  try {
+    const r = await fetch(window.VISIT_URL + "?stats=1", { cache: "no-store" });
+    const j = await r.json();
+    if (!j.days) { out.textContent = "집계가 아직 없어요."; return; }
+    const names = {
+      forecast: "예측 범위", calc: "이 가격 될까", risk: "얼마나 들어갈까", futures: "선물 지표", filter: "들어가도 될까",
+      "my-analysis": "내 매매 해부", "my-analysis-used": "내 매매 해부 · 파일 올림", mypos: "운영자 공개", game: "롱/숏 게임", chart: "가격 차트", accuracy: "정확도",
+      "share-forecast": "공유 · 예측", "share-filter": "공유 · 신호등",
+    };
+    const secs = [...new Set(j.days.flatMap((d) => Object.keys(d.sections)))];
+    const total = (s) => j.days.reduce((a, d) => a + (d.sections[s] || 0), 0);
+    secs.sort((a, b) => total(b) - total(a));
+    out.innerHTML = `<table><thead><tr><th>영역</th>${j.days.map((d) => `<th>${d.date.slice(5)}</th>`).join("")}<th>7일 합</th></tr></thead><tbody>` +
+      secs.map((s) => `<tr><td>${names[s] || s}</td>${j.days.map((d) => `<td>${d.sections[s] || ""}</td>`).join("")}<td><b>${total(s)}</b></td></tr>`).join("") +
+      `</tbody></table><p class="muted" style="font-size:13px">순 방문자 오늘 ${j.today ?? "-"} · 어제 ${j.yesterday ?? "-"}. 영역 집계는 한 브라우저 탭에서 하루 1번만 셉니다.</p>`;
+  } catch (e) {
+    out.textContent = "집계를 불러오지 못했어요: " + e.message;
+  }
+})();
+</script>
+</body>
+</html>
