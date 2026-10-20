@@ -215,6 +215,18 @@ async function walletRecords(env, kind) {
 
 const ok = (r) => !r.status || /success|succ|done|complete/i.test(String(r.status));
 
+// 시작일(ms) 이후 기록만으로 요약을 다시 만든다 (운영자가 "이 날부터 새 시드"라고 정한 경우)
+function summarizeFlows(f, sinceMs) {
+  const recs = sinceMs ? f.records.filter((r) => r.t && r.t >= sinceMs) : f.records;
+  const out = { ...f, deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], last_deposit: null, last_withdrawal: null, since: sinceMs || f.since, records: recs };
+  for (const r of recs) {
+    if (!STABLE.has(r.coin)) { out.other.push(r); continue; }
+    if (r.kind === "deposit") { out.deposits_usd += r.size; out.deposit_n++; out.last_deposit = Math.max(out.last_deposit || 0, r.t || 0); }
+    else { out.withdrawals_usd += r.size; out.withdrawal_n++; out.last_withdrawal = Math.max(out.last_withdrawal || 0, r.t || 0); }
+  }
+  return out;
+}
+
 async function readFlows(env) {
   if (flowsCache.data && Date.now() - flowsCache.at < FLOWS_CACHE_MS) return flowsCache.data;
   const out = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], errors: [], since: null, last_withdrawal: null, last_deposit: null, records: [] };
@@ -375,11 +387,12 @@ export default {
         return new Response(historyCache.body, { headers: cors });
       }
       // ?flows=all : 입금·출금 기록 상세 (운영자 확인용. 금액·코인·시각만 있고 주소·계정 정보는 없음)
+      const sinceParam = Date.parse(new URL(request.url).searchParams.get("since") || "") || 0;
       if (new URL(request.url).searchParams.get("flows") === "all") {
-        const f = await readFlows(env);
+        const f = summarizeFlows(await readFlows(env), sinceParam);
         return new Response(JSON.stringify(f), { headers: cors });
       }
-      if (!cache.body || Date.now() - cache.at > CACHE_MS) {
+      if (!cache.body || Date.now() - cache.at > CACHE_MS || cache.since !== sinceParam) {
         const d = await read(env);
         let copy = null;
         try {
@@ -396,11 +409,11 @@ export default {
         }
         let flows = null;
         try {
-          flows = await readFlows(env);
+          flows = summarizeFlows(await readFlows(env), sinceParam);
         } catch (e) {
           flows = { errors: [String(e.message || e)] };
         }
-        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows: flows && { ...flows, records: undefined } }) };
+        cache = { at: Date.now(), since: sinceParam, body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows: flows && { ...flows, records: undefined } }) };
       }
       return new Response(cache.body, { headers: cors });
     } catch (e) {

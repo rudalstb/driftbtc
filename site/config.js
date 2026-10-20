@@ -4,7 +4,8 @@ window.POSITIONS_URL = "https://driftbtc.vercel.app/api/positions";
 
 // 운영자 시드·출금 기록 (달러). 출금이 늘면 withdrawn 숫자만 바꾸면 된다
 // 총 수익 = 누적 출금 + 현재 자산 − 시드
-window.OPERATOR = { seed: 1700, withdrawn: 3888 }; // 2026-10-20 +300 출금
+// autoFlows: true 로 켜면 비트겟 입출금 기록으로 누적 입금·출금을 자동 집계하고, since(날짜) 이후 기록만 센다
+window.OPERATOR = { seed: 1700, withdrawn: 3888, autoFlows: false, since: "2026-06-03" }; // 2026-10-20 +300 출금
 
 // 카피트레이딩 원금 직접 지정 (프로젝트 번호: 달러). 비트겟이 원금을 0 으로 주는 경우(원금 출금 등)에만 쓴다
 // 비워 두면 비트겟이 주는 누적 투자 금액을 그대로 쓴다

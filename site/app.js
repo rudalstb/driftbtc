@@ -560,7 +560,8 @@ let posUpdated = 0;
 async function pollPositions() {
   if (!window.POSITIONS_URL) return;
   try {
-    const r = await fetch(window.POSITIONS_URL, { cache: "no-store" });
+    const since = window.OPERATOR?.since ? `?since=${encodeURIComponent(window.OPERATOR.since)}` : "";
+    const r = await fetch(window.POSITIONS_URL + since, { cache: "no-store" });
     const d = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || r.status);
     renderPositions(d);
