@@ -209,6 +209,26 @@ table.monthly td { vertical-align: middle; }
 .fl-green { border-color: var(--up); background: rgba(63, 185, 80, 0.08); }
 .ana-diag li.ana-info { border-color: #4fc3f7; }
 .paper-tiles { grid-template-columns: repeat(5, 1fr); }
+/* 💬 오늘 한마디 · 투표 */
+.say-vote { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 6px 0 8px; }
+.say-btn { font: inherit; font-size: 15px; font-weight: 700; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+.say-btn.long.on, .say-btn.long:hover { border-color: var(--up); color: var(--up); }
+.say-btn.short.on, .say-btn.short:hover { border-color: var(--down); color: var(--down); }
+.say-btn.on { background: rgba(247, 147, 26, 0.08); }
+.say-bar-wrap .ls-bar { margin-top: 0; height: 10px; }
+.say-y { margin-bottom: 6px; }
+.say-form { display: flex; gap: 8px; margin: 8px 0 10px; }
+.say-form input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; }
+.say-form button { font: inherit; font-weight: 700; padding: 0 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #0d1117; cursor: pointer; }
+.say-list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; margin-bottom: 8px; }
+.say-post { border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; background: var(--bg); }
+.say-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 3px; }
+.say-anon { color: var(--muted); font-weight: 700; }
+.say-actions { margin-left: auto; }
+.say-actions button { background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; padding: 0 2px; }
+.say-actions button:hover { color: var(--accent); }
+.say-text { font-size: 14px; line-height: 1.5; word-break: break-word; }
+.say-toast { position: sticky; bottom: 12px; margin-top: 8px; background: var(--accent); color: #0d1117; font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: 8px; display: inline-block; }
 /* 방문자용: 목차 칩 · 영역 접기 · 공유 · 파일 올리기 · 꼬리글 */
 .tg-link[hidden] { display: none; }
 .tg-link { display: inline-block; margin-top: 8px; font-size: 13px; color: #4fc3f7; text-decoration: none; border: 1px solid rgba(79, 195, 247, 0.4); border-radius: 999px; padding: 4px 12px; }
@@ -328,6 +348,9 @@ td.best { color: var(--accent); font-weight: 700; }
   .pair { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
+  .say-vote { grid-template-columns: 1fr 1fr; }
+  .say-bar-wrap { grid-column: 1 / -1; order: 3; }
+  .say-list { max-height: 320px; }
   .page-tabs { flex-wrap: wrap; }
   .page-tabs a { flex: 1 0 31%; font-size: 12.5px; padding: 8px 6px; }
   .share-btn { top: 10px; right: 10px; padding: 2px 7px; }
