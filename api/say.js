@@ -4,7 +4,7 @@
 // IP 는 저장하지 않는다 (도배 방지용으로 날짜별 해시만 하루 동안 보관).
 //
 // GET  ?day=YYYY-MM-DD&vid=...        → 오늘 투표 집계·내 표·한마디 목록(최신 50개)·어제 집계
-// POST {action:"vote", vid, side}      → 하루 1표 (바꾸면 이전 표는 빠짐)
+// POST {action:"vote", vid, side}      → 하루 1표 (바꾸면 이전 표는 빠짐) · {action:"unvote"} 는 표 취소
 // POST {action:"post", vid, text}      → 200자 이내, 링크·연락처·홍보·욕설 차단, 1분 1개 · 하루 20개
 // POST {action:"report", vid, id}      → 신고 3번이면 자동 숨김
 // POST {action:"delete", vid, id, key} → 내 글(같은 vid) 또는 운영자 키(ADMIN_KEY)로 삭제
@@ -106,6 +106,9 @@ export async function POST(request) {
       if (prev !== side) cmds.push(["HINCRBY", `say:votes:${day}`, side, 1], ["HSET", `say:voted:${day}`, me, side]);
       cmds.push(["EXPIRE", `say:votes:${day}`, VOTES_TTL], ["EXPIRE", `say:voted:${day}`, VOTES_TTL]);
       await redis(cfg, cmds);
+    } else if (b.action === "unvote") {
+      const [prev] = await redis(cfg, [["HGET", `say:voted:${day}`, me]]);
+      if (prev) await redis(cfg, [["HINCRBY", `say:votes:${day}`, prev, -1], ["HDEL", `say:voted:${day}`, me]]);
     } else if (b.action === "post") {
       const text = String(b.text || "").replace(/\s+/g, " ").trim();
       if (text.length < 2) return json(request, { error: "두 글자 이상 적어 주세요" }, 400);

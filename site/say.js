@@ -79,11 +79,12 @@ function renderSay() {
       <button type="submit">남기기</button>
     </form>
     <div class="say-list">${posts}</div>
-    <div class="muted small">전부 익명 · 하루 1표(바꿀 수 있음) · 링크·연락처·홍보·욕설은 자동 차단 · 신고 3번이면 숨김 · 투자 권유 아니며 책임은 작성자에게</div>`;
+    <div class="muted small">전부 익명 · 하루 1표(바꾸거나 다시 눌러 취소) · 링크·연락처·홍보·욕설은 자동 차단 · 신고 3번이면 숨김 · 투자 권유 아니며 책임은 작성자에게</div>`;
 
   box.querySelectorAll(".say-btn").forEach((b) => b.addEventListener("click", async () => {
     b.disabled = true;
-    const j = await sayApi({ action: "vote", side: b.dataset.side });
+    // 이미 고른 쪽을 다시 누르면 표 취소
+    const j = await sayApi(sayData?.my === b.dataset.side ? { action: "unvote" } : { action: "vote", side: b.dataset.side });
     if (j) { sayData = j; renderSay(); try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=say-vote"); } catch (e) {} }
     else b.disabled = false;
   }));
