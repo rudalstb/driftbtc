@@ -180,7 +180,7 @@ const FLOWS_CACHE_MS = 60 * 60 * 1000;
 let flowsCache = { at: 0, data: null };
 const STABLE = new Set(["USDT", "USDC", "USD"]);
 
-async function walletRecords(env, kind) {
+async function walletRecords(env, kind, windows = 16) {
   // v2 지갑 기록 (통합 계정도 지갑 API 는 같다). 실패하면 v3 이름으로 한 번 더
   const paths = kind === "withdraw"
     ? ["/api/v3/account/withdrawal-records", "/api/v2/spot/wallet/withdrawal-records"]
@@ -192,7 +192,7 @@ async function walletRecords(env, kind) {
     try {
       const out = [];
       // 통합 계정(v3)은 한 번에 30일까지만 → 29일 단위로 2년치(25구간). 다음 쪽은 cursor 또는 idLessThan
-      for (let end = now, i = 0; i < 16; i++, end -= 29 * DAY) {
+      for (let end = now, i = 0; i < windows; i++, end -= 29 * DAY) {
         const start = end - 29 * DAY;
         let next = "";
         for (let page = 0; page < 10; page++) {
@@ -229,8 +229,9 @@ function summarizeFlows(f, sinceMs) {
   return out;
 }
 
-async function readFlows(env) {
-  if (flowsCache.data && Date.now() - flowsCache.at < FLOWS_CACHE_MS) return flowsCache.data;
+// windows: 29일 구간 수 (기본 16 ≈ 15개월, 최대 40 ≈ 3년)
+async function readFlows(env, windows = 16) {
+  if (windows === 16 && flowsCache.data && Date.now() - flowsCache.at < FLOWS_CACHE_MS) return flowsCache.data;
   const out = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], errors: [], since: null, last_withdrawal: null, last_deposit: null, records: [] };
   const tally = (list, key, nKey, lastKey) => {
     const seen = new Set();
@@ -252,14 +253,14 @@ async function readFlows(env) {
       if (t && (!out.since || t < out.since)) out.since = t;
     }
   };
-  try { tally(await walletRecords(env, "deposit"), "deposits_usd", "deposit_n", "last_deposit"); }
+  try { tally(await walletRecords(env, "deposit", windows), "deposits_usd", "deposit_n", "last_deposit"); }
   catch (e) { out.errors.push("입금 기록: " + String(e.message || e)); }
-  try { tally(await walletRecords(env, "withdraw"), "withdrawals_usd", "withdrawal_n", "last_withdrawal"); }
+  try { tally(await walletRecords(env, "withdraw", windows), "withdrawals_usd", "withdrawal_n", "last_withdrawal"); }
   catch (e) { out.errors.push("출금 기록: " + String(e.message || e)); }
   out.records.sort((a, b) => (b.t || 0) - (a.t || 0));
   out.updated = Date.now();
   // 권한이 없어 둘 다 실패한 경우는 캐시하지 않고(권한 추가 즉시 반영되게) 짧게만 보관
-  flowsCache = { at: out.errors.length === 2 ? Date.now() - FLOWS_CACHE_MS + 60000 : Date.now(), data: out };
+  if (windows === 16) flowsCache = { at: out.errors.length === 2 ? Date.now() - FLOWS_CACHE_MS + 60000 : Date.now(), data: out };
   return out;
 }
 

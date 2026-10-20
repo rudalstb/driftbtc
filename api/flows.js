@@ -7,8 +7,10 @@ import { env } from "./positions.js";
 export async function GET(request) {
   const headers = corsHeaders(request, env());
   try {
-    const since = Date.parse(new URL(request.url).searchParams.get("since") || "") || 0;
-    const f = summarizeFlows(await readFlows(env()), since);
+    const q = new URL(request.url).searchParams;
+    const since = Date.parse(q.get("since") || "") || 0;
+    const windows = Math.min(40, Math.max(1, Number(q.get("windows")) || 16)); // ?windows=40 → 약 3년치
+    const f = summarizeFlows(await readFlows(env(), windows), since);
     return new Response(JSON.stringify(f), { headers });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers });
