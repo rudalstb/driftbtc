@@ -10,8 +10,8 @@ try {
 } catch (e) {}
 
 const sayVid = () => { try { return localStorage.getItem("driftbtc_vid"); } catch (e) { return null; } };
-const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`; };
+const sayEsc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sayAgo = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`; };
 
 async function sayApi(body) {
   if (!window.SAY_URL) return null;
@@ -60,9 +60,9 @@ function renderSay() {
   }
   const posts = d.posts.length
     ? d.posts.map((p) => `<div class="say-post" data-id="${p.id}">
-        <div class="say-meta"><span class="say-anon">익명</span>${p.vote ? `<span class="${p.vote === "long" ? "pos" : "neg"}">${p.vote === "long" ? "롱" : "숏"}</span>` : ""}<span class="muted">${ago(p.t)}</span>
+        <div class="say-meta"><span class="say-anon">익명</span>${p.vote ? `<span class="${p.vote === "long" ? "pos" : "neg"}">${p.vote === "long" ? "롱" : "숏"}</span>` : ""}<span class="muted">${sayAgo(p.t)}</span>
           <span class="say-actions">${p.mine || sayAdminKey ? `<button data-act="delete">삭제</button>` : `<button data-act="report">신고</button>`}</span></div>
-        <div class="say-text">${esc(p.text)}</div></div>`).join("")
+        <div class="say-text">${sayEsc(p.text)}</div></div>`).join("")
     : `<div class="mp-empty">아직 한마디가 없어요. 첫 글을 남겨 보세요.</div>`;
   box.innerHTML = `
     <div class="say-vote">
