@@ -106,6 +106,10 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python trades.py
 
+      - name: 운영자 입출금 기록 보관
+        if: steps.check.outputs.new == 'true'
+        run: python flows.py
+
       - name: 방문자 수 백업
         if: steps.check.outputs.new == 'true'
         run: python visits.py

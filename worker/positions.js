@@ -183,21 +183,23 @@ const STABLE = new Set(["USDT", "USDC", "USD"]);
 async function walletRecords(env, kind) {
   // v2 지갑 기록 (통합 계정도 지갑 API 는 같다). 실패하면 v3 이름으로 한 번 더
   const paths = kind === "withdraw"
-    ? ["/api/v2/spot/wallet/withdrawal-records", "/api/v3/account/withdrawal-records"]
-    : ["/api/v2/spot/wallet/deposit-records", "/api/v3/account/deposit-records"];
+    ? ["/api/v3/account/withdrawal-records", "/api/v2/spot/wallet/withdrawal-records"]
+    : ["/api/v3/account/deposit-records", "/api/v2/spot/wallet/deposit-records"];
   const now = Date.now();
   let lastErr = null;
   for (const path of paths) {
+    if (mode === "uta" && path.includes("/v2/")) continue;
     try {
       const out = [];
       // 통합 계정(v3)은 한 번에 30일까지만 → 29일 단위로 2년치(25구간). 다음 쪽은 cursor 또는 idLessThan
-      for (let end = now, i = 0; i < 25; i++, end -= 29 * DAY) {
+      for (let end = now, i = 0; i < 16; i++, end -= 29 * DAY) {
         const start = end - 29 * DAY;
         let next = "";
         for (let page = 0; page < 10; page++) {
           const params = { startTime: String(start), endTime: String(end), limit: "100" };
           if (next) params[path.includes("/v3/") ? "cursor" : "idLessThan"] = next;
-          const d = await get(env, path, params);
+          const d = await getRetry(env, path, params, 4);
+          await sleep(250); // 지갑 기록 API 는 호출 제한이 빡빡하다
           const list = Array.isArray(d) ? d : d?.list || [];
           out.push(...list);
           const more = d?.cursor || list[list.length - 1]?.orderId || list[list.length - 1]?.id;
@@ -365,14 +367,17 @@ function pickOrigin(request, env) {
   return list.includes(o) ? o : list[0];
 }
 
+export const corsHeaders = (request, env) => ({
+  "Access-Control-Allow-Origin": pickOrigin(request, env),
+  "Access-Control-Allow-Methods": "GET",
+  "Content-Type": "application/json; charset=utf-8",
+  "Cache-Control": "no-store",
+});
+export { readFlows, summarizeFlows };
+
 export default {
   async fetch(request, env) {
-    const cors = {
-      "Access-Control-Allow-Origin": pickOrigin(request, env),
-      "Access-Control-Allow-Methods": "GET",
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    };
+    const cors = corsHeaders(request, env);
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (!env.BITGET_API_KEY || !env.BITGET_API_SECRET || !env.BITGET_PASSPHRASE) {
       return new Response(JSON.stringify({ error: "비트겟 키(Secret)가 설정되지 않았어요" }), { status: 500, headers: cors });
@@ -387,11 +392,7 @@ export default {
         return new Response(historyCache.body, { headers: cors });
       }
       // ?flows=all : 입금·출금 기록 상세 (운영자 확인용. 금액·코인·시각만 있고 주소·계정 정보는 없음)
-      const sinceParam = Date.parse(new URL(request.url).searchParams.get("since") || "") || 0;
-      if (new URL(request.url).searchParams.get("flows") === "all") {
-        const f = summarizeFlows(await readFlows(env), sinceParam);
-        return new Response(JSON.stringify(f), { headers: cors });
-      }
+      const sinceParam = 0;
       if (!cache.body || Date.now() - cache.at > CACHE_MS || cache.since !== sinceParam) {
         const d = await read(env);
         let copy = null;
@@ -407,13 +408,7 @@ export default {
           if (copy.projects.length) d.account.equity = (d.account.equity || 0) + copy.equity;
           d.account.unrealized_pnl = (d.account.unrealized_pnl || 0) + (copy.unrealized_pnl || 0);
         }
-        let flows = null;
-        try {
-          flows = summarizeFlows(await readFlows(env), sinceParam);
-        } catch (e) {
-          flows = { errors: [String(e.message || e)] };
-        }
-        cache = { at: Date.now(), since: sinceParam, body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows: flows && { ...flows, records: undefined } }) };
+        cache = { at: Date.now(), since: sinceParam, body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined } }) };
       }
       return new Response(cache.body, { headers: cors });
     } catch (e) {

@@ -9,7 +9,7 @@ import copyProjects from "../copy-projects.js";
 const clean = (v) => v?.trim().replace(/^["']|["']$/g, "").trim();
 // 복사할 때 앞의 "bg_" 가 빠져 32자리만 들어간 경우 보정한다
 const apiKey = (v) => (/^[0-9a-f]{32}$/i.test(v || "") ? "bg_" + v : v);
-const env = () => ({
+export const env = () => ({
   BITGET_API_KEY: apiKey(clean(process.env.BITGET_API_KEY)),
   BITGET_API_SECRET: clean(process.env.BITGET_API_SECRET),
   BITGET_PASSPHRASE: clean(process.env.BITGET_PASSPHRASE),

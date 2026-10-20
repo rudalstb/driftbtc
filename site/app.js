@@ -560,8 +560,7 @@ let posUpdated = 0;
 async function pollPositions() {
   if (!window.POSITIONS_URL) return;
   try {
-    const since = window.OPERATOR?.since ? `?since=${encodeURIComponent(window.OPERATOR.since)}` : "";
-    const r = await fetch(window.POSITIONS_URL + since, { cache: "no-store" });
+    const r = await fetch(window.POSITIONS_URL, { cache: "no-store" });
     const d = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || r.status);
     renderPositions(d);
@@ -645,13 +644,38 @@ function renderCopyProjects(copy) {
 }
 
 // 🏁 시드·출금 요약: 총 수익 = 누적 출금 + 현재 자산 − 시드 (값은 config.js 의 OPERATOR)
-// 입금·출금은 비트겟 지갑 기록에서 자동 집계(flows). 권한이 없거나 실패하면 config.js 의 OPERATOR 값으로
+// 입금·출금은 비트겟 지갑 기록(data/flows.json, 매시간 저장)에서 자동 집계. 파일이 없으면 config.js 의 OPERATOR 값으로
+let flowsData = null; // { updated, records: [{kind, coin, size, fee, t}] }
+
+async function loadFlows() {
+  try {
+    const r = await fetch("data/flows.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) flowsData = await r.json();
+  } catch (e) {}
+  if (lastPosData) renderSeed(lastPosData.account?.equity);
+}
+
+// 설정한 시작일(OPERATOR.since) 이후의 달러 입금·출금 합계
+function flowSummary() {
+  const o = window.OPERATOR || {};
+  if (!flowsData?.records?.length) return null;
+  const since = o.since ? Date.parse(o.since) : 0;
+  const stable = new Set(["USDT", "USDC", "USD"]);
+  const f = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: 0, last_withdrawal: null, errors: [] };
+  for (const r of flowsData.records) {
+    if (!r.t || r.t < since) continue;
+    if (!stable.has(r.coin)) { f.other++; continue; }
+    if (r.kind === "deposit") { f.deposits_usd += r.size; f.deposit_n++; }
+    else { f.withdrawals_usd += r.size; f.withdrawal_n++; f.last_withdrawal = Math.max(f.last_withdrawal || 0, r.t); }
+  }
+  return f;
+}
+
 function renderSeed(equity) {
   const o = window.OPERATOR || {};
   const box = $("mp-seed");
-  const f = lastPosData?.flows;
-  // 자동 집계는 운영자가 기록을 확인하고 config.js 에 autoFlows: true 를 켠 뒤에만 화면에 쓴다
-  const auto = o.autoFlows === true && f && !f.errors?.length && (f.deposits_usd > 0 || f.withdrawals_usd > 0);
+  const f = flowSummary();
+  const auto = o.autoFlows === true && f && (f.deposits_usd > 0 || f.withdrawals_usd > 0);
   const seed = auto && f.deposits_usd > 0 ? f.deposits_usd : o.seed;
   const withdrawn = auto ? f.withdrawals_usd : o.withdrawn || 0;
   if (!seed) return;
@@ -664,7 +688,7 @@ function renderSeed(equity) {
       <span class="muted small">= 누적 출금 ${usd(withdrawn)} + 현재 자산 ${money(equity)} − 누적 입금 ${usd(seed)}</span></div>`;
   }
   const src = auto
-    ? `<span class="muted small">· 비트겟 입출금 기록 자동 집계 (입금 ${f.deposit_n}건 · 출금 ${f.withdrawal_n}건${f.last_withdrawal ? ` · 마지막 출금 ${d(f.last_withdrawal)}` : ""})${f.other?.length ? ` · 달러 외 코인 ${f.other.length}건은 제외` : ""}</span>`
+    ? `<span class="muted small">· 비트겟 입출금 기록 자동 집계 (입금 ${f.deposit_n}건 · 출금 ${f.withdrawal_n}건${f.last_withdrawal ? ` · 마지막 출금 ${d(f.last_withdrawal)}` : ""})${f.other ? ` · 달러 외 코인 ${f.other}건은 제외` : ""}</span>`
     : `<span class="muted small">· 운영자가 직접 적은 값</span>`;
   box.innerHTML = `<div>🏁 누적 입금 <b>${usd(seed)}</b> · 누적 출금 <b class="pos">${usd(withdrawn)}</b> ${src}</div>${total}`;
 }
@@ -720,6 +744,7 @@ let archive = { since: null, trades: [] };
 let recentHistory = [];
 
 async function loadTrades() {
+  loadFlows();
   try {
     const r = await fetch("data/trades.json?t=" + Date.now(), { cache: "no-store" });
     if (r.ok) archive = await r.json();

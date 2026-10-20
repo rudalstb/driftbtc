@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["icn1"],
   "functions": {
-    "api/positions.js": { "maxDuration": 10 }
+    "api/positions.js": { "maxDuration": 10 },
+    "api/flows.js": { "maxDuration": 60 }
   }
 }
