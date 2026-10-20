@@ -217,7 +217,7 @@ const ok = (r) => !r.status || /success|succ|done|complete/i.test(String(r.statu
 
 async function readFlows(env) {
   if (flowsCache.data && Date.now() - flowsCache.at < FLOWS_CACHE_MS) return flowsCache.data;
-  const out = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], errors: [], since: null, last_withdrawal: null, last_deposit: null };
+  const out = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], errors: [], since: null, last_withdrawal: null, last_deposit: null, records: [] };
   const tally = (list, key, nKey, lastKey) => {
     const seen = new Set();
     for (const r of list) {
@@ -226,7 +226,8 @@ async function readFlows(env) {
       seen.add(id);
       const coin = String(r.coin || "").toUpperCase();
       const size = Math.abs(num(r.size) || 0);
-      const t = num(r.cTime) || num(r.uTime);
+      const t = num(r.cTime) || num(r.createdTime) || num(r.uTime) || num(r.updatedTime);
+      out.records.push({ kind: key === "deposits_usd" ? "deposit" : "withdraw", coin, size, fee: num(r.fee), t, type: r.dest || r.type || r.transferType || null, status: r.status || null, chain: r.chain || null });
       if (STABLE.has(coin)) {
         out[key] += size;
         out[nKey]++;
@@ -241,6 +242,7 @@ async function readFlows(env) {
   catch (e) { out.errors.push("입금 기록: " + String(e.message || e)); }
   try { tally(await walletRecords(env, "withdraw"), "withdrawals_usd", "withdrawal_n", "last_withdrawal"); }
   catch (e) { out.errors.push("출금 기록: " + String(e.message || e)); }
+  out.records.sort((a, b) => (b.t || 0) - (a.t || 0));
   out.updated = Date.now();
   // 권한이 없어 둘 다 실패한 경우는 캐시하지 않고(권한 추가 즉시 반영되게) 짧게만 보관
   flowsCache = { at: out.errors.length === 2 ? Date.now() - FLOWS_CACHE_MS + 60000 : Date.now(), data: out };
@@ -372,6 +374,11 @@ export default {
         }
         return new Response(historyCache.body, { headers: cors });
       }
+      // ?flows=all : 입금·출금 기록 상세 (운영자 확인용. 금액·코인·시각만 있고 주소·계정 정보는 없음)
+      if (new URL(request.url).searchParams.get("flows") === "all") {
+        const f = await readFlows(env);
+        return new Response(JSON.stringify(f), { headers: cors });
+      }
       if (!cache.body || Date.now() - cache.at > CACHE_MS) {
         const d = await read(env);
         let copy = null;
@@ -393,7 +400,7 @@ export default {
         } catch (e) {
           flows = { errors: [String(e.message || e)] };
         }
-        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows }) };
+        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows: flows && { ...flows, records: undefined } }) };
       }
       return new Response(cache.body, { headers: cors });
     } catch (e) {

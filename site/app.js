@@ -649,7 +649,8 @@ function renderSeed(equity) {
   const o = window.OPERATOR || {};
   const box = $("mp-seed");
   const f = lastPosData?.flows;
-  const auto = f && !f.errors?.length && (f.deposits_usd > 0 || f.withdrawals_usd > 0);
+  // 자동 집계는 운영자가 기록을 확인하고 config.js 에 autoFlows: true 를 켠 뒤에만 화면에 쓴다
+  const auto = o.autoFlows === true && f && !f.errors?.length && (f.deposits_usd > 0 || f.withdrawals_usd > 0);
   const seed = auto && f.deposits_usd > 0 ? f.deposits_usd : o.seed;
   const withdrawn = auto ? f.withdrawals_usd : o.withdrawn || 0;
   if (!seed) return;
