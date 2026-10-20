@@ -3,7 +3,8 @@
 
 // 🗂️ 탭: 홈에는 "지금 비트코인 어디까지 움직이나"만, 나머지는 탭을 눌러야 보인다 (선택은 브라우저가 기억, 주소 #탭이름 으로 공유 가능)
 const TABS = [
-  { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid", "#say"], freqTabs: true },
+  { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid"], freqTabs: true },
+  { id: "say", name: "💬 한마디", members: ["#say"] },
   { id: "tools", name: "🧮 도구", members: ["#calc", "#risk"] },
   { id: "market", name: "📊 시장", members: ["#futures", "#filter"] },
   { id: "mine", name: "🔍 내 매매", members: ["#my-analysis"] },

@@ -353,7 +353,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .say-bar-wrap { grid-column: 1 / -1; order: 3; }
   .say-list { max-height: 320px; }
   .page-tabs { flex-wrap: wrap; }
-  .page-tabs a { flex: 1 0 31%; font-size: 12.5px; padding: 8px 6px; }
+  .page-tabs a { flex: 1 0 23%; font-size: 12px; padding: 8px 4px; }
   .share-btn { top: 10px; right: 10px; padding: 2px 7px; }
   .ana-tiles, .rk-tiles, .paper-tiles { grid-template-columns: repeat(2, 1fr); }
   .ana-grid { grid-template-columns: 1fr; }
