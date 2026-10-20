@@ -337,8 +337,8 @@ function renderBrief() {
   const sig = report.signals?.["1d"]?.current;
   const parts = [
     live != null ? `지금 <b>${usd(live)}</b>` : "",
-    n ? `오늘 95% 범위 <a href="#forecast-anchor" class="plain">${usd(n.lo95)} ~ ${usd(n.hi95)}</a>` : "",
-    `<a href="#filter" class="plain">${light}</a>`,
+    n ? `오늘 95% 범위 <b>${usd(n.lo95)} ~ ${usd(n.hi95)}</b>` : "",
+    `<a href="#market" class="plain">${light}</a>`,
     sig ? `1일 관점 ${sideTag(sig.signal)}` : "",
   ].filter(Boolean);
   el.innerHTML = parts.join(`<span class="muted"> · </span>`);
@@ -519,8 +519,9 @@ function renderPaper() {
   const recent = p.recent?.length
     ? `<div class="paper-recent">${[...p.recent].reverse().map((t) => `<span>${sideTag(t.side)} <span class="muted">${lab(t.open_t)}</span> <b class="${t.pnl_pct >= 0 ? "pos" : "neg"}">${pct(t.pnl_pct, 2)}</b></span>`).join("")}</div>`
     : "";
-  box.innerHTML = `<div class="rk-tiles paper-tiles">${tiles}</div>${openLine}<div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
-    `<div class="muted small">레버리지 1배, 자산 전부를 관점 방향으로. 관점이 바뀔 때만 매매하고 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간(롱이 냄)을 가정해요. 실제 체결과는 다를 수 있어요.</div>`;
+  box.innerHTML = `<div class="rk-tiles paper-tiles">${tiles}</div>${openLine}` +
+    `<details class="more"><summary>자산 곡선 · 최근 거래 · 규칙 보기</summary><div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
+    `<div class="muted small">레버리지 1배, 자산 전부를 관점 방향으로. 관점이 바뀔 때만 매매하고 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간(롱이 냄)을 가정해요. 실제 체결과는 다를 수 있어요.</div></details>`;
 
   const data = {
     labels: p.series.map((x) => lab(x.t)),
@@ -1167,7 +1168,7 @@ function renderFutures(f) {
     },
   ];
   $("fut-grid").innerHTML = tiles
-    .map((x) => `<div class="fut-tile"><div class="label">${x.t}</div><div class="fut-val">${x.v}</div>${x.sub ? `<div class="small">${x.sub}</div>` : ""}<div class="muted small">${x.x}</div></div>`)
+    .map((x) => `<div class="fut-tile" title="${x.x.replace(/"/g, "'")}"><div class="label">${x.t}</div><div class="fut-val">${x.v}</div>${x.sub ? `<div class="small">${x.sub}</div>` : ""}</div>`)
     .join("");
   $("fut-updated").textContent = new Date().toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" }) + " 기준";
 }

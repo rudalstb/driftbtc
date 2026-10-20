@@ -1,60 +1,57 @@
 // 📸 공유: 카드 하나를 이미지로 저장하거나(PC) 바로 공유(휴대폰)한다. html2canvas 는 눌렀을 때만 불러온다.
 // 🧭 목차 칩·영역 접기: 카드가 많아 처음 온 사람이 길을 잃지 않도록 5묶음으로 나눈다 (접은 상태는 브라우저에만 저장).
 
-const GROUPS = [
-  { id: "g-tools", name: "🧮 도구", desc: "목표 가격 확률 · 들어갈 수량", members: [".calc", "#risk"] },
-  { id: "g-market", name: "📊 시장 상황", desc: "선물 지표 · 지금 들어가도 될까", members: ["#futures", "#filter"] },
-  { id: "g-mine", name: "🔍 내 매매 해부", desc: "내 거래 내역 파일로 약점 찾기", members: ["#my-analysis"] },
-  { id: "g-operator", name: "🧑‍💻 운영자 실전 공개", desc: "실제 포지션 · 청산 기록 · 매매 해부", members: ["#mypos"] },
-  { id: "g-verify", name: "✅ 검증", desc: "롱/숏 게임 · 가상 계좌 · 가격 차트 · 정확도 · 어떻게 만들었나", members: [".game", "#paper", ".chart-card", "#accuracy", ".method-card"] },
+// 🗂️ 탭: 홈에는 "지금 비트코인 어디까지 움직이나"만, 나머지는 탭을 눌러야 보인다 (선택은 브라우저가 기억, 주소 #탭이름 으로 공유 가능)
+const TABS = [
+  { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid"], freqTabs: true },
+  { id: "tools", name: "🧮 도구", members: ["#calc", "#risk"] },
+  { id: "market", name: "📊 시장", members: ["#futures", "#filter"] },
+  { id: "mine", name: "🔍 내 매매", members: ["#my-analysis"] },
+  { id: "operator", name: "🧑‍💻 운영자", members: ["#mypos"] },
+  { id: "verify", name: "✅ 검증", members: ["#game", "#paper", "#chart-card", "#accuracy"], freqTabs: true },
 ];
+let activeTab = "home";
 
-function buildGroups() {
-  // 처음 온 사람에겐 '운영자 실전 공개'와 '검증'을 접어 두어 첫 화면을 가볍게 (한 번이라도 손대면 그 상태를 기억)
-  let collapsed = { "g-operator": true, "g-verify": true };
-  try { const saved = localStorage.getItem("driftbtc_groups"); if (saved) collapsed = JSON.parse(saved); } catch (e) {}
-  const nav = $("group-nav");
-  for (const g of GROUPS) {
-    const first = g.members.map((s) => document.querySelector(s)).find(Boolean);
-    if (!first) continue;
-    const head = document.createElement("div");
-    head.className = "group-head" + (collapsed[g.id] ? " closed" : "");
-    head.id = g.id;
-    head.innerHTML = `<div><b>${g.name}</b> <span class="muted small">${g.desc}</span></div><button class="group-toggle" aria-expanded="${!collapsed[g.id]}" title="접기/펼치기">▾</button>`;
-    first.parentNode.insertBefore(head, first);
-    const apply = () => {
-      const closed = head.classList.contains("closed");
-      for (const sel of g.members) document.querySelectorAll(sel).forEach((el) => { el.classList.toggle("group-hidden", closed && !el.hasAttribute("hidden")); });
-      head.querySelector(".group-toggle").setAttribute("aria-expanded", String(!closed));
-    };
-    head.querySelector(".group-toggle").addEventListener("click", () => {
-      head.classList.toggle("closed");
-      collapsed[g.id] = head.classList.contains("closed");
-      try { localStorage.setItem("driftbtc_groups", JSON.stringify(collapsed)); } catch (e) {}
-      apply();
-    });
-    apply();
-    if (nav) {
-      const chip = document.createElement("a");
-      chip.href = "#" + g.id;
-      chip.textContent = g.name;
-      chip.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (head.classList.contains("closed")) head.querySelector(".group-toggle").click();
-        head.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-      nav.appendChild(chip);
-    }
-  }
-  // 숨김 속성이 나중에 풀리는 카드(운영자·선물 등)도 접힘 상태를 따르도록
-  new MutationObserver(() => {
-    for (const g of GROUPS) {
-      const head = $(g.id);
-      if (!head || !head.classList.contains("closed")) continue;
-      for (const sel of g.members) document.querySelectorAll(sel).forEach((el) => { if (!el.hasAttribute("hidden")) el.classList.add("group-hidden"); });
-    }
-  }).observe(document.querySelector("main"), { attributes: true, subtree: true, attributeFilter: ["hidden"] });
+function showTab(id, push = true) {
+  const tab = TABS.find((t) => t.id === id) || TABS[0];
+  activeTab = tab.id;
+  for (const t of TABS) for (const sel of t.members) document.querySelectorAll(sel).forEach((el) => el.classList.toggle("tab-hidden", t.id !== tab.id));
+  document.querySelector(".tabs")?.classList.toggle("tab-hidden", !tab.freqTabs);
+  document.querySelectorAll("#group-nav a").forEach((a) => a.setAttribute("aria-selected", String(a.dataset.tab === tab.id)));
+  try { localStorage.setItem("driftbtc_tab", tab.id); } catch (e) {}
+  if (push && location.hash !== "#" + tab.id) history.replaceState(null, "", "#" + tab.id);
+  // 숨겨져 있던 그래프가 크기를 다시 잡도록
+  setTimeout(() => dispatchEvent(new Event("resize")), 50);
+  if (push) window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+function buildTabs() {
+  const nav = $("group-nav");
+  if (!nav) return;
+  nav.innerHTML = "";
+  for (const t of TABS) {
+    const a = document.createElement("a");
+    a.href = "#" + t.id;
+    a.dataset.tab = t.id;
+    a.textContent = t.name;
+    a.addEventListener("click", (e) => { e.preventDefault(); showTab(t.id); });
+    nav.appendChild(a);
+  }
+  // 카드 안의 "#market" 같은 링크도 탭 전환으로
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#']");
+    if (!a) return;
+    const id = a.getAttribute("href").slice(1);
+    if (TABS.some((t) => t.id === id)) { e.preventDefault(); showTab(id); }
+  });
+  addEventListener("hashchange", () => { const id = location.hash.slice(1); if (TABS.some((t) => t.id === id)) showTab(id, false); });
+  let start = location.hash.slice(1);
+  if (!TABS.some((t) => t.id === start)) { try { start = localStorage.getItem("driftbtc_tab") || "home"; } catch (e) { start = "home"; } }
+  showTab(start, false);
+}
+
+// 접힌 '자세히' 안의 그래프도 펼칠 때 크기를 다시 잡도록
+document.addEventListener("toggle", (e) => { if (e.target.tagName === "DETAILS" && e.target.open) setTimeout(() => dispatchEvent(new Event("resize")), 50); }, true);
 
 let h2cLoading = null;
 function loadHtml2canvas() {
@@ -119,7 +116,7 @@ function trackSections() {
     const vh = innerHeight || document.documentElement.clientHeight;
     for (const el of document.querySelectorAll("[data-sec]")) {
       const id = el.dataset.sec;
-      if (seen[id] || el.hidden || el.classList.contains("group-hidden")) continue;
+      if (seen[id] || el.hidden || el.classList.contains("tab-hidden")) continue;
       const r = el.getBoundingClientRect();
       if (!r.height) continue;
       const visible = Math.min(r.bottom, vh) - Math.max(r.top, 0);
@@ -136,5 +133,5 @@ function trackSections() {
   setInterval(check, 15000); // 접기·펼치기나 늦게 나타나는 카드
 }
 
-buildGroups();
+buildTabs();
 trackSections();
