@@ -15,7 +15,7 @@ UPDATED = "2026년 10월 19일"
 
 FOOT = """<footer>
   <a href="{p}index.html">홈</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
-  <a href="{p}guide/forecast-range.html">예측 범위 읽는 법</a><a href="{p}guide/kimchi-premium.html">김치 프리미엄</a><a href="{p}guide/funding-rate.html">펀딩비</a><a href="{p}guide/liquidation-price.html">청산가</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/forecast-range.html">예측 범위 읽는 법</a><a href="{p}guide/kimchi-premium.html">김치 프리미엄</a><a href="{p}guide/funding-rate.html">펀딩비</a><a href="{p}guide/liquidation-price.html">청산가</a>
   <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
 
@@ -48,6 +48,7 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 {body}
 {FOOT.format(p=p)}
 </main>
+<script>document.querySelectorAll("a.mail").forEach((a) => {{ const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; }});</script>
 </body>
 </html>
 """
@@ -83,8 +84,8 @@ PAGES["about.html"] = ("BTC Agent 소개", "비트코인이 1시간·1일·1주 
   <li>투자 권유를 하지 않습니다. 롱/숏 관점은 실험이며, 가상 계좌 성적이 그 한계를 보여 줍니다.</li>
   <li>이용자의 거래 내역·잔고 같은 개인 정보는 서버로 보내지도, 저장하지도 않습니다.</li>
 </ul>
-<h2>문의</h2>
-<p>오류 제보나 제안은 <a href="https://github.com/rudalstb/driftbtc/issues" target="_blank" rel="noopener">GitHub 이슈</a>로 남겨 주세요.</p>
+<h2>문의 · 광고 제휴</h2>
+<p>오류 제보·제안·광고 문의는 이메일 <a class="mail" data-u="rudalstb" data-d="gmail.com"></a> 로 보내 주세요. 보통 하루 안에 답장합니다. 개발 관련 제안은 <a href="https://github.com/rudalstb/driftbtc/issues" target="_blank" rel="noopener">GitHub 이슈</a>도 좋습니다.</p>
 <a class="cta" href="index.html">사이트로 돌아가기 →</a>
 """)
 
@@ -125,7 +126,7 @@ PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는
 <h2>6. 보관과 파기</h2>
 <p>익명 집계값은 통계 목적으로 보관하며, 날짜별 세부 집계는 40일 뒤 자동 삭제됩니다.</p>
 <h2>7. 문의</h2>
-<p>개인정보 관련 문의는 <a href="https://github.com/rudalstb/driftbtc/issues" target="_blank" rel="noopener">GitHub 이슈</a>로 남겨 주세요. 이 방침은 변경될 수 있으며, 변경 시 이 페이지에 수정일을 표시합니다.</p>
+<p>개인정보 관련 문의는 이메일 <a class="mail" data-u="rudalstb" data-d="gmail.com"></a> 로 보내 주세요. 이 방침은 변경될 수 있으며, 변경 시 이 페이지에 수정일을 표시합니다.</p>
 """)
 
 PAGES["guide/forecast-range.html"] = ("비트코인 예측 범위 읽는 법 (68%·95% 구간)", "BTC Agent 의 예측 범위가 무엇을 뜻하는지, 68%와 95% 구간의 차이, 범위를 매매에 어떻게 쓰는지 쉽게 설명합니다.", """

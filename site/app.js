@@ -1180,6 +1180,13 @@ renderCalc();
 pollEth();
 setInterval(pollEth, 5000);
 
+// ✉️ 문의 메일 링크: 주소를 그대로 적어 두면 스팸 수집기에 긁히므로 열 때 조립한다
+document.querySelectorAll("a.mail").forEach((a) => {
+  const addr = `${a.dataset.u}@${a.dataset.d}`;
+  a.href = `mailto:${addr}?subject=${encodeURIComponent("[BTC Agent] 문의")}`;
+  if (!a.textContent.trim()) a.textContent = addr;
+});
+
 // ✈️ 텔레그램 채널 버튼 (config.js 의 TELEGRAM_URL 이 있을 때만)
 if (window.TELEGRAM_URL) {
   $("tg-link").href = window.TELEGRAM_URL;
