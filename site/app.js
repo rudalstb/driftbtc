@@ -644,19 +644,27 @@ function renderCopyProjects(copy) {
 }
 
 // 🏁 시드·출금 요약: 총 수익 = 누적 출금 + 현재 자산 − 시드 (값은 config.js 의 OPERATOR)
+// 입금·출금은 비트겟 지갑 기록에서 자동 집계(flows). 권한이 없거나 실패하면 config.js 의 OPERATOR 값으로
 function renderSeed(equity) {
-  const o = window.OPERATOR;
+  const o = window.OPERATOR || {};
   const box = $("mp-seed");
-  if (!o || !o.seed) return;
+  const f = lastPosData?.flows;
+  const auto = f && !f.errors?.length && (f.deposits_usd > 0 || f.withdrawals_usd > 0);
+  const seed = auto && f.deposits_usd > 0 ? f.deposits_usd : o.seed;
+  const withdrawn = auto ? f.withdrawals_usd : o.withdrawn || 0;
+  if (!seed) return;
   box.hidden = false;
-  const withdrawn = o.withdrawn || 0;
+  const d = (ms) => { const k = new Date(ms + 9 * 3600e3); return `${k.getUTCMonth() + 1}/${k.getUTCDate()}`; };
   let total = "";
   if (equity != null) {
-    const profit = withdrawn + equity - o.seed;
-    total = `<div class="seed-total">총 수익 ${signed(profit)} <span class="${profit >= 0 ? "pos" : "neg"}">(${pct((profit / o.seed) * 100, 0)})</span>
-      <span class="muted small">= 출금 ${usd(withdrawn)} + 현재 자산 ${money(equity)} − 시드 ${usd(o.seed)}</span></div>`;
+    const profit = withdrawn + equity - seed;
+    total = `<div class="seed-total">총 수익 ${signed(profit)} <span class="${profit >= 0 ? "pos" : "neg"}">(${pct((profit / seed) * 100, 0)})</span>
+      <span class="muted small">= 누적 출금 ${usd(withdrawn)} + 현재 자산 ${money(equity)} − 누적 입금 ${usd(seed)}</span></div>`;
   }
-  box.innerHTML = `<div>🏁 시드 <b>${usd(o.seed)}</b>로 시작 · 누적 출금 <b class="pos">${usd(withdrawn)}</b></div>${total}`;
+  const src = auto
+    ? `<span class="muted small">· 비트겟 입출금 기록 자동 집계 (입금 ${f.deposit_n}건 · 출금 ${f.withdrawal_n}건${f.last_withdrawal ? ` · 마지막 출금 ${d(f.last_withdrawal)}` : ""})${f.other?.length ? ` · 달러 외 코인 ${f.other.length}건은 제외` : ""}</span>`
+    : `<span class="muted small">· 운영자가 직접 적은 값</span>`;
+  box.innerHTML = `<div>🏁 누적 입금 <b>${usd(seed)}</b> · 누적 출금 <b class="pos">${usd(withdrawn)}</b> ${src}</div>${total}`;
 }
 
 // 🧾 최근 청산 기록: 보관 기록 + 실시간 최근 기록을 합쳐 7일/30일/90일 기간으로 보여준다

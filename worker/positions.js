@@ -175,6 +175,77 @@ async function readHistoryAll(env) {
 
 // 카피트레이딩 팔로워 계좌: 프로젝트(따라 하는 트레이더)마다 잔고와 포지션을 일반 키로 읽는다
 // current-positions 는 마크가격·미실현손익을 주지 않아 공개 시세로 직접 계산한다
+// 💸 입금·출금 누계: 비트겟 지갑 기록(최대 90일 단위)을 2년치 되짚어 더한다. 1시간에 한 번만 새로 받는다
+const FLOWS_CACHE_MS = 60 * 60 * 1000;
+let flowsCache = { at: 0, data: null };
+const STABLE = new Set(["USDT", "USDC", "USD"]);
+
+async function walletRecords(env, kind) {
+  // v2 지갑 기록 (통합 계정도 지갑 API 는 같다). 실패하면 v3 이름으로 한 번 더
+  const paths = kind === "withdraw"
+    ? ["/api/v2/spot/wallet/withdrawal-records", "/api/v3/account/withdrawal-records"]
+    : ["/api/v2/spot/wallet/deposit-records", "/api/v3/account/deposit-records"];
+  const now = Date.now();
+  let lastErr = null;
+  for (const path of paths) {
+    try {
+      const out = [];
+      for (let end = now, i = 0; i < 8; i++, end -= 89 * DAY) {
+        const start = end - 89 * DAY;
+        let idLessThan = "";
+        for (let page = 0; page < 10; page++) {
+          const params = { startTime: String(start), endTime: String(end), limit: "100" };
+          if (idLessThan) params.idLessThan = idLessThan;
+          const d = await get(env, path, params);
+          const list = Array.isArray(d) ? d : d?.list || [];
+          out.push(...list);
+          const lastId = list[list.length - 1]?.orderId || list[list.length - 1]?.id;
+          if (list.length < 100 || !lastId || lastId === idLessThan) break;
+          idLessThan = lastId;
+        }
+      }
+      return out;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+const ok = (r) => !r.status || /success|succ|done|complete/i.test(String(r.status));
+
+async function readFlows(env) {
+  if (flowsCache.data && Date.now() - flowsCache.at < FLOWS_CACHE_MS) return flowsCache.data;
+  const out = { deposits_usd: 0, withdrawals_usd: 0, deposit_n: 0, withdrawal_n: 0, other: [], errors: [], since: null, last_withdrawal: null, last_deposit: null };
+  const tally = (list, key, nKey, lastKey) => {
+    const seen = new Set();
+    for (const r of list) {
+      const id = r.orderId || r.id || `${r.coin}-${r.cTime}-${r.size}`;
+      if (seen.has(id) || !ok(r)) continue;
+      seen.add(id);
+      const coin = String(r.coin || "").toUpperCase();
+      const size = Math.abs(num(r.size) || 0);
+      const t = num(r.cTime) || num(r.uTime);
+      if (STABLE.has(coin)) {
+        out[key] += size;
+        out[nKey]++;
+        if (!out[lastKey] || t > out[lastKey]) out[lastKey] = t;
+      } else if (size) {
+        out.other.push({ kind: key === "deposits_usd" ? "deposit" : "withdraw", coin, size, t });
+      }
+      if (t && (!out.since || t < out.since)) out.since = t;
+    }
+  };
+  try { tally(await walletRecords(env, "deposit"), "deposits_usd", "deposit_n", "last_deposit"); }
+  catch (e) { out.errors.push("입금 기록: " + String(e.message || e)); }
+  try { tally(await walletRecords(env, "withdraw"), "withdrawals_usd", "withdrawal_n", "last_withdrawal"); }
+  catch (e) { out.errors.push("출금 기록: " + String(e.message || e)); }
+  out.updated = Date.now();
+  // 권한이 없어 둘 다 실패한 경우는 캐시하지 않고(권한 추가 즉시 반영되게) 짧게만 보관
+  flowsCache = { at: out.errors.length === 2 ? Date.now() - FLOWS_CACHE_MS + 60000 : Date.now(), data: out };
+  return out;
+}
+
 const COPY_CACHE_MS = 20000; // 포지션 조회가 초당 1회 제한이라 카피 정보는 20초에 한 번만
 let copyCache = { at: 0, data: null };
 const lastGood = new Map(); // 프로젝트별 마지막 성공 값 (일시적인 호출 제한 때 대신 보여줌)
@@ -315,7 +386,13 @@ export default {
           if (copy.projects.length) d.account.equity = (d.account.equity || 0) + copy.equity;
           d.account.unrealized_pnl = (d.account.unrealized_pnl || 0) + (copy.unrealized_pnl || 0);
         }
-        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined } }) };
+        let flows = null;
+        try {
+          flows = await readFlows(env);
+        } catch (e) {
+          flows = { errors: [String(e.message || e)] };
+        }
+        cache = { at: Date.now(), body: JSON.stringify({ updated: Date.now(), mode, ...d, copy: copy && { ...copy, positions: undefined }, flows }) };
       }
       return new Response(cache.body, { headers: cors });
     } catch (e) {
