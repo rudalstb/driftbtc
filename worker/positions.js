@@ -190,23 +190,24 @@ async function walletRecords(env, kind) {
   for (const path of paths) {
     try {
       const out = [];
-      for (let end = now, i = 0; i < 8; i++, end -= 89 * DAY) {
-        const start = end - 89 * DAY;
-        let idLessThan = "";
+      // 통합 계정(v3)은 한 번에 30일까지만 → 29일 단위로 2년치(25구간). 다음 쪽은 cursor 또는 idLessThan
+      for (let end = now, i = 0; i < 25; i++, end -= 29 * DAY) {
+        const start = end - 29 * DAY;
+        let next = "";
         for (let page = 0; page < 10; page++) {
           const params = { startTime: String(start), endTime: String(end), limit: "100" };
-          if (idLessThan) params.idLessThan = idLessThan;
+          if (next) params[path.includes("/v3/") ? "cursor" : "idLessThan"] = next;
           const d = await get(env, path, params);
           const list = Array.isArray(d) ? d : d?.list || [];
           out.push(...list);
-          const lastId = list[list.length - 1]?.orderId || list[list.length - 1]?.id;
-          if (list.length < 100 || !lastId || lastId === idLessThan) break;
-          idLessThan = lastId;
+          const more = d?.cursor || list[list.length - 1]?.orderId || list[list.length - 1]?.id;
+          if (list.length < 100 || !more || more === next) break;
+          next = more;
         }
       }
       return out;
     } catch (e) {
-      lastErr = e;
+      lastErr = lastErr ? new Error(`${lastErr.message} | ${e.message}`) : e;
     }
   }
   throw lastErr;
