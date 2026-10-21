@@ -21,6 +21,8 @@ try { tvInterval = localStorage.getItem("driftbtc_tv_iv") || "1h"; } catch (e) {
 let tvChart = null, tvCandles = null, tvVolume = null, tvLines = [];
 let tvLoaded = false, tvLoading = null, tvCandleData = [], tvTimer = null;
 let tvWs = null, tvWsIv = null, tvWsOk = false;
+let tvAuto = true, tvHover = false, tvLastTick = 0, tvFirstLoad = true; // 자동: 최신 봉을 따라가고, 간격을 바꾸면 보기를 초기화
+try { tvAuto = localStorage.getItem("driftbtc_tv_auto") !== "0"; } catch (e) {}
 
 function tvLoadLib() {
   if (window.LightweightCharts) return Promise.resolve();
@@ -65,10 +67,42 @@ function tvCreate() {
   tvChart.subscribeCrosshairMove((p) => {
     const c = p?.seriesData?.get(tvCandles);
     const leg = $("tv-legend");
-    if (!c) { leg.textContent = ""; return; }
+    if (!c) { tvHover = false; tvLiveLegend(); return; }
+    tvHover = true;
     const chg = ((c.close / c.open - 1) * 100).toFixed(2);
     leg.innerHTML = `시 ${c.open.toLocaleString("en-US")} · 고 ${c.high.toLocaleString("en-US")} · 저 ${c.low.toLocaleString("en-US")} · 종 <b>${c.close.toLocaleString("en-US")}</b> <span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${chg}%</span>`;
   });
+}
+
+// 마우스를 올리지 않았을 때 범례: 현재가 · 마지막 체결 시각 (틱마다 갱신돼서 실시간임이 보인다)
+function tvLiveLegend() {
+  if (tvHover) return;
+  const leg = $("tv-legend");
+  const last = tvCandleData[tvCandleData.length - 1];
+  if (!leg || !last) return;
+  const t = tvLastTick ? new Date(tvLastTick).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }) : "";
+  const chg = ((last.close / last.open - 1) * 100).toFixed(2);
+  leg.innerHTML = `현재 <b>${last.close.toLocaleString("en-US")}</b> <span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${chg}%</span> <span class="muted">(이번 봉) · 마지막 체결 ${t}</span>`;
+}
+
+// 보기 초기화: 최근 봉 120개가 꽉 차게, 오른쪽에 여백 조금
+function tvFit() {
+  if (!tvChart || !tvCandleData.length) return;
+  const ts = tvChart.timeScale();
+  ts.resetTimeScale();
+  ts.applyOptions({ rightOffset: 8 });
+  const range = { from: Math.max(0, tvCandleData.length - 120), to: tvCandleData.length + 8 };
+  ts.setVisibleLogicalRange(range);
+  // 초기화가 한 프레임 뒤에 적용되는 경우가 있어 한 번 더
+  requestAnimationFrame(() => { try { ts.setVisibleLogicalRange(range); } catch (e) {} });
+}
+
+function tvSetAuto(on) {
+  tvAuto = on;
+  try { localStorage.setItem("driftbtc_tv_auto", on ? "1" : "0"); } catch (e) {}
+  const b = $("tv-auto");
+  if (b) b.setAttribute("aria-pressed", String(on));
+  if (on) tvFit();
 }
 
 function tvDrawOverlays() {
@@ -130,7 +164,9 @@ async function tvLoad() {
     tvCandles.setData(tvCandleData.map(({ volume, ...c }) => c));
     tvVolume.setData(tvCandleData.map((c) => ({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(63,185,80,0.35)" : "rgba(248,81,73,0.35)" })));
     tvDrawOverlays();
-    tvChart.timeScale().setVisibleLogicalRange({ from: tvCandleData.length - 120, to: tvCandleData.length + 12 });
+    tvLiveLegend();
+    if (tvAuto || tvFirstLoad) tvFit();
+    tvFirstLoad = false;
     note.textContent = "";
   } catch (e) {
     note.textContent = e.message + " (바이낸스 접속이 막힌 지역이면 차트가 안 나올 수 있어요)";
@@ -157,6 +193,9 @@ function tvConnect() {
     else return;
     tvCandles.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
     tvVolume.update({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(63,185,80,0.35)" : "rgba(248,81,73,0.35)" });
+    tvLastTick = Date.now();
+    tvLiveLegend();
+    if (tvAuto && !last) tvChart.timeScale().scrollToRealTime(); // 새 봉이 생기면 오른쪽 끝으로
   };
   tvWs.onclose = () => { tvWsOk = false; tvStatus(); if (activeTab === "chart" && tvWsIv === tvInterval) setTimeout(() => { if (activeTab === "chart" && !tvWsOk) tvConnect(); }, 3000); };
   tvWs.onerror = () => { try { tvWs.close(); } catch (e) {} };
@@ -187,6 +226,8 @@ function tvTick() {
     last.close = live; last.high = Math.max(last.high, live); last.low = Math.min(last.low, live);
     tvCandles.update({ time: last.time, open: last.open, high: last.high, low: last.low, close: last.close });
   }
+  tvLastTick = Date.now();
+  tvLiveLegend();
 }
 
 async function tvOpen() {
@@ -212,16 +253,27 @@ function tvBindToolbar() {
       tvInterval = b.dataset.iv;
       try { localStorage.setItem("driftbtc_tv_iv", tvInterval); } catch (e) {}
       document.querySelectorAll("#tv-iv button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.iv === tvInterval));
+      tvFirstLoad = true; // 간격을 바꾸면 보기를 항상 초기화
       tvLoad().then(tvConnect);
     });
   });
+  $("tv-auto")?.addEventListener("click", () => tvSetAuto(!tvAuto));
+  tvSetAuto(tvAuto);
+  const el = $("tv-chart");
+  const manual = () => { if (tvAuto) { tvAuto = false; try { localStorage.setItem("driftbtc_tv_auto", "0"); } catch (e) {} $("tv-auto")?.setAttribute("aria-pressed", "false"); } };
+  el.addEventListener("wheel", manual, { passive: true });
+  el.addEventListener("pointerdown", manual);
+  el.addEventListener("touchstart", manual, { passive: true });
   document.querySelectorAll("#tv-toggles input").forEach((c) => {
     c.checked = tvShow[c.dataset.key];
     c.addEventListener("change", () => { tvShow[c.dataset.key] = c.checked; tvDrawOverlays(); });
   });
 }
 
-document.addEventListener("tabshown", (e) => { if (e.detail === "chart") tvOpen(); else if (tvLoaded) tvDisconnect(); });
+document.addEventListener("tabshown", (e) => {
+  if (e.detail === "chart") { tvOpen(); if (tvLoaded && tvAuto) setTimeout(tvFit, 120); }
+  else if (tvLoaded) tvDisconnect();
+});
 // 페이지를 차트 탭으로 바로 열었을 때 (탭 초기화가 이 스크립트보다 먼저 끝남)
 if (typeof activeTab !== "undefined" && activeTab === "chart") tvOpen();
 // 예측이 새로 오면 겹쳐 그린 선도 갱신
