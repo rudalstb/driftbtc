@@ -11,7 +11,7 @@ function avgSide() { return document.querySelector("#av-side button[aria-pressed
 function syncAvgInputs() {
   if (!avgTouched.entry) $("av-entry").value = live != null ? fmtIn(live) : "";
   else if (avgEntryUsd != null) $("av-entry").value = fmtIn(avgEntryUsd);
-  ["av-avg-unit", "av-entry-unit", "av-target-unit"].forEach((id) => { if ($(id)) $(id).textContent = krw() ? "(₩)" : "($)"; });
+  ["av-avg-unit", "av-entry-unit", "av-target-unit", "av-loss-unit"].forEach((id) => { if ($(id)) $(id).textContent = krw() ? "(₩)" : "($)"; });
 }
 
 function renderAvg(sync = false) {
@@ -67,6 +67,19 @@ function renderAvg(sync = false) {
       `</div><div class="muted small">추가 수량을 넣으면 새 평단·청산가를 계산해요.</div>`;
   }
 
+  // 허용 손실이 있으면: 물 탄 뒤 손절가를 어디 둬야 그 안인가
+  const loss = avgUsdIn("av-loss");
+  if (loss > 0) {
+    const qtyNow = q2 > 0 ? q1 + q2 : q1;
+    const avgNow = q2 > 0 ? (p1 * q1 + p2 * q2) / qtyNow : p1;
+    const stop = long ? avgNow - loss / qtyNow : avgNow + loss / qtyNow;
+    const liqNow = liqOf(avgNow);
+    const beyond = long ? stop <= liqNow : stop >= liqNow;
+    const fromMark = (stop / mark - 1) * 100;
+    html += `<div class="rk-line">허용 손실 ${money(loss)} 안에 있으려면 ${q2 > 0 ? "물 탄 뒤" : "지금"} 손절가는 <b class="${beyond ? "neg" : ""}">${usd(stop)}</b> <span class="muted">(현재가에서 ${pct(fromMark, 2)})</span>` +
+      (beyond ? ` <span class="neg">— 청산가(${usd(liqNow)}) 너머라 손절 전에 청산돼요. 레버리지를 낮추거나 허용 손실을 키워야 해요.</span>` : "") + `</div>`;
+  }
+
   // 거꾸로: 목표 평단까지 내리려면
   if (tgt > 0) {
     const ok = long ? tgt < p1 && tgt > p2 : tgt > p1 && tgt < p2;
@@ -81,7 +94,7 @@ function renderAvg(sync = false) {
 }
 
 // 입력 연결
-["av-avg", "av-qty", "av-lev", "av-add", "av-target"].forEach((id) => $(id)?.addEventListener("input", () => renderAvg()));
+["av-avg", "av-qty", "av-lev", "av-add", "av-target", "av-loss"].forEach((id) => $(id)?.addEventListener("input", () => renderAvg()));
 $("av-entry")?.addEventListener("input", (e) => { avgTouched.entry = true; avgEntryUsd = toUsd(Number(e.target.value)) || null; renderAvg(); });
 document.querySelectorAll("#av-side button").forEach((b) =>
   b.addEventListener("click", () => { document.querySelectorAll("#av-side button").forEach((x) => x.setAttribute("aria-pressed", x === b)); renderAvg(); })

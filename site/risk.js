@@ -104,8 +104,17 @@ $("rk-entry").addEventListener("input", (e) => { riskTouched.entry = true; riskE
 document.querySelectorAll("#rk-side button").forEach((b) =>
   b.addEventListener("click", () => { document.querySelectorAll("#rk-side button").forEach((x) => x.setAttribute("aria-pressed", x === b)); renderRisk(); })
 );
-document.querySelectorAll(".rk-quick button").forEach((b) =>
+document.querySelectorAll(".rk-quick button[data-for]").forEach((b) =>
   b.addEventListener("click", () => { $(b.dataset.for).value = b.dataset.v; renderRisk(); })
+);
+// 📏 변동성 기준 추천 손절: 그 시간 안에 손절가에 닿을 확률이 약 25% 가 되는 거리 (1.15σ)
+document.querySelectorAll(".rk-vol").forEach((b) =>
+  b.addEventListener("click", () => {
+    const sigma = typeof calcSigma === "function" ? calcSigma(`1h:${b.dataset.h}`) : null;
+    if (!sigma) return;
+    $("rk-stop").value = Math.max(0.1, Math.round(sigma * 1.15 * 1000) / 10);
+    renderRisk();
+  })
 );
 
 window.renderRisk = renderRisk;

@@ -119,6 +119,7 @@ function handleCsvFile(file) {
       return;
     }
     const a = renderAnalysisInto(res.trades, { box: "my-ana", since: "my-ana-since", chart: "my-ana-chart" });
+    window.myAnalysis = a; // 계산기 탭 '기대값·켈리'가 불러다 쓴다 (브라우저 안에서만)
     status.innerHTML = `<span class="pos">✅ ${file.name}</span> · ${res.trades.length}건 읽음 <span class="muted">(알아본 열: ${res.map.join(", ")})</span> · 이 파일은 내 브라우저 안에서만 처리됐고 어디에도 저장되지 않았어요.`;
     $("my-ana-clear").hidden = !a;
     try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=my-analysis-used"); } catch (e) {} // 쓰임새 집계만 (내용은 안 보냄)

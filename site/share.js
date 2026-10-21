@@ -7,7 +7,7 @@ const TABS = [
   { id: "market", name: "🚦 진입 분석", members: ["#futures", "#filter"] },
   { id: "verify", name: "🎯 적중률", members: ["#game", "#paper", "#accuracy"], freqTabs: true },
   { id: "operator", name: "💼 실전 계좌", members: ["#mypos"] },
-  { id: "tools", name: "🧮 계산기", members: ["#calc", "#risk", "#avg"] },
+  { id: "tools", name: "🧮 계산기", members: ["#calc-nav", "#calc", "#risk", "#avg", "#pnl", "#edge", "#kimp"] },
   { id: "mine", name: "🩺 매매 진단", members: ["#my-analysis"] },
   { id: "say", name: "🗳 롱숏 투표", members: ["#say"] },
 ];

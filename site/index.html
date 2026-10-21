@@ -150,6 +150,10 @@
       <div class="say-toast" id="say-msg" hidden></div>
     </section>
 
+    <nav class="calc-nav" id="calc-nav" aria-label="계산기 목록">
+      <a href="#calc">🎯 이 가격 될까</a><a href="#risk">🛡️ 얼마나 들어갈까</a><a href="#avg">🪣 물타기</a><a href="#pnl">💵 손익</a><a href="#edge">📐 기대값·켈리</a><a href="#kimp">🇰🇷 김프 차익</a>
+    </nav>
+
     <section class="card calc" id="calc" data-sec="calc">
       <h2>🎯 이 가격 될까?</h2>
       <p class="muted small">목표 가격과 기간을 고르면, 지금 가격에서 그 안에 도달할 확률을 계산해요.</p>
@@ -193,7 +197,7 @@
         </label>
         <label class="calc-field"><span>손절 거리 (진입가에서 %)</span>
           <input id="rk-stop" type="number" inputmode="decimal" step="0.1" min="0.1" max="50" value="1">
-          <span class="rk-quick"><button data-for="rk-stop" data-v="0.5">0.5%</button><button data-for="rk-stop" data-v="1">1%</button><button data-for="rk-stop" data-v="2">2%</button><button data-for="rk-stop" data-v="3">3%</button></span>
+          <span class="rk-quick"><button data-for="rk-stop" data-v="0.5">0.5%</button><button data-for="rk-stop" data-v="1">1%</button><button data-for="rk-stop" data-v="2">2%</button><button data-for="rk-stop" data-v="3">3%</button><button class="rk-vol" data-h="4" title="지금 변동성으로 4시간 보유 때 평소 출렁임에 안 털릴 거리">📏 단타 추천</button><button class="rk-vol" data-h="24" title="지금 변동성으로 하루 보유 때 평소 출렁임에 안 털릴 거리">📏 하루 추천</button></span>
         </label>
         <label class="calc-field"><span>레버리지 (배)</span>
           <input id="rk-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
@@ -232,9 +236,98 @@
         <label class="calc-field"><span>거꾸로: 목표 평단 <span class="muted" id="av-target-unit">($)</span></span>
           <input id="av-target" type="number" inputmode="decimal" step="any" placeholder="예: 83000">
         </label>
+        <label class="calc-field"><span>이 포지션 허용 손실 <span class="muted" id="av-loss-unit">($)</span> <span class="muted">· 선택</span></span>
+          <input id="av-loss" type="number" inputmode="decimal" step="any" placeholder="예: 50">
+        </label>
       </div>
       <div id="av-result" class="calc-result"></div>
       <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
+    </section>
+
+    <section class="card pnl-card" id="pnl" data-sec="pnl">
+      <h2>💵 손익 계산기</h2>
+      <p class="muted small">진입가·청산가·수량·배수를 넣으면 수수료·펀딩비까지 뺀 <b>실수령 손익</b>과 수익률(ROE)이 나와요. 반대로 목표 ROE를 넣으면 그 가격을 알려줘요.</p>
+      <div class="calc-row">
+        <label class="calc-field"><span>방향</span>
+          <span class="period rk-side" id="pl-side" role="group"><button data-side="long" aria-pressed="true">롱</button><button data-side="short" aria-pressed="false">숏</button></span>
+        </label>
+        <label class="calc-field"><span>진입가 <span class="muted" id="pl-entry-unit">($)</span> <span class="muted">· 비우면 실시간 BTC</span></span>
+          <input id="pl-entry" type="number" inputmode="decimal" step="any" placeholder="실시간 BTC">
+        </label>
+        <label class="calc-field"><span>수량 (개)</span>
+          <input id="pl-qty" type="number" inputmode="decimal" step="any" placeholder="예: 0.05">
+        </label>
+        <label class="calc-field"><span>레버리지 (배)</span>
+          <input id="pl-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
+        </label>
+      </div>
+      <div class="calc-row">
+        <label class="calc-field"><span>청산가 <span class="muted" id="pl-exit-unit">($)</span></span>
+          <input id="pl-exit" type="number" inputmode="decimal" step="any" placeholder="예: 86000">
+        </label>
+        <label class="calc-field"><span>또는 목표 수익률 ROE (%)</span>
+          <input id="pl-roe" type="number" inputmode="decimal" step="any" placeholder="예: 50">
+          <span class="rk-quick pl-quick"><button data-roe="10">+10%</button><button data-roe="30">+30%</button><button data-roe="50">+50%</button><button data-roe="100">+100%</button><button data-roe="-50">−50%</button></span>
+        </label>
+        <label class="calc-field"><span>보유 시간 (시간, 펀딩비용)</span>
+          <input id="pl-hours" type="number" inputmode="numeric" step="1" min="0" value="8">
+        </label>
+        <label class="calc-field"><span>수수료 편도 (%)</span>
+          <input id="pl-fee" type="number" inputmode="decimal" step="0.01" min="0" value="0.05">
+        </label>
+      </div>
+      <div id="pl-result" class="calc-result"></div>
+      <p class="muted small">펀딩비는 지금 바이낸스 비율을 8시간마다 적용한 근사치예요(롱이 내고 숏이 받음). 청산가는 격리 마진 기준 근사치. 투자 권유 아님.</p>
+    </section>
+
+    <section class="card edge-card" id="edge" data-sec="edge">
+      <h2>📐 이 습관으로 계속하면 버나? (기대값·켈리)</h2>
+      <p class="muted small">승률과 손익비만 넣으면 거래당 기대값, 손익분기 승률, 적정 베팅 비율, 10연패 확률이 나와요.</p>
+      <div class="calc-row">
+        <label class="calc-field"><span>승률 (%)</span>
+          <input id="ed-win" type="number" inputmode="decimal" step="1" min="1" max="99" placeholder="예: 55">
+        </label>
+        <label class="calc-field"><span>손익비 (평균 이익 ÷ 평균 손실)</span>
+          <input id="ed-rr" type="number" inputmode="decimal" step="0.1" min="0.1" placeholder="예: 1.5">
+        </label>
+        <label class="calc-field"><span>1회 손절 금액 (선택)</span>
+          <input id="ed-risk" type="number" inputmode="decimal" step="any" placeholder="예: 10">
+        </label>
+        <label class="calc-field"><span>&nbsp;</span>
+          <button class="rk-clear" id="ed-load" type="button" style="margin-top:0;padding:9px 12px">🩺 매매 진단 결과 불러오기</button>
+        </label>
+      </div>
+      <div class="muted small" id="ed-note"></div>
+      <div id="ed-result" class="calc-result"></div>
+    </section>
+
+    <section class="card kimp-card" id="kimp" data-sec="kimp">
+      <h2>🇰🇷 김프 차익, 실제로 얼마 남나?</h2>
+      <p class="muted small">환전·해외 매수·송금·업비트 매도 비용을 다 빼면 김치 프리미엄에서 실제로 얼마가 남는지, 손익분기 김프는 몇 %인지 계산해요.</p>
+      <div class="muted small" id="kp-now"></div>
+      <div class="calc-row">
+        <label class="calc-field"><span>투입 원화 (₩)</span>
+          <input id="kp-amt" type="number" inputmode="numeric" step="100000" value="10000000">
+        </label>
+        <label class="calc-field"><span>김프 (%) <button class="rk-clear" id="kp-reset" type="button" style="margin:0 0 0 6px;padding:1px 7px;font-size:11px">지금 값</button></span>
+          <input id="kp-kimp" type="number" inputmode="decimal" step="0.01" placeholder="자동">
+        </label>
+        <label class="calc-field"><span>환전 비용 (%, 은행 스프레드)</span>
+          <input id="kp-fx" type="number" inputmode="decimal" step="0.1" value="1.0">
+        </label>
+      </div>
+      <div class="calc-row">
+        <label class="calc-field"><span>해외 매수 수수료 (%)</span>
+          <input id="kp-buy" type="number" inputmode="decimal" step="0.01" value="0.1">
+        </label>
+        <label class="calc-field"><span>송금 수수료 (₩)</span>
+          <input id="kp-send" type="number" inputmode="numeric" step="100" value="1500">
+        </label>
+        <label class="calc-field"><span>업비트 매도 수수료 (%)</span>
+          <input id="kp-sell" type="number" inputmode="decimal" step="0.01" value="0.05">
+        </label>
+      </div>
+      <div id="kp-result" class="calc-result"></div>
     </section>
 
     <section class="card futures" id="futures" data-sec="futures" hidden>
@@ -373,5 +466,6 @@
   <script src="say.js"></script>
   <script src="chart.js"></script>
   <script src="avg.js"></script>
+  <script src="tools2.js"></script>
 </body>
 </html>

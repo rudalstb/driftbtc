@@ -255,6 +255,9 @@ function rerenderAll() {
   renderCalc();
   window.renderRisk?.(true);
   window.renderAvg?.(true);
+  window.renderPnl?.(true);
+  window.renderEdge?.();
+  window.renderKimp2?.(true);
   if (lastFutures) renderFutures(lastFutures);
 }
 
@@ -1090,6 +1093,7 @@ function renderCalc() {
     `<div class="muted small">지금 ${usd(live)} → 목표 <b>${usd(calcTargetUsd)}</b> (${pct(d * 100, 2)})</div>` +
     `<div class="calc-big"><b>${label}</b> 안에 한 번이라도 닿을 확률 <b class="${cls}">${p}%</b> <span class="${cls}">${word}</span></div>` +
     `<div class="small">${label} 뒤에 그 가격 ${up ? "이상" : "이하"}일 확률 <b>${Math.round(end * 100)}%</b></div>` +
+    (touch > 0 && touch < 1 ? `<div class="small">이 가격을 익절 목표로 쓴다면, 손익비가 <b>${((1 - touch) / touch).toFixed(2)}</b> 이상이어야 기대값이 플러스예요 <span class="muted">(닿을 확률 ${p}% 기준)</span></div>` : "") +
     `<div class="muted small">예측 범위(변동성)로 계산한 근사치예요. 큰 뉴스가 있으면 더 크게 움직일 수 있어요.</div>`;
 }
 
