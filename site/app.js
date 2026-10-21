@@ -522,7 +522,7 @@ function renderPaper() {
     ? `<div class="paper-recent">${[...p.recent].reverse().map((t) => `<span>${sideTag(t.side)} <span class="muted">${lab(t.open_t)}</span> <b class="${t.pnl_pct >= 0 ? "pos" : "neg"}">${pct(t.pnl_pct, 2)}</b></span>`).join("")}</div>`
     : "";
   box.innerHTML = `<div class="rk-tiles paper-tiles">${tiles}</div>${openLine}` +
-    `<details class="more"><summary>자산 곡선 · 최근 거래 · 규칙 보기</summary><div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
+    `<details class="more" open><summary>자산 곡선 · 최근 거래 · 규칙</summary><div class="eq-wrap"><canvas id="paper-chart"></canvas></div>${recent}` +
     `<div class="muted small">레버리지 1배, 자산 전부를 관점 방향으로. 관점이 바뀔 때만 매매하고 수수료 0.05%·슬리피지 0.02%(편도), 펀딩 0.01%/8시간(롱이 냄)을 가정해요. 실제 체결과는 다를 수 있어요.</div></details>`;
 
   const data = {

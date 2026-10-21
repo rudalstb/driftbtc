@@ -188,7 +188,7 @@ function renderAnalysisInto(list, ids) {
   el.innerHTML =
     `<ul class="ana-diag">${diag}</ul>` +
     `<div class="ana-tiles">${tiles}</div>` +
-    `<details class="more"><summary>자산 곡선 · 시간대 · 요일 · 보유 시간 · 종목별 보기</summary>` +
+    `<details class="more" open><summary>자산 곡선 · 시간대 · 요일 · 보유 시간 · 종목별</summary>` +
     `<div class="label" style="margin-top:14px">누적 순손익 곡선 <span class="muted">· 청산할 때마다 한 점, 빨간 구간이 최대 낙폭</span></div>` +
     `<div class="eq-wrap"><canvas id="${ids.chart}"></canvas></div>` +
     `<div class="ana-grid">` +

@@ -93,7 +93,7 @@ function renderFilter() {
   box.innerHTML =
     `<div class="fl-head fl-${st.level}"><span class="fl-light">${head[0]}</span><div><b>${head[1]}</b><div class="muted small">${head[2]}</div></div></div>` +
     sigLine +
-    `<details class="more" ${st.level !== "green" ? "open" : ""}><summary>이유 ${st.reasons.length}가지 · 다음 발표 보기</summary>` +
+    `<details class="more" open><summary>이유 ${st.reasons.length}가지 · 다음 발표</summary>` +
     `<ul class="ana-diag">${st.reasons.map((r) => `<li class="ana-${r.lv}">${r.text}</li>`).join("")}</ul>` +
     upcoming + `</details>`;
   $("filter").hidden = false;

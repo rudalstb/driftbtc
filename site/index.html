@@ -250,7 +250,7 @@
       <h2>🚦 지금 들어가도 될까?</h2>
       <p class="muted small">변동성·발표 일정·펀딩·쏠림을 매시간 점검해 <b>신호를 꺼야 할 때</b>를 알려줘요.</p>
       <div id="filter-box"></div>
-      <details class="more"><summary>판정 기준 보기</summary><p class="muted small">24시간 변동성이 지난 1년 상위 10% · FOMC/CPI 발표 12시간 전~2시간 후 · 펀딩 +0.05% 초과/−0.02% 미만 · 전체 계정 롱 비율 65% 초과/35% 미만 · 미결제약정 24시간 ±10%. 기준값은 통상 쓰는 값이며 "검증" 탭의 가상 계좌(필터 적용)로 검증해요.</p></details>
+      <details class="more" open><summary>판정 기준</summary><p class="muted small">24시간 변동성이 지난 1년 상위 10% · FOMC/CPI 발표 12시간 전~2시간 후 · 펀딩 +0.05% 초과/−0.02% 미만 · 전체 계정 롱 비율 65% 초과/35% 미만 · 미결제약정 24시간 ±10%. 기준값은 통상 쓰는 값이며 "검증" 탭의 가상 계좌(필터 적용)로 검증해요.</p></details>
     </section>
 
     <section class="card my-analysis" id="my-analysis" data-sec="my-analysis">
@@ -288,8 +288,8 @@
         <div class="table-wrap pc-only"><table id="mp-copypos" class="compact"></table></div>
         <div id="mp-copypos-m" class="m-only"></div>
       </div>
-      <details class="more" id="mp-more">
-        <summary>🔍 운영자 매매 해부 · 월별 성적 · 청산 기록 보기</summary>
+      <details class="more" open id="mp-more">
+        <summary>🔍 운영자 매매 해부 · 월별 성적 · 청산 기록</summary>
         <div class="label game-sub">운영자 매매 해부 <span class="muted" id="mp-analysis-since"></span></div>
         <div class="muted small">최근 90일 청산 기록으로 어디서 벌고 어디서 잃는지 그대로 공개 (진입 시각 기준, 한국 시간)</div>
         <div id="mp-analysis"></div>
@@ -346,7 +346,7 @@
       <p class="muted small">과거 데이터로 "그때 예측했다면 맞았을까?"를 하나씩 확인한 결과예요.</p>
       <div class="acc-grid" id="acc-summary"></div>
 
-      <details class="acc-details">
+      <details class="acc-details" open>
         <summary>자세한 수치 보기 (전문가용)</summary>
         <p class="muted small">걷기식 백테스트: 각 시점에서 그때까지의 데이터로만 학습한 뒤 다음 캔들을 예측했습니다.
           <b>기준선</b>은 "다음 가격 = 현재 가격"입니다. MAPE 는 평균 오차(%)로 낮을수록 좋습니다.</p>
