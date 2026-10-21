@@ -3,13 +3,13 @@
 
 // 🗂️ 탭: 홈에는 "지금 비트코인 어디까지 움직이나"만, 나머지는 탭을 눌러야 보인다 (선택은 브라우저가 기억, 주소 #탭이름 으로 공유 가능)
 const TABS = [
-  { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid", "#tv"], freqTabs: true },
-  { id: "market", name: "📊 시장", members: ["#futures", "#filter"] },
-  { id: "verify", name: "✅ 검증", members: ["#game", "#paper", "#accuracy"], freqTabs: true },
-  { id: "operator", name: "🧑‍💻 운영자", members: ["#mypos"] },
-  { id: "tools", name: "🧮 도구", members: ["#calc", "#risk", "#avg"] },
-  { id: "mine", name: "🔍 내 매매", members: ["#my-analysis"] },
-  { id: "say", name: "💬 한마디", members: ["#say"] },
+  { id: "home", name: "🔮 AI 예측", members: [".brief", ".pair", ".grid", "#tv"], freqTabs: true },
+  { id: "market", name: "🚦 진입 분석", members: ["#futures", "#filter"] },
+  { id: "verify", name: "🎯 적중률", members: ["#game", "#paper", "#accuracy"], freqTabs: true },
+  { id: "operator", name: "💼 실전 계좌", members: ["#mypos"] },
+  { id: "tools", name: "🧮 계산기", members: ["#calc", "#risk", "#avg"] },
+  { id: "mine", name: "🩺 매매 진단", members: ["#my-analysis"] },
+  { id: "say", name: "🗳 롱숏 투표", members: ["#say"] },
 ];
 let activeTab = "home";
 
