@@ -88,32 +88,6 @@
     </div>
     </section>
 
-    <section class="grid" id="forecast-anchor" data-sec="forecast">
-      <div class="card">
-        <button class="share-btn" data-name="forecast" title="이 카드를 이미지로 저장·공유">📸 공유</button>
-        <div class="move-head">
-          <div class="label">이번 <span class="unit"></span>, 얼마나 움직일까? <span class="muted" id="range-end"></span></div>
-          <span class="vol-badge" id="vol-badge"></span>
-        </div>
-        <div class="move-big">보통 <b id="move68">—</b> 안에서 움직여요</div>
-        <div class="muted small" id="move95"></div>
-        <div class="label game-sub">지금 가격에서 <span class="unit"></span> 안에 이 가격까지 닿을 확률</div>
-        <div id="touch-table" class="touch"></div>
-        <div class="small" id="touch-note"></div>
-        <div class="small lev-line" id="lev-line"></div>
-        <div class="muted small" id="live-in-band"></div>
-      </div>
-      <div class="card">
-        <div class="label">오를까, 내릴까?</div>
-        <div id="dir-verdict" class="mid">—</div>
-        <div class="updown" aria-hidden="true"><div id="p-up-bar"></div></div>
-        <div class="updown-label small"><span class="pos" id="p-up"></span><span class="neg" id="p-down"></span></div>
-        <div class="lean"><span>🚀 오르면</span><span id="if-up" class="pos">—</span></div>
-        <div class="lean"><span>😱 내리면</span><span id="if-down" class="neg">—</span></div>
-        <div class="muted small" id="dir-note"></div>
-      </div>
-    </section>
-
     <section class="card tv-card" id="tv" data-sec="chart">
       <div class="game-head">
         <h2 id="tv-title">📈 BTC/USDT 차트</h2>
@@ -138,6 +112,32 @@
       <div id="tv-chart" class="tv-chart"></div>
       <div class="muted small" id="tv-note"></div>
       <div class="muted small">시각은 한국 시간 · 주황 실선 68% · 주황 점선 95% 예측 범위(앞으로) · 회색 점선은 지난 예측 95% 범위 · ▲롱 ▼숏은 사이트가 낸 관점(✓ 적중 ✗ 실패) · 투자 권유 아님</div>
+    </section>
+
+    <section class="grid" id="forecast-anchor" data-sec="forecast">
+      <div class="card">
+        <button class="share-btn" data-name="forecast" title="이 카드를 이미지로 저장·공유">📸 공유</button>
+        <div class="move-head">
+          <div class="label">이번 <span class="unit"></span>, 얼마나 움직일까? <span class="muted" id="range-end"></span></div>
+          <span class="vol-badge" id="vol-badge"></span>
+        </div>
+        <div class="move-big">보통 <b id="move68">—</b> 안에서 움직여요</div>
+        <div class="muted small" id="move95"></div>
+        <div class="label game-sub">지금 가격에서 <span class="unit"></span> 안에 이 가격까지 닿을 확률</div>
+        <div id="touch-table" class="touch"></div>
+        <div class="small" id="touch-note"></div>
+        <div class="small lev-line" id="lev-line"></div>
+        <div class="muted small" id="live-in-band"></div>
+      </div>
+      <div class="card">
+        <div class="label">오를까, 내릴까?</div>
+        <div id="dir-verdict" class="mid">—</div>
+        <div class="updown" aria-hidden="true"><div id="p-up-bar"></div></div>
+        <div class="updown-label small"><span class="pos" id="p-up"></span><span class="neg" id="p-down"></span></div>
+        <div class="lean"><span>🚀 오르면</span><span id="if-up" class="pos">—</span></div>
+        <div class="lean"><span>😱 내리면</span><span id="if-down" class="neg">—</span></div>
+        <div class="muted small" id="dir-note"></div>
+      </div>
     </section>
 
 
@@ -307,7 +307,6 @@
       <p class="muted small">사이트가 낸 관점을 그대로 따랐다면 어땠을지 — 신호가 비용을 이기는지 몇 달에 걸쳐 검증해요.</p>
       <div id="paper-box"><div class="mp-empty">불러오는 중…</div></div>
     </section>
-
 
     <section class="card" id="accuracy" data-sec="accuracy">
       <h2>정확도는 얼마나 되나요?</h2>
