@@ -24,3 +24,6 @@ window.SAY_URL = "https://driftbtc.vercel.app/api/say";
 
 // 텔레그램 공개 채널 주소 (예: "https://t.me/driftbtc"). 비워 두면 버튼이 숨겨진다
 window.TELEGRAM_URL = "";
+
+// 나스닥100 선물 캔들 중계 (Vercel 서버리스 함수, api/nq.js). 야후 파이낸스라 약 10~15분 지연
+window.NQ_URL = "https://driftbtc.vercel.app/api/nq";

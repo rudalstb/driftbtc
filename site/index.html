@@ -116,8 +116,13 @@
 
     <section class="card tv-card" id="tv" data-sec="chart-tab">
       <div class="game-head">
-        <h2>📈 BTC/USDT 차트</h2>
-        <span class="muted small">바이낸스 실시간 캔들 · 달러 기준 · 예측 범위와 관점을 겹쳐서</span>
+        <h2 id="tv-title">📈 BTC/USDT 차트</h2>
+        <span class="muted small">달러 기준 · 비트코인은 예측 범위와 관점을 겹쳐서</span>
+      </div>
+      <div class="tv-bar">
+        <div class="period tv-sym" id="tv-sym" role="group" aria-label="종목">
+          <button data-sym="btc" aria-pressed="true">₿ 비트코인</button><button data-sym="eth" aria-pressed="false">Ξ 이더리움</button><button data-sym="nq" aria-pressed="false">나스닥100</button>
+        </div>
       </div>
       <div class="tv-bar">
         <div class="period" id="tv-iv" role="group" aria-label="봉 간격">

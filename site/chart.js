@@ -14,6 +14,16 @@ const TV_INTERVALS = [
   { k: "1M", name: "1달", fq: "1w", sec: 2592000 },
 ];
 const WS_HOST = "wss://stream.binance.com:9443/ws";
+// 종목: 바이낸스(BTC·ETH)는 웹소켓 실시간, 나스닥100 선물은 야후(약 10~15분 지연)를 15초마다 폴링
+const TV_SYMBOLS = {
+  btc: { name: "BTC/USDT", src: "binance", pair: "BTCUSDT", stream: "btcusdt", precision: 0, minMove: 1, live: () => live, overlays: true },
+  eth: { name: "ETH/USDT", src: "binance", pair: "ETHUSDT", stream: "ethusdt", precision: 2, minMove: 0.01, live: () => eth?.price, overlays: false },
+  nq: { name: "나스닥100 선물", src: "yahoo", precision: 2, minMove: 0.25, live: () => null, overlays: false },
+};
+const YAHOO_IV = { "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "1h", "4h": "1h", "1d": "1d", "1w": "1wk", "1M": "1mo" };
+let tvSymbol = "btc";
+try { tvSymbol = TV_SYMBOLS[localStorage.getItem("driftbtc_tv_sym")] ? localStorage.getItem("driftbtc_tv_sym") : "btc"; } catch (e) {}
+const tvSym = () => TV_SYMBOLS[tvSymbol];
 const KLINE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 let tvInterval = "1h";
 let tvShow = { band: true, marks: true };
@@ -35,10 +45,18 @@ function tvLoadLib() {
 }
 
 async function tvFetchKlines(iv) {
+  const sym = tvSym();
+  if (sym.src === "yahoo") {
+    if (!window.NQ_URL) throw new Error("나스닥 캔들 중계 주소가 없어요");
+    const r = await fetch(`${window.NQ_URL}?interval=${YAHOO_IV[iv]}`, { cache: "no-store" });
+    const j = await r.json();
+    if (!r.ok || j.error) throw new Error(j.error || "나스닥 캔들을 받지 못했어요");
+    return j.candles;
+  }
   for (const host of KLINE_HOSTS) {
     try {
       // 바이낸스는 모르는 인자를 거부하므로 캐시 방지는 cache: "no-store" 로만
-      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500`, { cache: "no-store" });
+      const r = await fetch(`${host}/api/v3/klines?symbol=${sym.pair}&interval=${iv}&limit=500`, { cache: "no-store" });
       if (!r.ok) continue;
       return (await r.json()).map((k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
     } catch (e) {}
@@ -74,7 +92,7 @@ function tvCreate() {
   const el = $("tv-chart");
   if (tvChart) { tvChart.remove(); tvChart = null; }
   tvChart = LightweightCharts.createChart(el, tvTheme());
-  tvCandles = tvChart.addCandlestickSeries({ upColor: css("--up"), downColor: css("--down"), borderVisible: false, wickUpColor: css("--up"), wickDownColor: css("--down"), priceFormat: { type: "price", precision: 0, minMove: 1 } });
+  tvCandles = tvChart.addCandlestickSeries({ upColor: css("--up"), downColor: css("--down"), borderVisible: false, wickUpColor: css("--up"), wickDownColor: css("--down"), priceFormat: { type: "price", precision: tvSym().precision, minMove: tvSym().minMove } });
   tvVolume = tvChart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
   tvChart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
   tvChart.subscribeCrosshairMove((p) => {
@@ -137,7 +155,8 @@ function tvDrawOverlays() {
   if (!tvCandles) return;
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const f = report?.forecasts?.[iv.fq];
-  if (tvShow.band && f) {
+  const overlays = tvSym().overlays;
+  if (overlays && tvShow.band && f) {
     // "2026-10-20 10:00:00+00:00" 처럼 공백이 든 형식도 읽히도록
     const toSec = (t) => Math.floor(new Date(String(t).replace(" ", "T")).getTime() / 1000);
     const nowT = toSec(f.as_of);
@@ -164,7 +183,7 @@ function tvDrawOverlays() {
     }
   }
   // 롱/숏 관점 마커 (최근 채점된 관점)
-  const rec = report?.signals?.[iv.fq]?.recent || [];
+  const rec = overlays ? report?.signals?.[iv.fq]?.recent || [] : [];
   if (tvShow.marks && rec.length) {
     const marks = rec.map((r) => {
       const t = Math.floor(new Date(String(r.t).replace(" ", "T")).getTime() / 1000) - iv.sec * (iv.fq === "1h" ? 1 : 0);
@@ -195,7 +214,7 @@ async function tvLoad() {
     tvFirstLoad = false;
     note.textContent = "";
   } catch (e) {
-    note.textContent = e.message + " (바이낸스 접속이 막힌 지역이면 차트가 안 나올 수 있어요)";
+    note.textContent = e.message + (tvSym().src === "binance" ? " (바이낸스 접속이 막힌 지역이면 차트가 안 나올 수 있어요)" : "");
   }
 }
 
@@ -204,8 +223,9 @@ function tvConnect() {
   tvDisconnect();
   const iv = tvInterval;
   tvWsIv = iv;
+  if (tvSym().src !== "binance") return; // 나스닥은 폴링
   try {
-    tvWs = new WebSocket(`${WS_HOST}/btcusdt@kline_${iv}`);
+    tvWs = new WebSocket(`${WS_HOST}/${tvSym().stream}@kline_${iv}`);
   } catch (e) { return; }
   tvWs.onopen = () => { tvWsOk = true; tvStatus(); };
   tvWs.onmessage = (ev) => {
@@ -235,7 +255,7 @@ function tvDisconnect() {
 
 function tvStatus() {
   const el = $("tv-live");
-  if (el) el.innerHTML = tvWsOk ? `<span class="pos">● 실시간</span>` : `<span class="muted">○ 5초마다</span>`;
+  if (el) el.innerHTML = tvWsOk ? `<span class="pos">● 실시간</span>` : tvSym().src === "yahoo" ? `<span class="muted">○ 15초마다 · 야후 시세 약 10~15분 지연</span>` : `<span class="muted">○ 5초마다</span>`;
 }
 
 // 🩺 자가 점검(10초마다): 화면의 마지막 봉이 봉 간격 2개 넘게 오래됐으면 데이터를 다시 받고 웹소켓도 다시 연결한다
@@ -258,6 +278,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && tv
 // 웹소켓이 끊겨 있을 때만: 실시간 가격으로 마지막 캔들을 갱신
 function tvTick() {
   if (tvWsOk) return;
+  const live = tvSym().live();
   if (!tvCandles || !tvCandleData.length || live == null) return;
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const last = tvCandleData[tvCandleData.length - 1];
@@ -284,13 +305,36 @@ async function tvOpen() {
     tvBindToolbar();
     clearInterval(tvTimer);
     tvTimer = setInterval(() => { if (activeTab === "chart") tvTick(); }, 5000);
-    setInterval(() => { if (activeTab === "chart" && !tvWsOk) tvLoad(); }, 60000); // 웹소켓이 없을 때만 다시 받기
+    setInterval(() => { if (activeTab === "chart" && !tvWsOk && tvSym().src !== "yahoo") tvLoad(); }, 60000); // 웹소켓이 없을 때만 다시 받기
+    setInterval(() => { if (activeTab === "chart" && tvSym().src === "yahoo") tvLoad(); }, 15000); // 나스닥은 15초마다
   }
   await tvLoad();
   tvConnect();
 }
 
+function tvApplySymbolUi() {
+  const sym = tvSym();
+  document.querySelectorAll("#tv-sym button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sym === tvSymbol));
+  $("tv-title").textContent = `📈 ${sym.name} 차트`;
+  $("tv-toggles").hidden = !sym.overlays; // 예측 범위·관점은 비트코인 전용
+  const b4 = document.querySelector('#tv-iv button[data-iv="4h"]');
+  if (b4) b4.title = sym.src === "yahoo" ? "나스닥은 4시간봉이 없어 1시간봉으로 보여줘요" : "";
+}
+
+function tvSetSymbol(k) {
+  if (!TV_SYMBOLS[k]) return;
+  tvSymbol = k;
+  try { localStorage.setItem("driftbtc_tv_sym", k); } catch (e) {}
+  tvApplySymbolUi();
+  tvCandles.applyOptions({ priceFormat: { type: "price", precision: tvSym().precision, minMove: tvSym().minMove } });
+  tvCandles.setData([]); tvVolume.setData([]); tvCandleData = [];
+  tvFirstLoad = true;
+  tvLoad().then(tvConnect);
+}
+
 function tvBindToolbar() {
+  document.querySelectorAll("#tv-sym button").forEach((b) => b.addEventListener("click", () => tvSetSymbol(b.dataset.sym)));
+  tvApplySymbolUi();
   document.querySelectorAll("#tv-iv button").forEach((b) => {
     b.setAttribute("aria-pressed", b.dataset.iv === tvInterval);
     b.addEventListener("click", () => {
