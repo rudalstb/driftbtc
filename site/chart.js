@@ -21,6 +21,7 @@ const TV_SYMBOLS = {
   nq: { name: "나스닥100 선물", src: "yahoo", precision: 2, minMove: 0.25, live: () => null, overlays: false },
 };
 const YAHOO_IV = { "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "1h", "4h": "1h", "1d": "1d", "1w": "1wk", "1M": "1mo" };
+const tvActive = () => typeof activeTab !== "undefined" && activeTab === "home"; // 차트는 홈 탭에 있다
 let tvSymbol = "btc";
 try { tvSymbol = TV_SYMBOLS[localStorage.getItem("driftbtc_tv_sym")] ? localStorage.getItem("driftbtc_tv_sym") : "btc"; } catch (e) {}
 const tvSym = () => TV_SYMBOLS[tvSymbol];
@@ -244,7 +245,7 @@ function tvConnect() {
     tvLiveLegend();
     if (tvAuto && isNew) tvFollow(); // 새 봉이 생기면 보기 창을 따라 민다
   };
-  tvWs.onclose = () => { tvWsOk = false; tvStatus(); if (activeTab === "chart" && tvWsIv === tvInterval) setTimeout(() => { if (activeTab === "chart" && !tvWsOk) tvConnect(); }, 3000); };
+  tvWs.onclose = () => { tvWsOk = false; tvStatus(); if (tvActive() && tvWsIv === tvInterval) setTimeout(() => { if (tvActive() && !tvWsOk) tvConnect(); }, 3000); };
   tvWs.onerror = () => { try { tvWs.close(); } catch (e) {} };
 }
 
@@ -261,7 +262,7 @@ function tvStatus() {
 // 🩺 자가 점검(10초마다): 화면의 마지막 봉이 봉 간격 2개 넘게 오래됐으면 데이터를 다시 받고 웹소켓도 다시 연결한다
 let tvHealing = false;
 async function tvHealthCheck() {
-  if (!tvLoaded || activeTab !== "chart" || tvHealing) return;
+  if (!tvLoaded || !tvActive() || tvHealing) return;
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const d = tvCandles?.data?.() || [];
   const lastT = d.length ? d[d.length - 1].time : 0;
@@ -275,7 +276,7 @@ async function tvHealthCheck() {
   try { await tvLoad(); tvConnect(); } finally { tvHealing = false; }
 }
 setInterval(tvHealthCheck, 10000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && tvLoaded && activeTab === "chart") { tvLoad(); tvConnect(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && tvLoaded && tvActive()) { tvLoad(); tvConnect(); } });
 
 // 웹소켓이 끊겨 있을 때만: 실시간 가격으로 마지막 캔들을 갱신
 function tvTick() {
@@ -306,9 +307,9 @@ async function tvOpen() {
     tvLoaded = true;
     tvBindToolbar();
     clearInterval(tvTimer);
-    tvTimer = setInterval(() => { if (activeTab === "chart") tvTick(); }, 5000);
-    setInterval(() => { if (activeTab === "chart" && !tvWsOk && tvSym().src !== "yahoo") tvLoad(); }, 60000); // 웹소켓이 없을 때만 다시 받기
-    setInterval(() => { if (activeTab === "chart" && tvSym().src === "yahoo") tvLoad(); }, 15000); // 나스닥은 15초마다
+    tvTimer = setInterval(() => { if (tvActive()) tvTick(); }, 5000);
+    setInterval(() => { if (tvActive() && !tvWsOk && tvSym().src !== "yahoo") tvLoad(); }, 60000); // 웹소켓이 없을 때만 다시 받기
+    setInterval(() => { if (tvActive() && tvSym().src === "yahoo") tvLoad(); }, 15000); // 나스닥은 15초마다
   }
   await tvLoad();
   tvConnect();
@@ -361,12 +362,12 @@ function tvBindToolbar() {
 }
 
 document.addEventListener("tabshown", (e) => {
-  if (e.detail === "chart") { tvOpen(); if (tvLoaded && tvAuto) setTimeout(tvFit, 120); }
+  if (e.detail === "home") { tvOpen(); if (tvLoaded && tvAuto) setTimeout(tvFit, 120); }
   else if (tvLoaded) tvDisconnect();
 });
 // 페이지를 차트 탭으로 바로 열었을 때 (탭 초기화가 이 스크립트보다 먼저 끝남)
-if (typeof activeTab !== "undefined" && activeTab === "chart") tvOpen();
+if (typeof activeTab !== "undefined" && tvActive()) tvOpen();
 // 예측이 새로 오면 겹쳐 그린 선도 갱신
-document.addEventListener("reportloaded", () => { if (tvLoaded && activeTab === "chart") tvDrawOverlays(); });
+document.addEventListener("reportloaded", () => { if (tvLoaded && tvActive()) tvDrawOverlays(); });
 // 밝은/어두운 테마가 바뀌면 색도 다시
 matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => { if (tvLoaded) { tvCreate(); tvLoad(); } });

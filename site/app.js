@@ -368,7 +368,7 @@ function render() {
   renderGame(f);
   $("cover").textContent = `최근 ${f.history.length}개 중 실제 가격이 95% 구간 안: ${(f.recent_cover95 * 100).toFixed(0)}%`;
   renderLive();
-  renderChart(f);
+  if ($("chart")) renderChart(f); // 옛 가격 차트 카드는 홈의 실시간 차트로 대체됨
   tick();
 }
 
