@@ -21,8 +21,8 @@ function showTab(id, push = true) {
   document.querySelectorAll("#group-nav a").forEach((a) => a.setAttribute("aria-selected", String(a.dataset.tab === tab.id)));
   try { localStorage.setItem("driftbtc_tab", tab.id); } catch (e) {}
   if (push && location.hash !== "#" + tab.id) history.replaceState(null, "", "#" + tab.id);
-  // 숨겨져 있던 그래프가 크기를 다시 잡도록
-  setTimeout(() => dispatchEvent(new Event("resize")), 50);
+  // 숨겨져 있던 그래프가 크기를 다시 잡도록 (일부 브라우저는 크기 감지가 늦어 직접 호출)
+  setTimeout(() => { dispatchEvent(new Event("resize")); refitCharts(); }, 60);
   document.dispatchEvent(new CustomEvent("tabshown", { detail: tab.id }));
   if (push) window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -52,8 +52,16 @@ function buildTabs() {
   showTab(start, false);
 }
 
+// 화면에 보이게 된 Chart.js 그래프들의 크기를 직접 다시 잡는다
+function refitCharts() {
+  const list = [typeof chart !== "undefined" && chart, typeof eqChart !== "undefined" && eqChart, typeof paperChart !== "undefined" && paperChart,
+    ...(typeof anaCharts !== "undefined" ? Object.values(anaCharts) : [])];
+  for (const c of list) { try { c && c.canvas && c.canvas.offsetParent !== null && c.resize(); } catch (e) {} }
+}
+window.refitCharts = refitCharts;
+
 // 접힌 '자세히' 안의 그래프도 펼칠 때 크기를 다시 잡도록
-document.addEventListener("toggle", (e) => { if (e.target.tagName === "DETAILS" && e.target.open) setTimeout(() => dispatchEvent(new Event("resize")), 50); }, true);
+document.addEventListener("toggle", (e) => { if (e.target.tagName === "DETAILS" && e.target.open) setTimeout(() => { dispatchEvent(new Event("resize")); refitCharts(); }, 60); }, true);
 
 let h2cLoading = null;
 function loadHtml2canvas() {
