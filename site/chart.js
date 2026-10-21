@@ -37,7 +37,7 @@ function tvLoadLib() {
 async function tvFetchKlines(iv) {
   for (const host of KLINE_HOSTS) {
     try {
-      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500`, { cache: "no-store" });
+      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500&_=${Date.now()}`, { cache: "no-store" });
       if (!r.ok) continue;
       return (await r.json()).map((k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
     } catch (e) {}
@@ -51,7 +51,19 @@ function tvTheme() {
     grid: { vertLines: { color: css("--border") }, horzLines: { color: css("--border") } },
     crosshair: { mode: 0 },
     rightPriceScale: { borderColor: css("--border") },
-    timeScale: { borderColor: css("--border"), timeVisible: true, secondsVisible: false },
+    timeScale: {
+      borderColor: css("--border"), timeVisible: true, secondsVisible: false,
+      // 라이브러리는 눈금을 UTC 로 찍으므로 한국 시간으로 바꿔 표시한다
+      tickMarkFormatter: (t, type) => {
+        const d = new Date(t * 1000);
+        const kst = new Date(d.getTime() + 9 * 3600e3);
+        const hh = String(kst.getUTCHours()).padStart(2, "0"), mm = String(kst.getUTCMinutes()).padStart(2, "0");
+        if (type === 0) return `${kst.getUTCFullYear()}년`;
+        if (type === 1) return `${kst.getUTCMonth() + 1}월`;
+        if (type === 2) return `${kst.getUTCMonth() + 1}/${kst.getUTCDate()}`;
+        return `${hh}:${mm}`;
+      },
+    },
     localization: { locale: "ko-KR", timeFormatter: (t) => new Date(t * 1000).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) },
     autoSize: true,
   };
@@ -210,6 +222,23 @@ function tvStatus() {
   const el = $("tv-live");
   if (el) el.innerHTML = tvWsOk ? `<span class="pos">● 실시간</span>` : `<span class="muted">○ 5초마다</span>`;
 }
+
+// 🩺 자가 점검(10초마다): 화면의 마지막 봉이 봉 간격 2개 넘게 오래됐으면 데이터를 다시 받고 웹소켓도 다시 연결한다
+let tvHealing = false;
+async function tvHealthCheck() {
+  if (!tvLoaded || activeTab !== "chart" || tvHealing) return;
+  const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
+  const d = tvCandles?.data?.() || [];
+  const lastT = d.length ? d[d.length - 1].time : 0;
+  const stale = lastT && Date.now() / 1000 - lastT > Math.max(2 * iv.sec, 180);
+  const el = $("tv-stale");
+  if (el) el.textContent = stale ? ` · 마지막 봉 ${Math.round((Date.now() / 1000 - lastT) / 60)}분 전 — 다시 받는 중` : "";
+  if (!stale) return;
+  tvHealing = true;
+  try { await tvLoad(); tvConnect(); } finally { tvHealing = false; }
+}
+setInterval(tvHealthCheck, 10000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && tvLoaded && activeTab === "chart") { tvLoad(); tvConnect(); } });
 
 // 웹소켓이 끊겨 있을 때만: 실시간 가격으로 마지막 캔들을 갱신
 function tvTick() {
