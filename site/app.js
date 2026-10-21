@@ -254,6 +254,7 @@ function rerenderAll() {
   syncCalcInput();
   renderCalc();
   window.renderRisk?.(true);
+  window.renderAvg?.(true);
   if (lastFutures) renderFutures(lastFutures);
 }
 

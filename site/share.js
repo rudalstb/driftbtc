@@ -5,7 +5,7 @@
 const TABS = [
   { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid", "#tv"], freqTabs: true },
   { id: "say", name: "💬 한마디", members: ["#say"] },
-  { id: "tools", name: "🧮 도구", members: ["#calc", "#risk"] },
+  { id: "tools", name: "🧮 도구", members: ["#calc", "#risk", "#avg"] },
   { id: "market", name: "📊 시장", members: ["#futures", "#filter"] },
   { id: "mine", name: "🔍 내 매매", members: ["#my-analysis"] },
   { id: "operator", name: "🧑‍💻 운영자", members: ["#mypos"] },

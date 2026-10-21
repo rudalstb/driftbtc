@@ -204,6 +204,39 @@
       <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
     </section>
 
+    <section class="card avg-card" id="avg" data-sec="avg">
+      <h2>🪣 물 타면 평단 어디까지?</h2>
+      <p class="muted small">지금 평단·수량·레버리지에서 여기서 이만큼 더 타면 평단·청산가·증거금이 어떻게 되는지 계산해요.</p>
+      <div class="calc-row">
+        <label class="calc-field"><span>방향</span>
+          <span class="period rk-side" id="av-side" role="group"><button data-side="long" aria-pressed="true">롱</button><button data-side="short" aria-pressed="false">숏</button></span>
+        </label>
+        <label class="calc-field"><span>지금 평단 <span class="muted" id="av-avg-unit">($)</span></span>
+          <input id="av-avg" type="number" inputmode="decimal" step="any" placeholder="예: 84000">
+        </label>
+        <label class="calc-field"><span>보유 수량 (개)</span>
+          <input id="av-qty" type="number" inputmode="decimal" step="any" placeholder="예: 0.05">
+        </label>
+        <label class="calc-field"><span>레버리지 (배)</span>
+          <input id="av-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
+        </label>
+      </div>
+      <div class="calc-row">
+        <label class="calc-field"><span>추가 진입가 <span class="muted" id="av-entry-unit">($)</span> <span class="muted">· 비우면 실시간 BTC</span></span>
+          <input id="av-entry" type="number" inputmode="decimal" step="any" placeholder="실시간 BTC">
+        </label>
+        <label class="calc-field"><span>추가 수량 (개)</span>
+          <input id="av-add" type="number" inputmode="decimal" step="any" placeholder="예: 0.05">
+          <span class="rk-quick av-quick"><button data-x="0.5">보유의 ½</button><button data-x="1">보유만큼</button><button data-x="2">보유의 2배</button></span>
+        </label>
+        <label class="calc-field"><span>거꾸로: 목표 평단 <span class="muted" id="av-target-unit">($)</span></span>
+          <input id="av-target" type="number" inputmode="decimal" step="any" placeholder="예: 83000">
+        </label>
+      </div>
+      <div id="av-result" class="calc-result"></div>
+      <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
+    </section>
+
     <section class="card futures" id="futures" data-sec="futures" hidden>
       <div class="game-head">
         <h2>📊 선물 시장 지표 <span class="muted small">바이낸스 BTCUSDT</span></h2>
@@ -339,5 +372,6 @@
   <script src="share.js"></script>
   <script src="say.js"></script>
   <script src="chart.js"></script>
+  <script src="avg.js"></script>
 </body>
 </html>
