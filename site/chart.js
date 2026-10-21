@@ -265,7 +265,9 @@ async function tvHealthCheck() {
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const d = tvCandles?.data?.() || [];
   const lastT = d.length ? d[d.length - 1].time : 0;
-  const stale = lastT && Date.now() / 1000 - lastT > Math.max(2 * iv.sec, 180);
+  // 야후 시세는 원래 10~15분 늦으므로 25분 넘게 멈춘 경우만 이상으로 본다
+  const limit = tvSym().src === "yahoo" ? Math.max(2 * iv.sec, 25 * 60) : Math.max(2 * iv.sec, 180);
+  const stale = lastT && Date.now() / 1000 - lastT > limit;
   const el = $("tv-stale");
   if (el) el.textContent = stale ? ` · 마지막 봉 ${Math.round((Date.now() / 1000 - lastT) / 60)}분 전 — 다시 받는 중` : "";
   if (!stale) return;
