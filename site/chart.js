@@ -1,0 +1,184 @@
+// 📈 차트 탭: 바이낸스 BTC/USDT 캔들 + 이 사이트의 예측 범위(68%·95%)와 롱/숏 관점 마커를 겹쳐 그린다.
+// 라이브러리(TradingView Lightweight Charts, 아파치 2.0)는 탭을 처음 열 때만 불러온다.
+
+const TV_LIB = "https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js";
+const TV_INTERVALS = [
+  { k: "15m", name: "15분", fq: "1h", sec: 900 },
+  { k: "1h", name: "1시간", fq: "1h", sec: 3600 },
+  { k: "4h", name: "4시간", fq: "1h", sec: 14400 },
+  { k: "1d", name: "1일", fq: "1d", sec: 86400 },
+  { k: "1w", name: "1주", fq: "1w", sec: 604800 },
+];
+const KLINE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
+let tvInterval = "1h";
+let tvShow = { band: true, marks: true };
+try { tvInterval = localStorage.getItem("driftbtc_tv_iv") || "1h"; } catch (e) {}
+let tvChart = null, tvCandles = null, tvVolume = null, tvLines = [];
+let tvLoaded = false, tvLoading = null, tvCandleData = [], tvTimer = null;
+
+function tvLoadLib() {
+  if (window.LightweightCharts) return Promise.resolve();
+  if (!tvLoading) tvLoading = new Promise((ok, no) => {
+    const s = document.createElement("script");
+    s.src = TV_LIB; s.onload = ok; s.onerror = () => no(new Error("차트 라이브러리를 불러오지 못했어요"));
+    document.head.appendChild(s);
+  });
+  return tvLoading;
+}
+
+async function tvFetchKlines(iv) {
+  for (const host of KLINE_HOSTS) {
+    try {
+      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500`, { cache: "no-store" });
+      if (!r.ok) continue;
+      return (await r.json()).map((k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
+    } catch (e) {}
+  }
+  throw new Error("캔들 데이터를 받지 못했어요");
+}
+
+function tvTheme() {
+  return {
+    layout: { background: { type: "solid", color: css("--card") }, textColor: css("--muted"), fontFamily: "inherit" },
+    grid: { vertLines: { color: css("--border") }, horzLines: { color: css("--border") } },
+    crosshair: { mode: 0 },
+    rightPriceScale: { borderColor: css("--border") },
+    timeScale: { borderColor: css("--border"), timeVisible: true, secondsVisible: false },
+    localization: { locale: "ko-KR", timeFormatter: (t) => new Date(t * 1000).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) },
+    autoSize: true,
+  };
+}
+
+function tvCreate() {
+  const el = $("tv-chart");
+  if (tvChart) { tvChart.remove(); tvChart = null; }
+  tvChart = LightweightCharts.createChart(el, tvTheme());
+  tvCandles = tvChart.addCandlestickSeries({ upColor: css("--up"), downColor: css("--down"), borderVisible: false, wickUpColor: css("--up"), wickDownColor: css("--down"), priceFormat: { type: "price", precision: 0, minMove: 1 } });
+  tvVolume = tvChart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
+  tvChart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+  tvChart.subscribeCrosshairMove((p) => {
+    const c = p?.seriesData?.get(tvCandles);
+    const leg = $("tv-legend");
+    if (!c) { leg.textContent = ""; return; }
+    const chg = ((c.close / c.open - 1) * 100).toFixed(2);
+    leg.innerHTML = `시 ${c.open.toLocaleString("en-US")} · 고 ${c.high.toLocaleString("en-US")} · 저 ${c.low.toLocaleString("en-US")} · 종 <b>${c.close.toLocaleString("en-US")}</b> <span class="${chg >= 0 ? "pos" : "neg"}">${chg >= 0 ? "+" : ""}${chg}%</span>`;
+  });
+}
+
+function tvDrawOverlays() {
+  for (const l of tvLines) tvChart.removeSeries(l);
+  tvLines = [];
+  if (!tvCandles) return;
+  const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
+  const f = report?.forecasts?.[iv.fq];
+  if (tvShow.band && f) {
+    // "2026-10-20 10:00:00+00:00" 처럼 공백이 든 형식도 읽히도록
+    const toSec = (t) => Math.floor(new Date(String(t).replace(" ", "T")).getTime() / 1000);
+    const nowT = toSec(f.as_of);
+    const line = (raw, color, dashed, title) => {
+      const data = raw.filter((d) => Number.isFinite(d.time) && Number.isFinite(d.value));
+      if (data.length < 2) return;
+      const s = tvChart.addLineSeries({ color, lineWidth: dashed ? 1 : 2, lineStyle: dashed ? 2 : 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title });
+      s.setData(data);
+      tvLines.push(s);
+    };
+    // 앞으로의 범위: 현재가에서 시작해 퍼져 나가는 4개 선
+    const fut = f.future.map((p) => ({ ...p, t: toSec(p.t) }));
+    const start = { t: nowT, lo95: f.price, hi95: f.price, lo68: f.price, hi68: f.price };
+    const pts = [start, ...fut];
+    line(pts.map((p) => ({ time: p.t, value: p.hi95 })), css("--accent"), true, "95% 위");
+    line(pts.map((p) => ({ time: p.t, value: p.lo95 })), css("--accent"), true, "95% 아래");
+    line(pts.map((p) => ({ time: p.t, value: p.hi68 })), css("--accent"), false, "68% 위");
+    line(pts.map((p) => ({ time: p.t, value: p.lo68 })), css("--accent"), false, "68% 아래");
+    // 과거에 예측했던 95% 범위 (맞았는지 눈으로 확인)
+    const hist = (f.history || []).map((p) => ({ ...p, t: toSec(p.t) })).filter((p) => p.t < nowT);
+    if (hist.length) {
+      line(hist.map((p) => ({ time: p.t, value: p.hi95 })), "rgba(139,148,158,0.7)", true, "지난 예측 95% 위");
+      line(hist.map((p) => ({ time: p.t, value: p.lo95 })), "rgba(139,148,158,0.7)", true, "지난 예측 95% 아래");
+    }
+  }
+  // 롱/숏 관점 마커 (최근 채점된 관점)
+  const rec = report?.signals?.[iv.fq]?.recent || [];
+  if (tvShow.marks && rec.length) {
+    const marks = rec.map((r) => {
+      const t = Math.floor(new Date(String(r.t).replace(" ", "T")).getTime() / 1000) - iv.sec * (iv.fq === "1h" ? 1 : 0);
+      if (!Number.isFinite(t)) return null; // 1시간 관점은 결과 캔들 바로 앞
+      const bucket = Math.floor(t / iv.sec) * iv.sec;
+      return { time: bucket, position: r.signal === "long" ? "belowBar" : "aboveBar", color: r.signal === "long" ? css("--up") : css("--down"), shape: r.signal === "long" ? "arrowUp" : "arrowDown", text: `${r.signal === "long" ? "롱" : "숏"}${r.hit ? "✓" : "✗"}` };
+    });
+    const uniq = new Map();
+    for (const m of marks) if (m) uniq.set(m.time, m);
+    tvCandles.setMarkers([...uniq.values()].sort((a, b) => a.time - b.time));
+  } else {
+    tvCandles.setMarkers([]);
+  }
+}
+
+async function tvLoad() {
+  const note = $("tv-note");
+  try {
+    tvCandleData = await tvFetchKlines(tvInterval);
+    tvCandles.setData(tvCandleData.map(({ volume, ...c }) => c));
+    tvVolume.setData(tvCandleData.map((c) => ({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(63,185,80,0.35)" : "rgba(248,81,73,0.35)" })));
+    tvDrawOverlays();
+    tvChart.timeScale().setVisibleLogicalRange({ from: tvCandleData.length - 120, to: tvCandleData.length + 12 });
+    note.textContent = "";
+  } catch (e) {
+    note.textContent = e.message + " (바이낸스 접속이 막힌 지역이면 차트가 안 나올 수 있어요)";
+  }
+}
+
+// 실시간 가격으로 마지막 캔들을 갱신
+function tvTick() {
+  if (!tvCandles || !tvCandleData.length || live == null) return;
+  const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
+  const last = tvCandleData[tvCandleData.length - 1];
+  const bucket = Math.floor(Date.now() / 1000 / iv.sec) * iv.sec;
+  if (bucket > last.time) {
+    const c = { time: bucket, open: live, high: live, low: live, close: live, volume: 0 };
+    tvCandleData.push(c);
+    tvCandles.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
+  } else {
+    last.close = live; last.high = Math.max(last.high, live); last.low = Math.min(last.low, live);
+    tvCandles.update({ time: last.time, open: last.open, high: last.high, low: last.low, close: last.close });
+  }
+}
+
+async function tvOpen() {
+  if (!$("tv-chart")) return;
+  if (!tvLoaded) {
+    $("tv-note").textContent = "차트를 불러오는 중…";
+    try { await tvLoadLib(); } catch (e) { $("tv-note").textContent = e.message; return; }
+    tvCreate();
+    tvLoaded = true;
+    tvBindToolbar();
+    clearInterval(tvTimer);
+    tvTimer = setInterval(() => { if (activeTab === "chart") tvTick(); }, 5000);
+    setInterval(() => { if (activeTab === "chart") tvLoad(); }, 60000);
+  }
+  await tvLoad();
+}
+
+function tvBindToolbar() {
+  document.querySelectorAll("#tv-iv button").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.iv === tvInterval);
+    b.addEventListener("click", () => {
+      tvInterval = b.dataset.iv;
+      try { localStorage.setItem("driftbtc_tv_iv", tvInterval); } catch (e) {}
+      document.querySelectorAll("#tv-iv button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.iv === tvInterval));
+      tvLoad();
+    });
+  });
+  document.querySelectorAll("#tv-toggles input").forEach((c) => {
+    c.checked = tvShow[c.dataset.key];
+    c.addEventListener("change", () => { tvShow[c.dataset.key] = c.checked; tvDrawOverlays(); });
+  });
+}
+
+document.addEventListener("tabshown", (e) => { if (e.detail === "chart") tvOpen(); });
+// 페이지를 차트 탭으로 바로 열었을 때 (탭 초기화가 이 스크립트보다 먼저 끝남)
+if (typeof activeTab !== "undefined" && activeTab === "chart") tvOpen();
+// 예측이 새로 오면 겹쳐 그린 선도 갱신
+document.addEventListener("reportloaded", () => { if (tvLoaded && activeTab === "chart") tvDrawOverlays(); });
+// 밝은/어두운 테마가 바뀌면 색도 다시
+matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => { if (tvLoaded) { tvCreate(); tvLoad(); } });

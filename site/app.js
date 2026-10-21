@@ -104,6 +104,7 @@ async function loadReport() {
   renderMeta();
   renderTables();
   render();
+  document.dispatchEvent(new CustomEvent("reportloaded"));
 }
 
 // 갱신 예정 시각이 지났으면 1분마다, 아니면 5분마다 새 예측을 확인한다

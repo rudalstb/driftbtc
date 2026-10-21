@@ -4,6 +4,7 @@
 // 🗂️ 탭: 홈에는 "지금 비트코인 어디까지 움직이나"만, 나머지는 탭을 눌러야 보인다 (선택은 브라우저가 기억, 주소 #탭이름 으로 공유 가능)
 const TABS = [
   { id: "home", name: "🏠 홈", members: [".brief", ".pair", ".grid"], freqTabs: true },
+  { id: "chart", name: "📈 차트", members: ["#tv"] },
   { id: "say", name: "💬 한마디", members: ["#say"] },
   { id: "tools", name: "🧮 도구", members: ["#calc", "#risk"] },
   { id: "market", name: "📊 시장", members: ["#futures", "#filter"] },
@@ -23,6 +24,7 @@ function showTab(id, push = true) {
   if (push && location.hash !== "#" + tab.id) history.replaceState(null, "", "#" + tab.id);
   // 숨겨져 있던 그래프가 크기를 다시 잡도록
   setTimeout(() => dispatchEvent(new Event("resize")), 50);
+  document.dispatchEvent(new CustomEvent("tabshown", { detail: tab.id }));
   if (push) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
