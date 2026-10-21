@@ -3,18 +3,24 @@
 
 const TV_LIB = "https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js";
 const TV_INTERVALS = [
+  { k: "1m", name: "1분", fq: "1h", sec: 60 },
+  { k: "5m", name: "5분", fq: "1h", sec: 300 },
   { k: "15m", name: "15분", fq: "1h", sec: 900 },
+  { k: "30m", name: "30분", fq: "1h", sec: 1800 },
   { k: "1h", name: "1시간", fq: "1h", sec: 3600 },
   { k: "4h", name: "4시간", fq: "1h", sec: 14400 },
   { k: "1d", name: "1일", fq: "1d", sec: 86400 },
   { k: "1w", name: "1주", fq: "1w", sec: 604800 },
+  { k: "1M", name: "1달", fq: "1w", sec: 2592000 },
 ];
+const WS_HOST = "wss://stream.binance.com:9443/ws";
 const KLINE_HOSTS = ["https://api.binance.com", "https://data-api.binance.vision"];
 let tvInterval = "1h";
 let tvShow = { band: true, marks: true };
 try { tvInterval = localStorage.getItem("driftbtc_tv_iv") || "1h"; } catch (e) {}
 let tvChart = null, tvCandles = null, tvVolume = null, tvLines = [];
 let tvLoaded = false, tvLoading = null, tvCandleData = [], tvTimer = null;
+let tvWs = null, tvWsIv = null, tvWsOk = false;
 
 function tvLoadLib() {
   if (window.LightweightCharts) return Promise.resolve();
@@ -103,7 +109,10 @@ function tvDrawOverlays() {
     const marks = rec.map((r) => {
       const t = Math.floor(new Date(String(r.t).replace(" ", "T")).getTime() / 1000) - iv.sec * (iv.fq === "1h" ? 1 : 0);
       if (!Number.isFinite(t)) return null; // 1시간 관점은 결과 캔들 바로 앞
-      const bucket = Math.floor(t / iv.sec) * iv.sec;
+      // 그 시각이 속한 봉(마지막으로 시작한 봉)에 붙인다 — 달봉처럼 간격이 일정하지 않아도 됨
+      let bucket = null;
+      for (let i = tvCandleData.length - 1; i >= 0; i--) if (tvCandleData[i].time <= t) { bucket = tvCandleData[i].time; break; }
+      if (bucket == null) return null;
       return { time: bucket, position: r.signal === "long" ? "belowBar" : "aboveBar", color: r.signal === "long" ? css("--up") : css("--down"), shape: r.signal === "long" ? "arrowUp" : "arrowDown", text: `${r.signal === "long" ? "롱" : "숏"}${r.hit ? "✓" : "✗"}` };
     });
     const uniq = new Map();
@@ -128,8 +137,44 @@ async function tvLoad() {
   }
 }
 
-// 실시간 가격으로 마지막 캔들을 갱신
+// 📡 실시간: 바이낸스 웹소켓(kline 스트림)으로 마지막 봉을 바로바로 갱신. 끊기면 3초 뒤 다시 연결하고, 그동안은 시세 폴링으로 대신
+function tvConnect() {
+  tvDisconnect();
+  const iv = tvInterval;
+  tvWsIv = iv;
+  try {
+    tvWs = new WebSocket(`${WS_HOST}/btcusdt@kline_${iv}`);
+  } catch (e) { return; }
+  tvWs.onopen = () => { tvWsOk = true; tvStatus(); };
+  tvWs.onmessage = (ev) => {
+    if (tvWsIv !== tvInterval || !tvCandles) return;
+    const k = JSON.parse(ev.data).k;
+    if (!k) return;
+    const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
+    const last = tvCandleData[tvCandleData.length - 1];
+    if (!last || c.time > last.time) tvCandleData.push(c);
+    else if (c.time === last.time) Object.assign(last, c);
+    else return;
+    tvCandles.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
+    tvVolume.update({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(63,185,80,0.35)" : "rgba(248,81,73,0.35)" });
+  };
+  tvWs.onclose = () => { tvWsOk = false; tvStatus(); if (activeTab === "chart" && tvWsIv === tvInterval) setTimeout(() => { if (activeTab === "chart" && !tvWsOk) tvConnect(); }, 3000); };
+  tvWs.onerror = () => { try { tvWs.close(); } catch (e) {} };
+}
+
+function tvDisconnect() {
+  if (tvWs) { const w = tvWs; tvWs = null; tvWsOk = false; w.onclose = null; try { w.close(); } catch (e) {} }
+  tvStatus();
+}
+
+function tvStatus() {
+  const el = $("tv-live");
+  if (el) el.innerHTML = tvWsOk ? `<span class="pos">● 실시간</span>` : `<span class="muted">○ 5초마다</span>`;
+}
+
+// 웹소켓이 끊겨 있을 때만: 실시간 가격으로 마지막 캔들을 갱신
 function tvTick() {
+  if (tvWsOk) return;
   if (!tvCandles || !tvCandleData.length || live == null) return;
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const last = tvCandleData[tvCandleData.length - 1];
@@ -154,9 +199,10 @@ async function tvOpen() {
     tvBindToolbar();
     clearInterval(tvTimer);
     tvTimer = setInterval(() => { if (activeTab === "chart") tvTick(); }, 5000);
-    setInterval(() => { if (activeTab === "chart") tvLoad(); }, 60000);
+    setInterval(() => { if (activeTab === "chart" && !tvWsOk) tvLoad(); }, 60000); // 웹소켓이 없을 때만 다시 받기
   }
   await tvLoad();
+  tvConnect();
 }
 
 function tvBindToolbar() {
@@ -166,7 +212,7 @@ function tvBindToolbar() {
       tvInterval = b.dataset.iv;
       try { localStorage.setItem("driftbtc_tv_iv", tvInterval); } catch (e) {}
       document.querySelectorAll("#tv-iv button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.iv === tvInterval));
-      tvLoad();
+      tvLoad().then(tvConnect);
     });
   });
   document.querySelectorAll("#tv-toggles input").forEach((c) => {
@@ -175,7 +221,7 @@ function tvBindToolbar() {
   });
 }
 
-document.addEventListener("tabshown", (e) => { if (e.detail === "chart") tvOpen(); });
+document.addEventListener("tabshown", (e) => { if (e.detail === "chart") tvOpen(); else if (tvLoaded) tvDisconnect(); });
 // 페이지를 차트 탭으로 바로 열었을 때 (탭 초기화가 이 스크립트보다 먼저 끝남)
 if (typeof activeTab !== "undefined" && activeTab === "chart") tvOpen();
 // 예측이 새로 오면 겹쳐 그린 선도 갱신

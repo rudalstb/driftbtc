@@ -117,18 +117,18 @@
     <section class="card tv-card" id="tv" data-sec="chart-tab">
       <div class="game-head">
         <h2>📈 BTC/USDT 차트</h2>
-        <span class="muted small">바이낸스 캔들 · 달러 기준 · 예측 범위와 관점을 겹쳐서</span>
+        <span class="muted small">바이낸스 실시간 캔들 · 달러 기준 · 예측 범위와 관점을 겹쳐서</span>
       </div>
       <div class="tv-bar">
         <div class="period" id="tv-iv" role="group" aria-label="봉 간격">
-          <button data-iv="15m">15분</button><button data-iv="1h">1시간</button><button data-iv="4h">4시간</button><button data-iv="1d">1일</button><button data-iv="1w">1주</button>
+          <button data-iv="1m">1분</button><button data-iv="5m">5분</button><button data-iv="15m">15분</button><button data-iv="30m">30분</button><button data-iv="1h">1시간</button><button data-iv="4h">4시간</button><button data-iv="1d">1일</button><button data-iv="1w">1주</button><button data-iv="1M">1달</button>
         </div>
         <div class="tv-toggles" id="tv-toggles">
           <label><input type="checkbox" data-key="band" checked> 예측 범위</label>
           <label><input type="checkbox" data-key="marks" checked> 롱/숏 관점</label>
         </div>
       </div>
-      <div class="tv-legend small" id="tv-legend"></div>
+      <div class="tv-legend small"><span id="tv-live"></span> <span id="tv-legend"></span></div>
       <div id="tv-chart" class="tv-chart"></div>
       <div class="muted small" id="tv-note"></div>
       <div class="muted small">주황 실선 68% · 주황 점선 95% 예측 범위(앞으로) · 회색 점선은 지난 예측 95% 범위 · ▲롱 ▼숏은 사이트가 낸 관점(✓ 적중 ✗ 실패) · 투자 권유 아님</div>
