@@ -101,13 +101,26 @@ function tvLiveLegend() {
 // 보기 초기화: 최근 봉 120개가 꽉 차게, 오른쪽에 여백 조금
 function tvFit() {
   if (!tvChart || !tvCandleData.length) return;
+  // 예측 선이 캔들 앞뒤로 시각 점을 더 만들기 때문에 봉 번호가 아니라 '시각'으로 보기 범위를 잡는다
+  const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
+  const last = tvCandleData[tvCandleData.length - 1].time;
   const ts = tvChart.timeScale();
   ts.resetTimeScale();
-  ts.applyOptions({ rightOffset: 8 });
-  const range = { from: Math.max(0, tvCandleData.length - 120), to: tvCandleData.length + 8 };
-  ts.setVisibleLogicalRange(range);
+  const range = { from: last - 120 * iv.sec, to: last + 8 * iv.sec };
+  ts.setVisibleRange(range);
   // 초기화가 한 프레임 뒤에 적용되는 경우가 있어 한 번 더
-  requestAnimationFrame(() => { try { ts.setVisibleLogicalRange(range); } catch (e) {} });
+  requestAnimationFrame(() => { try { ts.setVisibleRange(range); } catch (e) {} });
+}
+
+// 자동 따라가기: 새 봉이 생기면 보기 창을 한 칸 오른쪽으로 민다 (확대 정도는 유지)
+function tvFollow() {
+  if (!tvAuto || !tvChart) return;
+  const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
+  const last = tvCandleData[tvCandleData.length - 1].time;
+  const r = tvChart.timeScale().getVisibleRange();
+  if (!r) return tvFit();
+  const width = r.to - r.from;
+  tvChart.timeScale().setVisibleRange({ from: last + 8 * iv.sec - width, to: last + 8 * iv.sec });
 }
 
 function tvSetAuto(on) {
@@ -201,14 +214,15 @@ function tvConnect() {
     if (!k) return;
     const c = { time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
     const last = tvCandleData[tvCandleData.length - 1];
-    if (!last || c.time > last.time) tvCandleData.push(c);
+    const isNew = !last || c.time > last.time;
+    if (isNew) tvCandleData.push(c);
     else if (c.time === last.time) Object.assign(last, c);
     else return;
     tvCandles.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
     tvVolume.update({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(63,185,80,0.35)" : "rgba(248,81,73,0.35)" });
     tvLastTick = Date.now();
     tvLiveLegend();
-    if (tvAuto && !last) tvChart.timeScale().scrollToRealTime(); // 새 봉이 생기면 오른쪽 끝으로
+    if (tvAuto && isNew) tvFollow(); // 새 봉이 생기면 보기 창을 따라 민다
   };
   tvWs.onclose = () => { tvWsOk = false; tvStatus(); if (activeTab === "chart" && tvWsIv === tvInterval) setTimeout(() => { if (activeTab === "chart" && !tvWsOk) tvConnect(); }, 3000); };
   tvWs.onerror = () => { try { tvWs.close(); } catch (e) {} };
