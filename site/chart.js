@@ -37,7 +37,8 @@ function tvLoadLib() {
 async function tvFetchKlines(iv) {
   for (const host of KLINE_HOSTS) {
     try {
-      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500&_=${Date.now()}`, { cache: "no-store" });
+      // 바이낸스는 모르는 인자를 거부하므로 캐시 방지는 cache: "no-store" 로만
+      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=500`, { cache: "no-store" });
       if (!r.ok) continue;
       return (await r.json()).map((k) => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
     } catch (e) {}
