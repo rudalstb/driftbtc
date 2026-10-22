@@ -23,8 +23,11 @@ function renderAvg(sync = false) {
   const p2 = avgTouched.entry ? avgEntryUsd : live;
   const q2 = avgNum("av-add");
   const tgt = avgUsdIn("av-target");
-  if (!p1 || !q1 || !p2) {
-    el.innerHTML = `<span class="muted">지금 평단과 보유 수량을 넣으면, 추가로 탔을 때 평단이 어디로 가는지 계산해요.</span>`;
+  if (!p2) { el.innerHTML = `<span class="muted">가격을 불러오는 중…</span>`; return; }
+  if (!p1 || !q1) {
+    const liqOf0 = (avg) => (long ? avg * (1 - 1 / lev + MMR) : avg * (1 + 1 / lev - MMR));
+    el.innerHTML = `<div class="muted small">① <b>지금 평단</b>과 <b>보유 수량</b>을 넣으면 물탄 뒤 평단·청산가·추천이 채워져요. 지금은 후보 가격과 닿을 확률만 보여드려요.</div>` +
+      renderWhereToAdd({ long, p1: 0, q1: 0, q2: 0, lev, mark: p2, liqOf: liqOf0, dist: () => 0 });
     return;
   }
   const liqOf = (avg) => (long ? avg * (1 - 1 / lev + MMR) : avg * (1 + 1 / lev - MMR));
@@ -118,21 +121,24 @@ function renderWhereToAdd(o) {
     const okDir = long ? px < mark : px > mark;
     const z = Math.abs(Math.log(px / mark)) / sigma;
     const touch = okDir ? Math.min(1, 2 * (1 - normCdf(z))) : 1;
-    const qty = q1 + q2, avg = (p1 * q1 + px * q2) / qty;
+    const qty = q1 + q2, avg = qty ? (p1 * q1 + px * q2) / qty : px;
     const liq = liqOf(avg);
     const liqDist = Math.abs(liq / px - 1) * 100; // 물탄 가격에서 청산가까지
     const band95 = Math.abs(Math.log((long ? fut.lo95 : fut.hi95) / f.price)) * 100; // 95% 범위 폭(%)
     const safe = liqDist >= band95; // 물탄 가격에서 청산가까지가 그 기간 95% 범위 폭보다 멀어야 안전
     const be = long ? (avg / px - 1) * 100 : (1 - avg / px) * 100; // 물탄 가격에서 본전까지
-    return { name, px, okDir, touch, avg, liq, liqDist, safe, be, margin: (avg * qty) / lev };
+    return { name, px, okDir, touch, avg, liq, liqDist, safe, be, margin: (avg * (qty || 1)) / lev };
   });
   const fs = window.filterState;
-  const eligible = rows.filter((r) => r.okDir && r.touch >= 0.3 && r.safe);
+  const eligible = noPos ? [] : rows.filter((r) => r.okDir && r.touch >= 0.3 && r.safe);
   // 조건을 만족하는 것 중 가장 깊은(현재가에서 먼) 가격
   const pick = eligible.sort((a, b) => Math.abs(b.px - mark) - Math.abs(a.px - mark))[0];
-  const tr = (r) => `<tr class="${pick && r === pick ? "pick" : ""}"><td>${r.name}${pick && r === pick ? " ⭐" : ""}</td><td><b>${usd(r.px)}</b><div class="muted small">${pct((r.px / mark - 1) * 100, 2)}</div></td><td>${r.okDir ? `<b class="${r.touch >= 0.5 ? "pos" : r.touch >= 0.3 ? "warn" : "neg"}">${Math.round(r.touch * 100)}%</b>` : `<span class="muted">이미 지남</span>`}</td><td>${usd(r.avg)}<div class="muted small">본전 ${pct(r.be, 2)}</div></td><td class="${r.safe ? "" : "neg"}">${usd(r.liq)}<div class="muted small">${r.liqDist.toFixed(1)}% 아래${r.safe ? "" : " · 위험"}</div></td></tr>`;
+  const noPos = !q1;
+  const tr = (r) => `<tr class="${pick && r === pick ? "pick" : ""}"><td>${r.name}${pick && r === pick ? " ⭐" : ""}</td><td><b>${usd(r.px)}</b><div class="muted small">${pct((r.px / mark - 1) * 100, 2)}</div></td><td>${r.okDir ? `<b class="${r.touch >= 0.5 ? "pos" : r.touch >= 0.3 ? "warn" : "neg"}">${Math.round(r.touch * 100)}%</b>` : `<span class="muted">이미 지남</span>`}</td>` +
+    (noPos ? `<td class="muted small" colspan="2">평단·수량을 넣으면 계산돼요</td>` : `<td>${usd(r.avg)}<div class="muted small">본전 ${pct(r.be, 2)}</div></td><td class="${r.safe ? "" : "neg"}">${usd(r.liq)}<div class="muted small">${r.liqDist.toFixed(1)}% 아래${r.safe ? "" : " · 위험"}</div></td>`) + `</tr>`;
   let verdict;
-  if (fs?.level === "red") verdict = `<li class="ana-bad">🔴 지금은 쉬는 구간이라 <b>물타기 자체를 권하지 않아요.</b> 범위가 넓어지는 구간엔 어디서 타도 다시 밀릴 수 있어요.</li>`;
+  if (noPos) verdict = `<li class="ana-info">위 입력칸에 <b>지금 평단</b>과 <b>보유 수량</b>을 넣으면 "어디서 타는 게 가장 나은지" ⭐로 골라드려요.</li>`;
+  else if (fs?.level === "red") verdict = `<li class="ana-bad">🔴 지금은 쉬는 구간이라 <b>물타기 자체를 권하지 않아요.</b> 범위가 넓어지는 구간엔 어디서 타도 다시 밀릴 수 있어요.</li>`;
   else if (pick) verdict = `<li class="ana-good"><b>${label} 안이라면 ${usd(pick.px)}(${pick.name}) 근처가 가장 나아요.</b> 닿을 확률 ${Math.round(pick.touch * 100)}%, 물탄 뒤 평단 ${usd(pick.avg)}, 청산가 ${usd(pick.liq)}는 ${label} 95% 범위 밖이라 평소 출렁임엔 버텨요. 그 전에 손절가(허용 손실)부터 정해 두세요.</li>`;
   else verdict = `<li class="ana-bad"><b>조건을 만족하는 물타기 가격이 없어요.</b> 닿을 확률 30% 이상이면서 청산가가 안전한 후보가 없다는 뜻이에요 — 지금은 물타기보다 <b>손절이 싸요</b>. 레버리지를 낮추면 후보가 생길 수 있어요.</li>`;
   // 분할: 추천 가격까지 3번 나눠 타면
