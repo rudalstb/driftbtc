@@ -7,7 +7,7 @@ const G = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q + 
 const PRESS = [
   { url: "https://www.blockmedia.co.kr/feed", source: "블록미디어" },
   { url: "https://www.tokenpost.kr/rss", source: "토큰포스트" },
-  { url: "https://www.coinreaders.com/rss/rss_news.php", source: "코인리더스" },
+  // 코인리더스는 서울 서버에서 늘 응답이 없어 뺐다 (기사는 구글 뉴스로 들어옴)
 ];
 const FEEDS = {
   btc: { google: ["비트코인"], press: true, filter: /비트코인|BTC|btc/ },
