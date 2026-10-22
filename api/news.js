@@ -28,7 +28,8 @@ const decode = (s) => s
 const tag = (item, name) => { const m = item.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`)); return m ? decode(m[1]) : ""; };
 
 async function readRss(url, source) {
-  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  // 느린 출처 하나 때문에 전체가 늦지 않도록 4초 넘으면 포기
+  const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(4000) });
   if (!r.ok) throw new Error(`${source} ${r.status}`);
   const xml = await r.text();
   return [...xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/g)].map(([, it]) => {

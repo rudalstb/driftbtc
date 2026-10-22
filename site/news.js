@@ -28,7 +28,7 @@ async function renderKoNews(force = false) {
   newsShown = "ko|" + newsFeed;
   box.innerHTML = `<div class="mp-empty">한국어 뉴스를 불러오는 중…</div>`;
   try {
-    const r = await fetch(`${window.NEWS_URL}?feed=${newsFeed}`, { cache: "no-store" });
+    const r = await fetch(`${window.NEWS_URL}?feed=${newsFeed}`, { cache: "no-store", signal: AbortSignal.timeout?.(15000) });
     const j = await r.json();
     if (!j.items?.length) throw new Error(j.error || "뉴스가 없어요");
     if (newsShown !== "ko|" + newsFeed) return; // 그사이 다른 버튼을 눌렀으면 버림
