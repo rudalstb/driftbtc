@@ -40,14 +40,21 @@ const BLOCK = [
 ];
 const reasonFor = (t) => (BLOCK[0].test(t) || BLOCK[2].test(t) || BLOCK[3].test(t) ? "링크·연락처·홍보 문구는 올릴 수 없어요" : BLOCK[1].test(t) ? "전화번호 같은 숫자는 올릴 수 없어요" : BLOCK[4].test(t) ? "욕설은 올릴 수 없어요" : null);
 
+const KEEP_DAYS = 7; // 한마디는 최근 7일치를 이어서 보여 준다 (투표는 하루 단위)
+
 async function readDay(cfg, day, vid, yday) {
-  const [votes, my, raw, yvotes, hidden] = await redis(cfg, [
+  const dayMs = Date.parse(day + "T00:00:00+09:00");
+  const days = [...Array(KEEP_DAYS)].map((_, i) => kstDate(dayMs - i * DAY * 1000 + 9 * 3600 * 1000 - 9 * 3600 * 1000));
+  const res = await redis(cfg, [
     ["HGETALL", `say:votes:${day}`],
     vid ? ["HGET", `say:voted:${day}`, sha(vid)] : ["PING"],
-    ["LRANGE", `say:posts:${day}`, 0, 79],
     ["HGETALL", `say:votes:${yday}`],
     ["SMEMBERS", "say:hidden"],
+    ...days.map((d) => ["LRANGE", `say:posts:${d}`, 0, 99]),
   ]);
+  const [votes, my, yvotes, hidden] = res;
+  const raw = [];
+  days.forEach((d, i) => (res[4 + i] || []).forEach((s) => raw.push([d, s])));
   const toObj = (arr) => {
     if (!arr) return {};
     if (!Array.isArray(arr)) return Object.fromEntries(Object.entries(arr).map(([k, v]) => [k, Number(v)]));
@@ -57,10 +64,11 @@ async function readDay(cfg, day, vid, yday) {
   };
   const hid = new Set(hidden || []);
   const me = vid ? sha(vid) : null;
-  const posts = (raw || []).map((s) => { try { return JSON.parse(s); } catch { return null; } })
+  const posts = raw.map(([d, s]) => { try { return { ...JSON.parse(s), day: d }; } catch { return null; } })
     .filter((p) => p && !hid.has(p.id))
-    .slice(0, 50)
-    .map((p) => ({ id: p.id, t: p.t, text: p.text, vote: p.vote || null, mine: me != null && p.v === me }));
+    .sort((a, b) => b.t - a.t)
+    .slice(0, 100)
+    .map((p) => ({ id: p.id, day: p.day, t: p.t, text: p.text, vote: p.vote || null, mine: me != null && p.v === me }));
   const v = toObj(votes), y = toObj(yvotes);
   return { day, votes: { long: v.long || 0, short: v.short || 0 }, my: typeof my === "string" ? my : null, posts,
     yesterday: { day: yday, long: y.long || 0, short: y.short || 0 } };

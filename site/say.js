@@ -79,7 +79,7 @@ function renderSay() {
       <button type="submit">남기기</button>
     </form>
     <div class="say-list">${posts}</div>
-    <div class="muted small">전부 익명 · 하루 1표(바꾸거나 다시 눌러 취소) · 링크·연락처·홍보·욕설은 자동 차단 · 신고 3번이면 숨김 · 투자 권유 아니며 책임은 작성자에게</div>`;
+    <div class="muted small">전부 익명 · 한마디는 최근 7일치 표시 · 하루 1표(바꾸거나 다시 눌러 취소) · 링크·연락처·홍보·욕설은 자동 차단 · 신고 3번이면 숨김 · 투자 권유 아니며 책임은 작성자에게</div>`;
 
   box.querySelectorAll(".say-btn").forEach((b) => b.addEventListener("click", async () => {
     b.disabled = true;
@@ -102,7 +102,8 @@ function renderSay() {
     const id = b.closest(".say-post").dataset.id;
     const act = b.dataset.act;
     if (act === "delete" && !confirm("이 글을 지울까요?")) return;
-    const j = await sayApi({ action: act, id, day: sayData.day, key: sayAdminKey || undefined });
+    const day = sayData.posts.find((p) => p.id === id)?.day || sayData.day;
+    const j = await sayApi({ action: act, id, day, key: sayAdminKey || undefined });
     if (!j) return;
     if (act === "report") sayToast(j.hidden ? "신고가 쌓여 숨겼어요" : j.reported ? "신고했어요" : "이미 신고한 글이에요");
     sayData = j; renderSay();
