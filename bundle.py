@@ -15,7 +15,7 @@ SITE = Path(__file__).parent / "site"
 def main(version: str) -> None:
     index = SITE / "index.html"
     html = index.read_text(encoding="utf-8")
-    names = re.findall(r'<script src="([a-z0-9]+.js)"></script>', html)
+    names = re.findall(r'<script src="([a-z0-9]+\.js)"></script>', html)
     if not names:
         raise SystemExit("합칠 스크립트 태그를 못 찾음")
     bundle = "\n;\n".join(f"// ===== {n} =====\n" + (SITE / n).read_text(encoding="utf-8") for n in names)
