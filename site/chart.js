@@ -161,10 +161,13 @@ function tvDrawOverlays() {
     // "2026-10-20 10:00:00+00:00" 처럼 공백이 든 형식도 읽히도록
     const toSec = (t) => Math.floor(new Date(String(t).replace(" ", "T")).getTime() / 1000);
     const nowT = toSec(f.as_of);
-    const line = (raw, color, dashed, title) => {
+    // 짧은 봉(30분 이하)에선 예측 선이 세로 축을 늘려 캔들이 납작해지므로 축 계산에서 뺀다. 축 이름표는 달지 않는다(가격 라벨을 가림)
+    const shortBar = iv.sec <= 1800;
+    const line = (raw, color, dashed) => {
       const data = raw.filter((d) => Number.isFinite(d.time) && Number.isFinite(d.value));
       if (data.length < 2) return;
-      const s = tvChart.addLineSeries({ color, lineWidth: dashed ? 1 : 2, lineStyle: dashed ? 2 : 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title });
+      const s = tvChart.addLineSeries({ color, lineWidth: dashed ? 1 : 2, lineStyle: dashed ? 2 : 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        ...(shortBar ? { autoscaleInfoProvider: () => null } : {}) });
       s.setData(data);
       tvLines.push(s);
     };
@@ -172,15 +175,15 @@ function tvDrawOverlays() {
     const fut = f.future.map((p) => ({ ...p, t: toSec(p.t) }));
     const start = { t: nowT, lo95: f.price, hi95: f.price, lo68: f.price, hi68: f.price };
     const pts = [start, ...fut];
-    line(pts.map((p) => ({ time: p.t, value: p.hi95 })), css("--accent"), true, "95% 위");
-    line(pts.map((p) => ({ time: p.t, value: p.lo95 })), css("--accent"), true, "95% 아래");
-    line(pts.map((p) => ({ time: p.t, value: p.hi68 })), css("--accent"), false, "68% 위");
-    line(pts.map((p) => ({ time: p.t, value: p.lo68 })), css("--accent"), false, "68% 아래");
+    line(pts.map((p) => ({ time: p.t, value: p.hi95 })), css("--accent"), true);
+    line(pts.map((p) => ({ time: p.t, value: p.lo95 })), css("--accent"), true);
+    line(pts.map((p) => ({ time: p.t, value: p.hi68 })), css("--accent"), false);
+    line(pts.map((p) => ({ time: p.t, value: p.lo68 })), css("--accent"), false);
     // 과거에 예측했던 95% 범위 (맞았는지 눈으로 확인)
     const hist = (f.history || []).map((p) => ({ ...p, t: toSec(p.t) })).filter((p) => p.t < nowT);
     if (hist.length) {
-      line(hist.map((p) => ({ time: p.t, value: p.hi95 })), "rgba(139,148,158,0.7)", true, "지난 예측 95% 위");
-      line(hist.map((p) => ({ time: p.t, value: p.lo95 })), "rgba(139,148,158,0.7)", true, "지난 예측 95% 아래");
+      line(hist.map((p) => ({ time: p.t, value: p.hi95 })), "rgba(139,148,158,0.7)", true);
+      line(hist.map((p) => ({ time: p.t, value: p.lo95 })), "rgba(139,148,158,0.7)", true);
     }
   }
   // 롱/숏 관점 마커 (최근 채점된 관점)
