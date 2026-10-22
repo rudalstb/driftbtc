@@ -344,7 +344,7 @@ function renderBrief() {
     live != null ? `지금 <b>${usd(live)}</b>` : "",
     n ? `오늘 95% 범위 <b>${usd(n.lo95)} ~ ${usd(n.hi95)}</b>` : "",
     `<a href="#market" class="plain">${light}</a>`,
-    sig ? `1일 관점 ${sideTag(sig.signal)}` : "",
+    (() => { const p = report.forecasts?.["1d"]; const n = p?.next; return n?.point ? `오늘 AI 콜 <b class="${n.point_dir >= 0 ? "pos" : "neg"}">${n.point_dir >= 0 ? "⬆" : "⬇"} ${usd(n.point)}</b>` : (sig ? `1일 관점 ${sideTag(sig.signal)}` : ""); })(),
   ].filter(Boolean);
   el.innerHTML = parts.join(`<span class="muted"> · </span>`);
 }
@@ -383,8 +383,29 @@ function normCdf(z) {
   return z >= 0 ? (1 + y) / 2 : (1 - y) / 2;
 }
 
+// 🎯 한 점 콜 문구: "⬆ $83,120 (+0.25%) · 12:00 결과"
+function pointCall(f, withTime = true) {
+  const n = f?.next;
+  if (!n?.point) return null;
+  const up = n.point_dir >= 0;
+  const mv = (n.point / f.price - 1) * 100;
+  const fmt = freq === "1h" ? clock : dayClock;
+  return { up, price: n.point, mv, html: `<span class="${up ? "pos" : "neg"}">${up ? "⬆" : "⬇"} ${usd(n.point)}</span> <span class="${up ? "pos" : "neg"} small">(${pct(mv, 2)})</span>${withTime ? ` <span class="muted small">· ${fmt(new Date(n.t))} 결과</span>` : ""}` };
+}
+
 function renderDirection(f) {
   const n = f.next;
+  const pc = pointCall(f);
+  $("point-call").innerHTML = pc ? pc.html : "다음 갱신 때 첫 콜이 나와요";
+  const ps = report.live_record?.[freq]?.point;
+  if (ps && ps.n) {
+    const streak = ps.streak >= 2 ? ` · 🔥 ${ps.streak}연속 적중` : "";
+    const last = ps.recent[ps.recent.length - 1];
+    $("point-score").innerHTML = `지금까지 <b>${ps.n}번</b> 중 방향 <b>${ps.dir_hits}번</b> 적중 (${Math.round((ps.dir_hits / ps.n) * 100)}%) · 목표가 도달 ${ps.reached}번 · 평균 오차 <b>${ps.mae_pct.toFixed(2)}%</b>${streak}` +
+      (last ? `<br><span class="muted">직전: 🎯 ${usd(last.point)} → 실제 ${usd(last.actual)} (오차 ${last.err_pct.toFixed(2)}%) ${last.hit ? "✅" : "❌"}</span>` : "");
+  } else {
+    $("point-score").innerHTML = `<span class="muted">첫 결과가 나오면 방향 적중·오차를 여기서 매시간 채점해요.</span>`;
+  }
   // 다음 캔들 수익률 표준편차 (68% 상단 = price * exp(0.9945 * sigma))
   const sigma = Math.log(n.hi68 / f.price) / 0.9945;
   // 백테스트상 가장 보정이 잘 된(과신하지 않는) Ridge 기울기를 사용

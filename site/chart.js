@@ -175,6 +175,15 @@ function tvDrawOverlays() {
     const fut = f.future.map((p) => ({ ...p, t: toSec(p.t) }));
     const start = { t: nowT, lo95: f.price, hi95: f.price, lo68: f.price, hi68: f.price };
     const pts = [start, ...fut];
+    // 🎯 한 점 경로: 현재가에서 목표가까지 굵은 점선 + 축 라벨은 이것 하나만
+    if (fut[0]?.point) {
+      const pdata = [{ time: nowT, value: f.price }, ...fut.map((p) => ({ time: p.t, value: p.point }))].filter((d) => Number.isFinite(d.time) && Number.isFinite(d.value));
+      const up = fut[0].point_dir >= 0;
+      const ps = tvChart.addLineSeries({ color: up ? css("--up") : css("--down"), lineWidth: 3, lineStyle: 1, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, ...(shortBar ? { autoscaleInfoProvider: () => null } : {}) });
+      ps.setData(pdata);
+      ps.setMarkers([{ time: pdata[1]?.time || nowT, position: up ? "aboveBar" : "belowBar", color: up ? css("--up") : css("--down"), shape: "circle", text: "🎯 " + Math.round(fut[0].point).toLocaleString("en-US") }]);
+      tvLines.push(ps);
+    }
     line(pts.map((p) => ({ time: p.t, value: p.hi95 })), css("--accent"), true);
     line(pts.map((p) => ({ time: p.t, value: p.lo95 })), css("--accent"), true);
     line(pts.map((p) => ({ time: p.t, value: p.hi68 })), css("--accent"), false);

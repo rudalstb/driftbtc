@@ -69,7 +69,7 @@ function renderSay() {
       <button class="say-btn long ${d.my === "long" ? "on" : ""}" data-side="long">🟢 롱 ${d.my === "long" ? "✓" : ""}</button>
       <div class="say-bar-wrap">
         <div class="ls-bar"><i style="width:${lp}%"></i></div>
-        <div class="ls-label"><span class="pos">롱 ${lp}%</span><span class="muted">${n}표${ai ? ` · AI 1일 관점 ${ai === "long" ? "🟢 롱" : "🔴 숏"}` : ""}</span><span class="neg">숏 ${100 - lp}%</span></div>
+        <div class="ls-label"><span class="pos">롱 ${lp}%</span><span class="muted">${n}표${(() => { const p = report?.forecasts?.["1d"]?.next; return p?.point ? ` · 오늘 AI 콜 ${p.point_dir >= 0 ? "⬆" : "⬇"} ${usd(p.point)}` : ai ? ` · AI 1일 관점 ${ai === "long" ? "🟢 롱" : "🔴 숏"}` : ""; })()}</span><span class="neg">숏 ${100 - lp}%</span></div>
       </div>
       <button class="say-btn short ${d.my === "short" ? "on" : ""}" data-side="short">🔴 숏 ${d.my === "short" ? "✓" : ""}</button>
     </div>

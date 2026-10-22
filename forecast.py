@@ -70,13 +70,18 @@ def run(freq: str) -> dict:
         lean[m.name] = float(m.predict(X[ok].iloc[[-1]])[0])
 
     sd = garch_path(ret, HORIZON[freq])
+    # 🎯 한 점 예측(재미용 콜): 방향은 릿지 기울기 부호, 크기는 |기울기|와 '평소 움직임'(0.6σ ≈ 실제 움직임 크기의 중앙값) 중 큰 쪽
+    lean_r = lean.get("ridge", 0.0)
+    direction = 1 if lean_r >= 0 else -1
     future = []
     for k, s in enumerate(sd, 1):
+        move = max(abs(lean_r), 0.6 * s)
         future.append({
             "t": (now_time + k * step).isoformat(),
             "lo95": price * np.exp(-Z95 * s), "lo68": price * np.exp(-Z68 * s),
             "mid": price,
             "hi68": price * np.exp(Z68 * s), "hi95": price * np.exp(Z95 * s),
+            "point": price * np.exp(direction * move), "point_dir": direction,
         })
 
     # 최근 기록: 구간 시작 전까지만으로 GARCH 를 적합하고 파라미터 고정 후 1단계 예측 (표본 외)
@@ -138,7 +143,9 @@ def live_record() -> dict:
         # 목표 시각 T 의 가격 = T - step 에 시작한 캔들의 종가
         close_at = df["close"].copy()
         close_at.index = close_at.index + STEP[freq]
-        scored = []
+        hi_at = df["high"].copy(); hi_at.index = close_at.index
+        lo_at = df["low"].copy(); lo_at.index = close_at.index
+        scored, points = [], []
         for e in (x for x in logs if x["freq"] == freq):
             t = pd.Timestamp(e["t"])
             if t not in close_at.index:
@@ -146,9 +153,22 @@ def live_record() -> dict:
             a = float(close_at[t])
             scored.append({"t": e["t"], "actual": a,
                            "in95": e["lo95"] <= a <= e["hi95"], "in68": e["lo68"] <= a <= e["hi68"]})
+            if e.get("point") and e.get("price"):
+                up = e["point"] >= e["price"]
+                points.append({
+                    "t": e["t"], "price": e["price"], "point": e["point"], "actual": a,
+                    "dir_hit": (a >= e["price"]) == up,
+                    "err_pct": abs(a / e["point"] - 1) * 100,
+                    "reached": bool(float(hi_at[t]) >= e["point"]) if up else bool(float(lo_at[t]) <= e["point"]),
+                })
         if not scored:
             out[freq] = {"n": 0}
             continue
+        streak = 0
+        for p in reversed(points):
+            if not p["dir_hit"]:
+                break
+            streak += 1
         out[freq] = {
             "n": len(scored),
             "since": scored[0]["t"],
@@ -156,6 +176,15 @@ def live_record() -> dict:
             "hit68": sum(x["in68"] for x in scored),
             # 최근 30개: 2 = 68% 안, 1 = 95% 안, 0 = 범위 밖
             "recent": [{"t": x["t"], "r": 2 if x["in68"] else 1 if x["in95"] else 0} for x in scored[-30:]],
+            # 🎯 한 점 예측 채점
+            "point": {
+                "n": len(points),
+                "dir_hits": sum(p["dir_hit"] for p in points),
+                "reached": sum(p["reached"] for p in points),
+                "mae_pct": float(np.mean([p["err_pct"] for p in points])) if points else None,
+                "streak": streak,
+                "recent": [{"t": p["t"], "point": p["point"], "actual": p["actual"], "hit": p["dir_hit"], "reached": p["reached"], "err_pct": round(p["err_pct"], 3)} for p in points[-20:]],
+            } if points else None,
         }
     return out
 
