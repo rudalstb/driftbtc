@@ -206,6 +206,9 @@
           <input id="rk-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
           <span class="rk-quick"><button data-for="rk-lev" data-v="3">3</button><button data-for="rk-lev" data-v="5">5</button><button data-for="rk-lev" data-v="10">10</button><button data-for="rk-lev" data-v="20">20</button></span>
         </label>
+        <label class="calc-field"><span>마진 모드 <span class="muted">· 교차면 계좌 잔고가 증거금</span></span>
+          <span class="period rk-side" id="rk-mode" role="group"><button data-mode="isolated" aria-pressed="true">격리</button><button data-mode="cross" aria-pressed="false">교차</button></span>
+        </label>
       </div>
       <div id="rk-result" class="calc-result"></div>
       <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
@@ -226,6 +229,12 @@
         </label>
         <label class="calc-field"><span>레버리지 (배)</span>
           <input id="av-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
+        </label>
+        <label class="calc-field"><span>마진 모드</span>
+          <span class="period rk-side" id="av-mode" role="group"><button data-mode="isolated" aria-pressed="true">격리</button><button data-mode="cross" aria-pressed="false">교차</button></span>
+        </label>
+        <label class="calc-field" hidden><span>지갑 잔고 (교차) <span class="muted" id="av-wallet-unit">($)</span></span>
+          <input id="av-wallet" type="number" inputmode="decimal" step="any" placeholder="거래소 선물 지갑 잔고">
         </label>
       </div>
       <div class="calc-row">
@@ -270,6 +279,12 @@
         </label>
         <label class="calc-field"><span>레버리지 (배)</span>
           <input id="pl-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
+        </label>
+        <label class="calc-field"><span>마진 모드</span>
+          <span class="period rk-side" id="pl-mode" role="group"><button data-mode="isolated" aria-pressed="true">격리</button><button data-mode="cross" aria-pressed="false">교차</button></span>
+        </label>
+        <label class="calc-field" hidden><span>지갑 잔고 (교차) <span class="muted" id="pl-wallet-unit">($)</span></span>
+          <input id="pl-wallet" type="number" inputmode="decimal" step="any" placeholder="거래소 선물 지갑 잔고">
         </label>
       </div>
       <div class="calc-row">

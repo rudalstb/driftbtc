@@ -3,6 +3,24 @@
 // 매매 분석(analysis.js)에서 나온 나쁜 습관 경고를 붙인다. app.js 뒤에 로드되며 $, usd, money, krw, FX, live, calcSigma, normCdf 를 쓴다.
 
 const MMR = 0.005; // 유지증거금률 근사(비트코인 소액 구간 0.4~0.5%) — 청산가는 거래소마다 조금 다르니 "대략"으로만
+
+// 청산가 (대략). 격리: 레버리지로 정해짐. 교차: 지갑 잔고 전체가 증거금이라 잔고로 정해짐 (다른 포지션이 있으면 더 달라짐)
+//   격리 롱: 진입가 × (1 − 1/배수 + m)          숏: 진입가 × (1 + 1/배수 − m)
+//   교차 롱: (평단×수량 − 지갑잔고) ÷ (수량×(1−m))   숏: (지갑잔고 + 평단×수량) ÷ (수량×(1+m))
+function liqPrice({ long, entry, qty, lev, mode, wallet }) {
+  if (mode === "cross") {
+    if (!wallet || !qty) return null;
+    const p = long ? (entry * qty - wallet) / (qty * (1 - MMR)) : (wallet + entry * qty) / (qty * (1 + MMR));
+    return long ? Math.max(0, p) : p;
+  }
+  return long ? entry * (1 - 1 / lev + MMR) : entry * (1 + 1 / lev - MMR);
+}
+const marginMode = (grp) => document.querySelector(`#${grp} button[aria-pressed='true']`)?.dataset.mode || "isolated";
+const bindMode = (grp, fn, walletId) => document.querySelectorAll(`#${grp} button`).forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(`#${grp} button`).forEach((x) => x.setAttribute("aria-pressed", x === b));
+  if (walletId) $(walletId).closest(".calc-field").hidden = b.dataset.mode !== "cross";
+  fn();
+}));
 let riskBalUsd = null; // 방문자가 넣은 잔고 — 본인 브라우저(localStorage)에만 저장, 서버로 보내지 않는다
 try { riskBalUsd = Number(localStorage.getItem("driftbtc_rk_bal")) || null; } catch (e) {}
 let riskEntryUsd = null; // 비워 두면 실시간 BTC 가격
@@ -47,7 +65,8 @@ function renderRisk(sync = false) {
   const margin = notional / i.lev;
   const stop = i.entry * (long ? 1 - i.stopPct / 100 : 1 + i.stopPct / 100);
   // 격리 마진 청산가 근사: 증거금을 다 잃는 지점에서 유지증거금만큼 앞
-  const liq = long ? i.entry * (1 - 1 / i.lev + MMR) : i.entry * (1 + 1 / i.lev - MMR);
+  const mode = marginMode("rk-mode");
+  const liq = liqPrice({ long, entry: i.entry, qty, lev: i.lev, mode, wallet: i.bal }) ?? (long ? 0 : Infinity);
   const liqPct = Math.abs(liq / i.entry - 1) * 100;
   const stopBeyondLiq = long ? stop <= liq : stop >= liq;
   const minLev = Math.ceil(notional / i.bal); // 잔고로 이 포지션을 열려면 필요한 최소 레버리지
@@ -65,7 +84,7 @@ function renderRisk(sync = false) {
     kv("들어갈 수량", `<b>${qty < 0.01 ? qty.toFixed(4) : qty.toFixed(3)}</b> <span class="muted">개</span>`, `명목 ${money(notional)}`) +
     kv("필요 증거금", `<b class="${margin > i.bal ? "neg" : ""}">${money(margin)}</b>`, margin > i.bal ? `잔고 부족 · 최소 ${minLev}배 필요` : `잔고의 ${Math.round((margin / i.bal) * 100)}%`) +
     kv("손절가", `<b class="neg">${usd(stop)}</b>`, `여기서 끊으면 ${money(-maxLoss).replace("-", "−")} (잔고의 ${i.riskPct}%)`) +
-    kv("청산가 (대략)", `<b class="${stopBeyondLiq ? "neg" : ""}">${usd(liq)}</b>`, `진입가에서 ${liqPct.toFixed(1)}% · ${i.lev}배 격리 기준`) +
+    kv("청산가 (대략)", `<b class="${stopBeyondLiq ? "neg" : ""}">${usd(liq)}</b>`, `진입가에서 ${liqPct.toFixed(1)}% · ${mode === "cross" ? "교차(잔고 전체 기준)" : `${i.lev}배 격리`}`) +
     `</div>`;
 
   html += `<div class="rk-line"><span class="muted">손익비 1.5 익절</span> <b>${usd(tp(1.5))}</b> <span class="muted">· 손익비 2 익절</span> <b>${usd(tp(2))}</b>` +
@@ -120,3 +139,4 @@ document.querySelectorAll(".rk-vol").forEach((b) =>
 window.renderRisk = renderRisk;
 setInterval(() => { if (!riskTouched.entry) renderRisk(true); }, 10000); // 진입가를 비워 뒀으면 실시간 가격 따라감
 setTimeout(() => renderRisk(true), 1500);
+bindMode("rk-mode", () => renderRisk());
