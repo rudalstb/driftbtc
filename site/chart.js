@@ -275,6 +275,7 @@ function tvStatus() {
 let tvHealing = false;
 async function tvHealthCheck() {
   if (!tvLoaded || !tvActive() || tvHealing) return;
+  if (typeof report !== "undefined" && report && tvLines.length === 0 && tvShow.band && tvSym().overlays && tvCandleData.length) tvDrawOverlays(); // 선이 빠져 있으면 다시
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const d = tvCandles?.data?.() || [];
   const lastT = d.length ? d[d.length - 1].time : 0;
@@ -380,6 +381,7 @@ document.addEventListener("tabshown", (e) => {
 // 페이지를 차트 탭으로 바로 열었을 때 (탭 초기화가 이 스크립트보다 먼저 끝남)
 if (typeof activeTab !== "undefined" && tvActive()) tvOpen();
 // 예측이 새로 오면 겹쳐 그린 선도 갱신
-document.addEventListener("reportloaded", () => { if (tvLoaded && tvActive()) tvDrawOverlays(); });
+// 예측이 차트보다 늦게(또는 먼저) 도착해도 겹쳐 그린 선이 빠지지 않도록
+document.addEventListener("reportloaded", () => { if (tvCandles && tvCandleData.length) tvDrawOverlays(); });
 // 밝은/어두운 테마가 바뀌면 색도 다시
 matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => { if (tvLoaded) { tvCreate(); tvLoad(); } });
