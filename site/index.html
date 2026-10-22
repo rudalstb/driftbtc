@@ -147,15 +147,18 @@
     <section class="card news-card" id="news" data-sec="news">
       <div class="game-head">
         <h2>📰 코인 뉴스</h2>
-        <span class="muted small">트레이딩뷰 뉴스 · 실시간 · 제목을 누르면 원문</span>
+        <span class="muted small" id="news-updated">제목을 누르면 원문</span>
       </div>
       <div class="tv-bar">
         <div class="period tv-sym" id="news-feed" role="group" aria-label="뉴스 종류">
-          <button data-feed="btc" aria-pressed="true">₿ 비트코인</button><button data-feed="eth" aria-pressed="false">Ξ 이더리움</button><button data-feed="crypto" aria-pressed="false">🪙 코인 전체</button><button data-feed="nq" aria-pressed="false">나스닥100</button>
+          <button data-feed="btc" aria-pressed="true">₿ 비트코인</button><button data-feed="eth" aria-pressed="false">Ξ 이더리움</button><button data-feed="crypto" aria-pressed="false">🪙 코인 전체</button><button data-feed="nq" aria-pressed="false">나스닥·증시</button>
+        </div>
+        <div class="period" id="news-lang" role="group" aria-label="언어">
+          <button data-lang="ko" aria-pressed="true">🇰🇷 한국어</button><button data-lang="en" aria-pressed="false">🌐 해외 뉴스</button>
         </div>
       </div>
       <div id="news-widget" class="news-widget"><div class="mp-empty">뉴스를 불러오는 중…</div></div>
-      <p class="muted small">뉴스는 트레이딩뷰가 제공하는 공식 위젯으로 보여드려요. 기사 내용은 각 언론사의 것이며 투자 권유가 아닙니다.</p>
+      <p class="muted small">한국어 뉴스는 구글 뉴스와 코인 전문지(블록미디어·토큰포스트·코인리더스)의 제목만 모아 원문으로 연결해요. 해외 뉴스는 트레이딩뷰 공식 위젯이에요. 기사 내용은 각 언론사의 것이며 투자 권유가 아닙니다.</p>
     </section>
 
     <section class="card say-card" id="say" data-sec="say">

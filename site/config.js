@@ -27,3 +27,6 @@ window.TELEGRAM_URL = "";
 
 // 나스닥100 선물 캔들 중계 (Vercel 서버리스 함수, api/nq.js). 야후 파이낸스라 약 10~15분 지연
 window.NQ_URL = "https://driftbtc.vercel.app/api/nq";
+
+// 한국어 코인 뉴스 중계 (Vercel 서버리스 함수, api/news.js) — 제목·링크·시각만
+window.NEWS_URL = "https://driftbtc.vercel.app/api/news";
