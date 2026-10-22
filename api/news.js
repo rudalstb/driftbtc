@@ -12,7 +12,7 @@ const PRESS = [
 const FEEDS = {
   btc: { google: ["비트코인"], press: true, filter: /비트코인|BTC|btc/ },
   eth: { google: ["이더리움"], press: true, filter: /이더리움|ETH|이더/ },
-  crypto: { google: ["가상자산 OR 코인 OR 암호화폐"], press: true, filter: null },
+  crypto: { google: ["가상자산 OR 코인 OR 암호화폐"], press: true, filter: /코인|비트|이더|가상자산|암호화폐|블록체인|BTC|ETH|XRP|리플|솔라나|토큰|거래소|스테이블|알트|NFT|ETF|업비트|빗썸|바이낸스|김프|채굴|디파이|DeFi/i },
   nq: { google: ["나스닥 OR 뉴욕증시", "연준 금리"], press: false, filter: null },
 };
 const CACHE_MS = 5 * 60 * 1000;
@@ -54,7 +54,7 @@ export async function GET(request) {
   let items = [];
   const errors = [];
   res.forEach((r, i) => {
-    if (r.status !== "fulfilled") { errors.push(String(r.reason?.message || r.reason)); return; }
+    if (r.status !== "fulfilled") { errors.push(`${i < f.google.length ? "구글 뉴스" : PRESS[i - f.google.length].source}: ${String(r.reason?.message || r.reason)}`); return; }
     // 전문지 기사는 종류에 맞는 제목만 (코인 전체는 그대로)
     const fromPress = i >= f.google.length;
     items.push(...(fromPress && f.filter ? r.value.filter((x) => f.filter.test(x.title)) : r.value));
