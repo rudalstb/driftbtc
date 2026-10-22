@@ -230,11 +230,11 @@
         <label class="calc-field"><span>레버리지 (배)</span>
           <input id="av-lev" type="number" inputmode="numeric" step="1" min="1" max="125" value="10">
         </label>
-        <label class="calc-field"><span>마진 모드</span>
+        <label class="calc-field"><span>마진 모드 <span class="muted">· 청산가 계산 기준</span></span>
           <span class="period rk-side" id="av-mode" role="group"><button data-mode="isolated" aria-pressed="true">격리</button><button data-mode="cross" aria-pressed="false">교차</button></span>
         </label>
-        <label class="calc-field" hidden><span>지갑 잔고 (교차) <span class="muted" id="av-wallet-unit">($)</span></span>
-          <input id="av-wallet" type="number" inputmode="decimal" step="any" placeholder="거래소 선물 지갑 잔고">
+        <label class="calc-field"><span><span class="mode-label">이 포지션 증거금</span> <span class="muted" id="av-wallet-unit">($)</span></span>
+          <input id="av-wallet" type="number" inputmode="decimal" step="any" placeholder="비우면 명목 ÷ 배수">
         </label>
       </div>
       <div class="calc-row">
@@ -283,8 +283,8 @@
         <label class="calc-field"><span>마진 모드</span>
           <span class="period rk-side" id="pl-mode" role="group"><button data-mode="isolated" aria-pressed="true">격리</button><button data-mode="cross" aria-pressed="false">교차</button></span>
         </label>
-        <label class="calc-field" hidden><span>지갑 잔고 (교차) <span class="muted" id="pl-wallet-unit">($)</span></span>
-          <input id="pl-wallet" type="number" inputmode="decimal" step="any" placeholder="거래소 선물 지갑 잔고">
+        <label class="calc-field"><span><span class="mode-label">이 포지션 증거금</span> <span class="muted" id="pl-wallet-unit">($)</span></span>
+          <input id="pl-wallet" type="number" inputmode="decimal" step="any" placeholder="비우면 명목 ÷ 배수">
         </label>
       </div>
       <div class="calc-row">

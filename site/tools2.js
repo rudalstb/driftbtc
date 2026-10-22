@@ -47,7 +47,9 @@ function renderPnl(sync = false) {
   const roe = (net / margin) * 100;
   const move = (exit / entry - 1) * 100;
   const mode = marginMode("pl-mode");
-  const liq = liqPrice({ long, entry, qty, lev, mode, wallet: toUsd(num0("pl-wallet")) });
+  const userMargin = toUsd(num0("pl-wallet"));
+  const liq = liqPrice({ long, entry, qty, lev, mode, wallet: userMargin });
+  const marginShown = mode === "cross" ? (userMargin || margin) : (userMargin || margin);
   if (plLast !== "roe") $("pl-roe").value = Math.round(roe * 10) / 10;
   const hidden = gross ? ((fee + funding) / Math.abs(gross)) * 100 : 0;
   el.innerHTML =
@@ -56,7 +58,7 @@ function renderPnl(sync = false) {
     tile2("가격 손익", signed(gross), `가격 ${pct(move, 2)} × ${lev}배`) +
     tile2("수수료 (왕복)", money(fee), `편도 ${feePct}% · 명목 ${money(notional)}`) +
     tile2("펀딩비", funding >= 0 ? money(funding) : `<span class="pos">${money(-funding)} 받음</span>`, `${fundPeriods}회 × ${fundingNow().toFixed(4)}% (지금 비율)`) +
-    tile2("증거금 · 청산가", `<b>${money(margin)}</b>`, liq == null ? "교차: 지갑 잔고를 넣으면 청산가 계산" : `청산가 ${usd(liq)} (${mode === "cross" ? "교차" : "격리"}, 대략)`) +
+    tile2("증거금 · 청산가", `<b>${money(marginShown)}</b>`, liq == null ? "교차: 지갑 잔고를 넣으면 청산가 계산" : `청산가 ${usd(liq)} (${mode === "cross" ? "교차 · 지갑 기준" : userMargin ? "격리 · 넣은 증거금" : "격리 · 명목÷배수"}, 대략)`) +
     `</div>` +
     `<div class="rk-line">${gross > 0 && hidden >= 10 ? `<span class="warn">가격으로는 ${money(gross)} 벌었지만 수수료·펀딩이 <b>${Math.round(hidden)}%</b>를 가져가요.</span>` : gross > 0 ? `수수료·펀딩이 이익의 ${hidden.toFixed(1)}%예요.` : ""}` +
     (liq != null && long && liq >= Math.min(entry, exit) ? ` <span class="neg">목표 청산가에 닿기 전에 청산가(${usd(liq)})를 먼저 지날 수 있어요.</span>` : "") + `</div>`;

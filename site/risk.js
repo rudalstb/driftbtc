@@ -8,19 +8,30 @@ const MMR = 0.005; // 유지증거금률 근사(비트코인 소액 구간 0.4~0
 //   격리 롱: 진입가 × (1 − 1/배수 + m)          숏: 진입가 × (1 + 1/배수 − m)
 //   교차 롱: (평단×수량 − 지갑잔고) ÷ (수량×(1−m))   숏: (지갑잔고 + 평단×수량) ÷ (수량×(1+m))
 function liqPrice({ long, entry, qty, lev, mode, wallet }) {
-  if (mode === "cross") {
-    if (!wallet || !qty) return null;
-    const p = long ? (entry * qty - wallet) / (qty * (1 - MMR)) : (wallet + entry * qty) / (qty * (1 + MMR));
-    return long ? Math.max(0, p) : p;
-  }
-  return long ? entry * (1 - 1 / lev + MMR) : entry * (1 + 1 / lev - MMR);
+  if (!qty) return null;
+  // 증거금: 격리는 사용자가 넣은 '이 포지션 증거금'(없으면 명목÷배수), 교차는 '지갑 잔고'(없으면 계산 불가)
+  const margin = mode === "cross" ? wallet : wallet > 0 ? wallet : (entry * qty) / (lev || 1);
+  if (!margin) return null;
+  const p = long ? (entry * qty - margin) / (qty * (1 - MMR)) : (margin + entry * qty) / (qty * (1 + MMR));
+  return long ? Math.max(0, p) : p;
 }
 const marginMode = (grp) => document.querySelector(`#${grp} button[aria-pressed='true']`)?.dataset.mode || "isolated";
-const bindMode = (grp, fn, walletId) => document.querySelectorAll(`#${grp} button`).forEach((b) => b.addEventListener("click", () => {
-  document.querySelectorAll(`#${grp} button`).forEach((x) => x.setAttribute("aria-pressed", x === b));
-  if (walletId) $(walletId).closest(".calc-field").hidden = b.dataset.mode !== "cross";
-  fn();
-}));
+// 모드에 따라 증거금 칸의 이름·안내만 바꾼다 (칸은 항상 보임)
+function applyModeLabel(grp, walletId) {
+  if (!walletId || !$(walletId)) return;
+  const cross = marginMode(grp) === "cross";
+  const lab = $(walletId).closest(".calc-field").querySelector("span.mode-label");
+  if (lab) lab.textContent = cross ? "지갑 잔고 (남은 금액 포함)" : "이 포지션 증거금";
+  $(walletId).placeholder = cross ? "선물 지갑 총액" : "비우면 명목 ÷ 배수";
+}
+const bindMode = (grp, fn, walletId) => {
+  document.querySelectorAll(`#${grp} button`).forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(`#${grp} button`).forEach((x) => x.setAttribute("aria-pressed", x === b));
+    applyModeLabel(grp, walletId);
+    fn();
+  }));
+  applyModeLabel(grp, walletId);
+};
 let riskBalUsd = null; // 방문자가 넣은 잔고 — 본인 브라우저(localStorage)에만 저장, 서버로 보내지 않는다
 try { riskBalUsd = Number(localStorage.getItem("driftbtc_rk_bal")) || null; } catch (e) {}
 let riskEntryUsd = null; // 비워 두면 실시간 BTC 가격
@@ -66,7 +77,8 @@ function renderRisk(sync = false) {
   const stop = i.entry * (long ? 1 - i.stopPct / 100 : 1 + i.stopPct / 100);
   // 격리 마진 청산가 근사: 증거금을 다 잃는 지점에서 유지증거금만큼 앞
   const mode = marginMode("rk-mode");
-  const liq = liqPrice({ long, entry: i.entry, qty, lev: i.lev, mode, wallet: i.bal }) ?? (long ? 0 : Infinity);
+  // 격리: 이 포지션 증거금 = 명목÷배수, 교차: 계좌 잔고 전체
+  const liq = liqPrice({ long, entry: i.entry, qty, lev: i.lev, mode, wallet: mode === "cross" ? i.bal : 0 }) ?? (long ? 0 : Infinity);
   const liqPct = Math.abs(liq / i.entry - 1) * 100;
   const stopBeyondLiq = long ? stop <= liq : stop >= liq;
   const minLev = Math.ceil(notional / i.bal); // 잔고로 이 포지션을 열려면 필요한 최소 레버리지

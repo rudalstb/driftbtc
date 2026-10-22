@@ -27,16 +27,18 @@ function renderAvg(sync = false) {
   const tgt = avgUsdIn("av-target");
   if (!p2) { el.innerHTML = `<span class="muted">가격을 불러오는 중…</span>`; return; }
   if (!p1 || !q1) {
-    const liqOf0 = (avg, qty = 1) => liqPrice({ long, entry: avg, qty, lev, mode: marginMode("av-mode"), wallet: avgUsdIn("av-wallet") });
+    const liqOf0 = (avg, qty = 1) => liqPrice({ long, entry: avg, qty, lev, mode: marginMode("av-mode"), wallet: marginMode("av-mode") === "cross" ? avgUsdIn("av-wallet") : 0 });
     el.innerHTML = `<div class="muted small">① <b>지금 평단</b>과 <b>보유 수량</b>을 넣으면 물탄 뒤 평단·청산가·추천이 채워져요. 지금은 후보 가격과 닿을 확률만 보여드려요.</div>` +
       renderWhereToAdd({ long, p1: 0, q1: 0, q2: 0, lev, mark: p2, liqOf: liqOf0, dist: () => 0 });
     return;
   }
   const mode = marginMode("av-mode"), wallet = avgUsdIn("av-wallet");
-  const liqOf = (avg, qty = q1) => liqPrice({ long, entry: avg, qty, lev, mode, wallet });
+  // 격리: 지금 증거금(입력 없으면 명목÷배수) + 추가로 타는 만큼의 증거금(추가 명목÷배수). 교차: 지갑 잔고 그대로
+  const marginFor = (qty) => (mode === "cross" ? wallet : (wallet > 0 ? wallet : (p1 * q1) / lev) + (Math.max(0, qty - q1) * p2) / lev);
+  const liqOf = (avg, qty = q1) => liqPrice({ long, entry: avg, qty, lev, mode, wallet: marginFor(qty) });
   const pnlAt = (avg, qty, px) => (long ? (px - avg) * qty : (avg - px) * qty);
   const mark = live ?? p2;
-  const before = { avg: p1, qty: q1, notional: p1 * q1, margin: (p1 * q1) / lev, liq: liqOf(p1), pnl: pnlAt(p1, q1, mark) };
+  const before = { avg: p1, qty: q1, notional: p1 * q1, margin: mode === "cross" ? wallet : wallet > 0 ? wallet : (p1 * q1) / lev, liq: liqOf(p1), pnl: pnlAt(p1, q1, mark) };
   const tile = (k, v, sub = "") => `<div class="rk-tile"><div class="label">${k}</div><div class="rk-val">${v}</div>${sub ? `<div class="muted small">${sub}</div>` : ""}</div>`;
   const dist = (avg) => (long ? (avg / mark - 1) * 100 : (1 - avg / mark) * 100); // 본전까지 현재가에서 움직여야 하는 %
   const liqDist = (liq) => (liq == null ? 0 : Math.abs(liq / mark - 1) * 100);
@@ -44,13 +46,13 @@ function renderAvg(sync = false) {
 
   if (q2 > 0) {
     const qty = q1 + q2, avg = (p1 * q1 + p2 * q2) / qty;
-    const after = { avg, qty, notional: avg * qty, margin: (avg * qty) / lev, liq: liqOf(avg, qty), pnl: pnlAt(avg, qty, mark) };
     const addMargin = (p2 * q2) / lev;
+    const after = { avg, qty, notional: avg * qty, margin: mode === "cross" ? wallet : before.margin + addMargin, liq: liqOf(avg, qty), pnl: pnlAt(avg, qty, mark) };
     const avgChg = (avg / p1 - 1) * 100;
     html += `<div class="rk-tiles paper-tiles">` +
       tile("새 평단", `<b>${usd(avg)}</b>`, `${usd(p1)} → <span class="${(long ? avgChg < 0 : avgChg > 0) ? "pos" : "neg"}">${pct(avgChg, 2)}</span>`) +
       tile("총 수량 · 명목", `<b>${qty < 0.01 ? qty.toFixed(4) : qty.toFixed(3)}</b> <span class="muted">개</span>`, `명목 ${money(after.notional)}`) +
-      tile("추가 증거금", `<b>${money(addMargin)}</b>`, `합계 ${money(after.margin)} · ${lev}배`) +
+      tile("추가 증거금", `<b>${money(addMargin)}</b>`, mode === "cross" ? `교차 · 지갑 잔고 ${money(wallet || 0)}` : `합계 ${money(after.margin)} · ${lev}배`) +
       tile("새 청산가 (대략)", `<b class="${after.liq != null && liqDist(after.liq) < 5 ? "neg" : ""}">${fmtLiq(after.liq)}</b>`, after.liq == null ? "교차는 지갑 잔고를 넣어야 계산돼요" : `${fmtLiq(before.liq)} → 현재가에서 ${liqDist(after.liq).toFixed(1)}% · ${mode === "cross" ? "교차(잔고 기준)" : "격리"}`) +
       tile("본전까지", `<b class="${dist(avg) <= 0 ? "pos" : "warn"}">${dist(avg) <= 0 ? "이미 본전 위" : pct(dist(avg), 2)}</b>`, `지금 평단 기준 ${dist(p1) <= 0 ? "본전 위" : pct(dist(p1), 2)}`) +
       `</div>` +
@@ -58,7 +60,7 @@ function renderAvg(sync = false) {
     const warn = [];
     if (after.liq != null && liqDist(after.liq) < 3) warn.push({ lv: "bad", text: `새 청산가가 현재가에서 <b>${liqDist(after.liq).toFixed(1)}%</b>밖에 안 떨어져 있어요. 평소 하루 변동폭 안이라 한 번 출렁이면 전부 잃어요.` });
     else if (after.liq != null && before.liq != null && liqDist(after.liq) < liqDist(before.liq)) warn.push({ lv: "warn", text: `물을 타면 청산가가 현재가 쪽으로 <b>${(liqDist(before.liq) - liqDist(after.liq)).toFixed(1)}%p</b> 가까워져요 (교차 마진이면 계좌 전체가 증거금이라 다름).` });
-    if (after.margin > before.margin * 2) warn.push({ lv: "warn", text: `증거금이 ${money(before.margin)} → ${money(after.margin)}, <b>${(after.margin / before.margin).toFixed(1)}배</b>로 늘어요. 같은 % 움직임에 잃는 금액도 그만큼 커집니다.` });
+    if (mode !== "cross" && after.margin > before.margin * 2) warn.push({ lv: "warn", text: `증거금이 ${money(before.margin)} → ${money(after.margin)}, <b>${(after.margin / before.margin).toFixed(1)}배</b>로 늘어요. 같은 % 움직임에 잃는 금액도 그만큼 커집니다.` });
     const fs = window.filterState;
     if (fs?.level === "red") warn.push({ lv: "bad", text: `지금은 🔴 쉬는 구간이에요. 물타기는 "방향이 맞다"는 확신이 있을 때만 — 쉬는 구간엔 확신 자체가 성립하지 않아요.` });
     warn.push({ lv: "info", text: `물타기는 평단을 내릴 뿐 손실을 줄이지 않아요. 본전 거리가 ${pct(Math.max(0, dist(avg)), 2)}로 줄어드는 대신, 틀렸을 때 잃는 돈은 ${(after.notional / before.notional).toFixed(1)}배가 됩니다.` });
@@ -66,7 +68,7 @@ function renderAvg(sync = false) {
   } else {
     html += `<div class="rk-tiles paper-tiles">` +
       tile("지금 평단", `<b>${usd(p1)}</b>`, `${q1}개 · 명목 ${money(before.notional)}`) +
-      tile("증거금", `<b>${money(before.margin)}</b>`, `${lev}배`) +
+      tile("증거금", `<b>${money(before.margin || 0)}</b>`, mode === "cross" ? "교차 · 지갑 잔고" : wallet > 0 ? "직접 넣은 값" : `명목 ÷ ${lev}배`) +
       tile("청산가 (대략)", `<b>${fmtLiq(before.liq)}</b>`, before.liq == null ? "교차는 지갑 잔고를 넣어야 계산돼요" : `현재가에서 ${liqDist(before.liq).toFixed(1)}% · ${mode === "cross" ? "교차(잔고 기준)" : "격리"}`) +
       tile("본전까지", `<b class="${dist(p1) <= 0 ? "pos" : "warn"}">${dist(p1) <= 0 ? "이미 본전 위" : pct(dist(p1), 2)}</b>`, `현재가 ${usd(mark)}`) +
       tile("미실현 손익", signed(before.pnl), "현재가 기준") +
