@@ -243,6 +243,14 @@
           <input id="av-loss" type="number" inputmode="decimal" step="any" placeholder="예: 50">
         </label>
       </div>
+      <div class="calc-row">
+        <label class="calc-field"><span>어디서 물탈까? 기다릴 기간</span>
+          <select id="av-period"><option value="1h:24" selected>24시간</option><option value="1d:3">3일</option><option value="1d:7">7일</option></select>
+        </label>
+        <label class="calc-field"><span>직접 넣어 볼 가격 <span class="muted" id="av-cand-unit">($)</span> <span class="muted">· 선택</span></span>
+          <input id="av-cand" type="number" inputmode="decimal" step="any" placeholder="예: 81000">
+        </label>
+      </div>
       <div id="av-result" class="calc-result"></div>
       <p class="muted small">청산가는 격리 마진·유지증거금 0.5% 기준 근사치예요. 실제 값은 거래소 주문창에서 꼭 다시 확인하세요. 투자 권유가 아닙니다.</p>
     </section>

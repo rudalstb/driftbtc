@@ -11,7 +11,7 @@ function avgSide() { return document.querySelector("#av-side button[aria-pressed
 function syncAvgInputs() {
   if (!avgTouched.entry) $("av-entry").value = live != null ? fmtIn(live) : "";
   else if (avgEntryUsd != null) $("av-entry").value = fmtIn(avgEntryUsd);
-  ["av-avg-unit", "av-entry-unit", "av-target-unit", "av-loss-unit"].forEach((id) => { if ($(id)) $(id).textContent = krw() ? "(₩)" : "($)"; });
+  ["av-avg-unit", "av-entry-unit", "av-target-unit", "av-loss-unit", "av-cand-unit"].forEach((id) => { if ($(id)) $(id).textContent = krw() ? "(₩)" : "($)"; });
 }
 
 function renderAvg(sync = false) {
@@ -90,11 +90,67 @@ function renderAvg(sync = false) {
       html += `<div class="rk-line">평단을 <b>${usd(tgt)}</b>까지 ${long ? "내리려면" : "올리려면"} ${usd(p2)}에서 <b>${need < 0.01 ? need.toFixed(4) : need.toFixed(3)}개</b> 더 타야 해요 · 추가 증거금 ${money(needMargin)} · 그때 청산가 ${usd(liqOf(tgt))}</div>`;
     }
   }
+  // ───── 어디서 물탈까? 후보 가격 × 닿을 확률 × 물탄 뒤 상태 → 규칙으로 추천
+  html += renderWhereToAdd({ long, p1, q1, q2: q2 > 0 ? q2 : q1, lev, mark, liqOf, dist });
   el.innerHTML = html;
 }
 
+function renderWhereToAdd(o) {
+  const sel = $("av-period");
+  const key = sel?.value || "1h:24";
+  const [fq, k] = key.split(":");
+  const f = typeof report !== "undefined" ? report?.forecasts?.[fq] : null;
+  const fut = f?.future?.[Number(k) - 1];
+  if (!f || !fut || typeof calcSigma !== "function") return "";
+  const label = sel.options[sel.selectedIndex].text;
+  const sigma = calcSigma(key);
+  const { long, p1, q1, q2, lev, mark, liqOf, dist } = o;
+  const scale = (v) => mark * (v / f.price); // 예측은 생성 시점 가격 기준이라 현재가에 맞춰 비율로 옮긴다
+  // 20일 최저/최고: 1일 예측의 최근 기록(실제 종가)에서
+  const hist = (typeof report !== "undefined" ? report?.forecasts?.["1d"]?.history : null) || [];
+  const last20 = hist.slice(-20).map((x) => x.actual);
+  const cands = long
+    ? [["얕게 · 68% 하단", scale(fut.lo68)], ["중간 · 95% 하단", scale(fut.lo95)], last20.length >= 10 ? ["깊게 · 20일 최저", Math.min(...last20)] : null]
+    : [["얕게 · 68% 상단", scale(fut.hi68)], ["중간 · 95% 상단", scale(fut.hi95)], last20.length >= 10 ? ["깊게 · 20일 최고", Math.max(...last20)] : null];
+  const custom = avgUsdIn("av-cand");
+  if (custom > 0) cands.push(["직접 입력", custom]);
+  const rows = cands.filter(Boolean).map(([name, px]) => {
+    const okDir = long ? px < mark : px > mark;
+    const z = Math.abs(Math.log(px / mark)) / sigma;
+    const touch = okDir ? Math.min(1, 2 * (1 - normCdf(z))) : 1;
+    const qty = q1 + q2, avg = (p1 * q1 + px * q2) / qty;
+    const liq = liqOf(avg);
+    const liqDist = Math.abs(liq / px - 1) * 100; // 물탄 가격에서 청산가까지
+    const band95 = Math.abs(Math.log((long ? fut.lo95 : fut.hi95) / f.price)) * 100; // 95% 범위 폭(%)
+    const safe = liqDist >= band95; // 물탄 가격에서 청산가까지가 그 기간 95% 범위 폭보다 멀어야 안전
+    const be = long ? (avg / px - 1) * 100 : (1 - avg / px) * 100; // 물탄 가격에서 본전까지
+    return { name, px, okDir, touch, avg, liq, liqDist, safe, be, margin: (avg * qty) / lev };
+  });
+  const fs = window.filterState;
+  const eligible = rows.filter((r) => r.okDir && r.touch >= 0.3 && r.safe);
+  // 조건을 만족하는 것 중 가장 깊은(현재가에서 먼) 가격
+  const pick = eligible.sort((a, b) => Math.abs(b.px - mark) - Math.abs(a.px - mark))[0];
+  const tr = (r) => `<tr class="${pick && r === pick ? "pick" : ""}"><td>${r.name}${pick && r === pick ? " ⭐" : ""}</td><td><b>${usd(r.px)}</b><div class="muted small">${pct((r.px / mark - 1) * 100, 2)}</div></td><td>${r.okDir ? `<b class="${r.touch >= 0.5 ? "pos" : r.touch >= 0.3 ? "warn" : "neg"}">${Math.round(r.touch * 100)}%</b>` : `<span class="muted">이미 지남</span>`}</td><td>${usd(r.avg)}<div class="muted small">본전 ${pct(r.be, 2)}</div></td><td class="${r.safe ? "" : "neg"}">${usd(r.liq)}<div class="muted small">${r.liqDist.toFixed(1)}% 아래${r.safe ? "" : " · 위험"}</div></td></tr>`;
+  let verdict;
+  if (fs?.level === "red") verdict = `<li class="ana-bad">🔴 지금은 쉬는 구간이라 <b>물타기 자체를 권하지 않아요.</b> 범위가 넓어지는 구간엔 어디서 타도 다시 밀릴 수 있어요.</li>`;
+  else if (pick) verdict = `<li class="ana-good"><b>${label} 안이라면 ${usd(pick.px)}(${pick.name}) 근처가 가장 나아요.</b> 닿을 확률 ${Math.round(pick.touch * 100)}%, 물탄 뒤 평단 ${usd(pick.avg)}, 청산가 ${usd(pick.liq)}는 ${label} 95% 범위 밖이라 평소 출렁임엔 버텨요. 그 전에 손절가(허용 손실)부터 정해 두세요.</li>`;
+  else verdict = `<li class="ana-bad"><b>조건을 만족하는 물타기 가격이 없어요.</b> 닿을 확률 30% 이상이면서 청산가가 안전한 후보가 없다는 뜻이에요 — 지금은 물타기보다 <b>손절이 싸요</b>. 레버리지를 낮추면 후보가 생길 수 있어요.</li>`;
+  // 분할: 추천 가격까지 3번 나눠 타면
+  let split = "";
+  if (pick) {
+    const steps = [1 / 3, 2 / 3, 1].map((w) => mark + (pick.px - mark) * w);
+    const each = q2 / 3;
+    const qty = q1 + q2, avg3 = (p1 * q1 + steps.reduce((s, px) => s + px * each, 0)) / qty;
+    split = `<div class="rk-line">3번에 나눠 타면 (${steps.map((px) => usd(px)).join(" → ")}, 각 ${each.toFixed(4)}개) 평단 <b>${usd(avg3)}</b> · 한 번에 ${usd(pick.px)}에서 타면 ${usd(pick.avg)}. 나눠 타면 평단은 조금 높지만 <b>다 안 내려와도 일부는 탈 수 있어요.</b></div>`;
+  }
+  return `<div class="label game-sub">🪣 어디서 물탈까? <span class="muted">· ${label} 기준 · 추가 ${q2.toFixed(4)}개 · 현재가 ${usd(mark)}</span></div>
+    <div class="table-wrap"><table class="compact where"><thead><tr><th>후보</th><th>가격</th><th>${label} 안에 닿을 확률</th><th>물탄 뒤 평단</th><th>물탄 뒤 청산가</th></tr></thead><tbody>${rows.map(tr).join("")}</tbody></table></div>
+    <ul class="ana-diag rk-warn">${verdict}</ul>${split}
+    <div class="muted small">추천 규칙: 닿을 확률 30% 이상 + 물탄 뒤 청산가가 그 기간 95% 범위 밖인 후보 중 가장 깊은 가격. 확률은 변동성 기준 근사치이고, 큰 뉴스가 있으면 더 크게 움직여요.</div>`;
+}
+
 // 입력 연결
-["av-avg", "av-qty", "av-lev", "av-add", "av-target", "av-loss"].forEach((id) => $(id)?.addEventListener("input", () => renderAvg()));
+["av-avg", "av-qty", "av-lev", "av-add", "av-target", "av-loss", "av-cand"].forEach((id) => $(id)?.addEventListener("input", () => renderAvg()));
 $("av-entry")?.addEventListener("input", (e) => { avgTouched.entry = true; avgEntryUsd = toUsd(Number(e.target.value)) || null; renderAvg(); });
 document.querySelectorAll("#av-side button").forEach((b) =>
   b.addEventListener("click", () => { document.querySelectorAll("#av-side button").forEach((x) => x.setAttribute("aria-pressed", x === b)); renderAvg(); })
@@ -105,3 +161,4 @@ document.querySelectorAll(".av-quick button").forEach((b) =>
 window.renderAvg = renderAvg;
 setInterval(() => { if (!avgTouched.entry && $("av-result")) renderAvg(true); }, 10000);
 setTimeout(() => renderAvg(true), 1600);
+$("av-period")?.addEventListener("change", () => renderAvg());
