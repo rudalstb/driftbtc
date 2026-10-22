@@ -129,11 +129,11 @@ function renderWhereToAdd(o) {
     const be = long ? (avg / px - 1) * 100 : (1 - avg / px) * 100; // 물탄 가격에서 본전까지
     return { name, px, okDir, touch, avg, liq, liqDist, safe, be, margin: (avg * (qty || 1)) / lev };
   });
+  const noPos = !q1;
   const fs = window.filterState;
   const eligible = noPos ? [] : rows.filter((r) => r.okDir && r.touch >= 0.3 && r.safe);
   // 조건을 만족하는 것 중 가장 깊은(현재가에서 먼) 가격
   const pick = eligible.sort((a, b) => Math.abs(b.px - mark) - Math.abs(a.px - mark))[0];
-  const noPos = !q1;
   const tr = (r) => `<tr class="${pick && r === pick ? "pick" : ""}"><td>${r.name}${pick && r === pick ? " ⭐" : ""}</td><td><b>${usd(r.px)}</b><div class="muted small">${pct((r.px / mark - 1) * 100, 2)}</div></td><td>${r.okDir ? `<b class="${r.touch >= 0.5 ? "pos" : r.touch >= 0.3 ? "warn" : "neg"}">${Math.round(r.touch * 100)}%</b>` : `<span class="muted">이미 지남</span>`}</td>` +
     (noPos ? `<td class="muted small" colspan="2">평단·수량을 넣으면 계산돼요</td>` : `<td>${usd(r.avg)}<div class="muted small">본전 ${pct(r.be, 2)}</div></td><td class="${r.safe ? "" : "neg"}">${usd(r.liq)}<div class="muted small">${r.liqDist.toFixed(1)}% 아래${r.safe ? "" : " · 위험"}</div></td>`) + `</tr>`;
   let verdict;
