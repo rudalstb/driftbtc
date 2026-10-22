@@ -110,6 +110,14 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python flows.py
 
+      - name: 시장 지표 스냅샷 수집
+        if: steps.check.outputs.new == 'true'
+        run: python collector.py
+
+      - name: 신호 실험실 채점 (주 1회)
+        if: steps.check.outputs.backtest == 'true'
+        run: python lab.py
+
       - name: 방문자 수 백업
         if: steps.check.outputs.new == 'true'
         run: python visits.py

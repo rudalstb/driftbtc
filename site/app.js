@@ -1201,3 +1201,41 @@ if (window.TELEGRAM_URL) {
 
 // 나스닥 시세가 40초 넘게 안 오면 이유를 보여 준다
 setTimeout(() => { if (!nq && $("nq-price").textContent === "—") $("nq-time").innerHTML = `<span class="muted">지금은 시세를 받을 수 없어요</span>`; }, 40000);
+
+// 🔬 신호 실험실 표 (site/data/signal_lab.json, lab.py 가 주 1회 갱신)
+async function loadLab() {
+  const el = $("lab-table");
+  if (!el) return;
+  try {
+    const r = await fetch("data/signal_lab.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const lab = await r.json();
+    const rows = lab.signals;
+    const base = rows.find((x) => x.id === "always_long");
+    const cell = (v, d = 0) => `<td class="${v >= 0 ? "pos" : "neg"}">${pct(v, d)}</td>`;
+    const hit = (h) => (h == null ? "—" : `${(h * 100).toFixed(1)}%`);
+    const verdict = (x) => {
+      if (x.id === "always_long") return `<span class="muted">기준선</span>`;
+      const beat = x.net_pct > x.long_net_pct;
+      const beatRecent = x.recent && x.recent.net_pct > x.recent.long_net_pct;
+      if (beat && beatRecent) return `<span class="pos">✅ 통과 후보</span>`;
+      if (beat || beatRecent) return `<span class="warn">🟡 반반</span>`;
+      return `<span class="neg">❌ 탈락</span>`;
+    };
+    el.innerHTML =
+      `<thead><tr><th>신호</th><th>기간</th><th class="hide-m">노출</th><th>적중률</th><th>비용 후 수익</th><th class="hide-m">항상 롱</th><th class="hide-m">최대 낙폭</th><th class="hide-m">거래</th><th>최근 2년</th><th>판정</th></tr></thead><tbody>` +
+      rows.map((x) => `<tr title="${x.desc}"><td><b>${x.name}</b><div class="muted small">${x.desc}</div></td><td class="muted small">${x.since.slice(0, 7)}~</td><td class="hide-m">${Math.round(x.exposure * 100)}%</td><td>${hit(x.hit_rate)}</td>${cell(x.net_pct)}<td class="hide-m muted">${pct(x.long_net_pct, 0)}</td><td class="hide-m">${x.mdd_pct.toFixed(0)}%</td><td class="hide-m">${x.trades}</td><td>${x.recent ? `<span class="${x.recent.net_pct >= 0 ? "pos" : "neg"}">${pct(x.recent.net_pct, 0)}</span> <span class="muted small">(롱 ${pct(x.recent.long_net_pct, 0)})</span>` : "—"}</td><td>${verdict(x)}</td></tr>`).join("") +
+      `</tbody>`;
+    const d = new Date(lab.generated_at);
+    $("lab-updated").textContent = `${d.getMonth() + 1}/${d.getDate()} 채점 · 1일 관점 · 레버리지 1배`;
+    const pass = rows.filter((x) => x.id !== "always_long" && x.net_pct > x.long_net_pct && x.recent && x.recent.net_pct > x.recent.long_net_pct);
+    $("lab-note").innerHTML =
+      `판정 기준: 전체 기간과 최근 2년 <b>둘 다</b> "항상 롱"보다 비용 후 수익이 높아야 통과 후보 (${pass.length}개). ` +
+      `비용 가정: 수수료 ${lab.costs.fee_pct}%·슬리피지 ${lab.costs.slip_pct}%(편도), 펀딩 ${lab.costs.funding_8h_pct}%/8시간. ` +
+      `노출 = 포지션을 들고 있던 날의 비율. 추세 신호는 2020년 강세장 초입부터 시작해 유리하게 나올 수 있어서 최근 2년을 따로 봐요. ` +
+      `펀딩·미결제약정·옵션·코인베이스 프리미엄 같은 지표는 과거치가 짧아 지금부터 매시간 모으는 중이며(${""}수집 시작 10/22), 4~8주 뒤 추가 채점합니다.`;
+  } catch (e) {
+    el.innerHTML = `<tbody><tr><td class="mp-empty">실험 결과를 아직 불러올 수 없어요</td></tr></tbody>`;
+  }
+}
+loadLab();
