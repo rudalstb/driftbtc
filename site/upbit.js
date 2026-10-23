@@ -78,9 +78,64 @@ function ubRowsToTx(rows) {
   return { tx, skipped, otherMarket };
 }
 
+// 📄 업비트 '거래내역서' PDF 형식: 거래 하나가 여러 줄로 나뉜다.
+//   1줄: 거래일자 · 거래유형 · 자산명(KRW-USDT / USDT / KRW) · 거래수량 · 수수료 · (본인/상대방정보)
+//   2줄: 번호 (숫자 하나)
+//   3줄: 거래시간 · [적요] · 거래단가 · 거래금액 · 정산금액    ← 매수·매도는 적요가 비어 있음
+// 쪽이 바뀌면 머리글이 다시 나오므로 머리글 줄은 건너뛴다.
+function ubParseStatement(text) {
+  if (!/거래내역서|거래일자/.test(text) || !/거래유형/.test(text)) return null;
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const DATE = /^(\d{4}-\d{2}-\d{2})(?:\s|\t|$)/;
+  const TIME = /^(\d{1,2}:\d{2}:\d{2})(?:\s|\t|$)/;
+  const cells = (l) => l.split(/\t+/).map((x) => x.trim()).filter(Boolean);
+  const tx = [];
+  let skipped = 0, otherMarket = 0, cur = null;
+  const finish = () => {
+    if (!cur) return;
+    const { date, kind, asset, qty, fee, timeCells } = cur;
+    cur = null;
+    const k = ubKind(kind);
+    if (!k) { skipped++; return; }
+    const time = timeCells?.[0] || "00:00:00";
+    const t = Date.parse(`${date}T${time.length === 7 ? "0" + time : time}+09:00`) || null;
+    let coin = asset.toUpperCase(), market = "KRW";
+    if (/-/.test(coin)) { [market, coin] = coin.split("-"); }
+    if (coin === "KRW") return; // 원화 입출금은 코인 손익과 무관
+    if ((k === "buy" || k === "sell") && market !== "KRW") { otherMarket++; return; }
+    const q = Math.abs(ubNum(qty) || 0);
+    if (!q) { skipped++; return; }
+    // 3줄의 숫자 칸: 매수·매도 = [단가, 거래금액, 정산금액], 입출금 = [거래금액, 정산금액] (앞에 '원화'·'디지털 자산' 같은 적요)
+    const nums = (timeCells || []).slice(1).filter((c) => /\d/.test(c)).map(ubNum);
+    const feeNum = Math.abs(ubNum(fee) || 0);
+    const feeIsKrw = /KRW|원/.test(fee || "") || !/[A-Z]{2,}/.test((fee || "").replace(/KRW/g, ""));
+    let price = 0, amount = 0;
+    if (k === "buy" || k === "sell") { price = nums[0] || 0; amount = nums[1] ?? q * price; }
+    else { amount = nums[0] || 0; price = q ? amount / q : 0; }
+    tx.push({ t, coin, kind: k, qty: q, price, amount: Math.abs(amount), fee: k === "buy" || k === "sell" ? (feeIsKrw ? feeNum : 0) : 0 });
+  };
+  for (const l of lines) {
+    const c = cells(l);
+    const d = l.match(DATE);
+    if (d && c.length >= 3 && /매수|매도|입금|출금/.test(c[1] || "")) {
+      finish();
+      cur = { date: d[1], kind: c[1], asset: c[2] || "", qty: c[3] || "", fee: c[4] || "", timeCells: null };
+      continue;
+    }
+    if (cur && !cur.timeCells && TIME.test(l)) { cur.timeCells = c; finish(); continue; }
+    // 번호 줄·머리글·쪽 번호 등은 무시
+  }
+  finish();
+  if (!tx.length) return { error: "거래내역서에서 거래를 찾지 못했어요." };
+  tx.sort((a, b) => (a.t || 0) - (b.t || 0));
+  return { tx, skipped, otherMarket };
+}
+
 // 붙여넣은 글 → 표. 머리글이 있는 탭 구분 표면 그대로 쓰고, 아니면 날짜를 기준으로 한 건씩 끊어 종류·코인·숫자를 순서대로 읽는다
 const UB_DATE = /(\d{4}[.\-\/]\s?\d{1,2}[.\-\/]\s?\d{1,2}\.?\s+\d{1,2}:\d{2}(?::\d{2})?)/g;
 function ubParsePaste(text) {
+  const stmt = ubParseStatement(text);
+  if (stmt && !stmt.error) return stmt;
   // 웹에서 복사한 표는 탭으로 나뉘고 숫자에 쉼표가 있으므로, 탭이 있으면 탭으로만 나눈다 (쉼표로 나누면 1,100,000 이 깨짐)
   const rows = /\t/.test(text) ? text.split(/\r?\n/).map((l) => l.split("\t")) : parseCsv(text);
   const asTable = ubRowsToTx(rows);
