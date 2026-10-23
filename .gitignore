@@ -5,3 +5,6 @@ reports/predictions_*.csv
 node_modules/
 site/og.png
 .claude/settings.local.json
+
+# 개인 파일(거래내역서 등) — 저장소에 절대 올리지 않음
+/private/
