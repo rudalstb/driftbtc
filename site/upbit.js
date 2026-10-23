@@ -259,14 +259,39 @@ async function ubRender(res) {
 const UB_PDF = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
 const UB_PDF_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+// 비밀번호가 걸린 PDF: 화면에 비밀번호 칸을 띄워 사용자가 직접 넣게 한다.
+// 비밀번호는 이 브라우저 안에서 PDF 를 여는 데만 쓰고, 저장하거나 어디로도 보내지 않는다.
+function ubAskPassword(wrong) {
+  return new Promise((resolve) => {
+    const box = $("ub-pw");
+    box.hidden = false;
+    $("ub-pw-msg").innerHTML = wrong ? `<span class="neg">비밀번호가 맞지 않아요. 다시 넣어 주세요.</span>` : "🔒 비밀번호가 걸린 PDF예요. 업비트가 메일에 적어 준 비밀번호(보통 생년월일 등)를 넣어 주세요.";
+    const inp = $("ub-pw-input");
+    inp.value = "";
+    inp.focus();
+    const done = (v) => { box.hidden = true; $("ub-pw-ok").onclick = null; $("ub-pw-cancel").onclick = null; inp.onkeydown = null; resolve(v); };
+    $("ub-pw-ok").onclick = () => done(inp.value);
+    $("ub-pw-cancel").onclick = () => done(null);
+    inp.onkeydown = (e) => { if (e.key === "Enter") done(inp.value); };
+  });
+}
+
 async function ubPdfText(file) {
   if (!window.pdfjsLib) await new Promise((ok, no) => { const s = document.createElement("script"); s.src = UB_PDF; s.onload = ok; s.onerror = () => no(new Error("PDF 읽기 도구를 불러오지 못했어요")); document.head.appendChild(s); });
   pdfjsLib.GlobalWorkerOptions.workerSrc = UB_PDF_WORKER;
+  const data = new Uint8Array(await file.arrayBuffer());
+  const task = pdfjsLib.getDocument({ data });
+  // pdf.js 가 비밀번호를 물어보면(처음 / 틀렸을 때) 화면 칸으로 받아서 넘긴다
+  task.onPassword = async (update, reason) => {
+    const pw = await ubAskPassword(reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD);
+    if (pw == null) { task.destroy(); return; }
+    update(pw);
+  };
   let doc;
   try {
-    doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    doc = await task.promise;
   } catch (e) {
-    if (e?.name === "PasswordException") throw new Error("비밀번호가 걸린 PDF예요. PDF를 연 뒤 '인쇄 → PDF로 저장'으로 잠금 없는 사본을 만들어 올려 주세요");
+    if (e?.name === "PasswordException" || /destroy/i.test(String(e?.message))) throw new Error("비밀번호 입력을 취소했어요");
     throw e;
   }
   const lines = [];

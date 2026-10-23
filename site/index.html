@@ -405,8 +405,16 @@
       <label class="drop" id="ub-drop">
         <input id="ub-file" type="file" accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,text/csv,text/plain" hidden>
         <span>📂 거래내역 파일(PDF·엑셀·CSV)을 끌어다 놓거나 눌러서 선택</span>
-        <span class="muted small">PDF 거래내역서: 업비트 앱 더보기 → 고객센터 → 증명서 발급 → 거래내역서 (PC 웹은 고객센터 → 증명서 발급) → 이메일로 받은 PDF. 비밀번호가 걸려 있으면 열어서 '인쇄 → PDF로 저장'한 사본을 올려 주세요. 엑셀은 고객센터(1588-5682)에 요청하면 받을 수 있어요.</span>
+        <span class="muted small">PDF 거래내역서: 업비트 앱 더보기 → 고객센터 → 증명서 발급 → 거래내역서 (PC 웹은 고객센터 → 증명서 발급) → 이메일로 받은 PDF. 비밀번호가 걸려 있어도 올리면 비밀번호 칸이 떠요(내 브라우저에서만 쓰여요). 엑셀은 고객센터(1588-5682)에 요청하면 받을 수 있어요.</span>
       </label>
+      <div class="ub-pw" id="ub-pw" hidden>
+        <div class="small" id="ub-pw-msg"></div>
+        <div class="ub-actions">
+          <input id="ub-pw-input" type="password" autocomplete="off" placeholder="PDF 비밀번호">
+          <button class="say-btn" id="ub-pw-ok" type="button">열기</button><button class="rk-clear" id="ub-pw-cancel" type="button" style="margin:0">취소</button>
+        </div>
+        <div class="muted small">비밀번호는 내 브라우저 안에서 PDF를 여는 데만 쓰이고, 저장되거나 어디로도 전송되지 않아요.</div>
+      </div>
       <div class="small" id="ub-status"></div>
       <div id="ub-result"></div>
       <button class="rk-clear" id="ub-clear" hidden>지우기</button>
