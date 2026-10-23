@@ -120,6 +120,38 @@ function ubCompute(tx) {
   return { list, sells, months, fees, buyTotal, sellTotal, realized, wins, unknownCost: [...unknownCost], from: tx[0]?.t, to: tx[tx.length - 1]?.t, n: tx.length };
 }
 
+// 붙여넣은 글 → 표. 머리글이 있는 탭 구분 표면 그대로 쓰고, 아니면 날짜를 기준으로 한 건씩 끊어 종류·코인·숫자를 순서대로 읽는다
+const UB_DATE = /(\d{4}[.\-\/]\s?\d{1,2}[.\-\/]\s?\d{1,2}\.?\s+\d{1,2}:\d{2}(?::\d{2})?)/g;
+function ubParsePaste(text) {
+  // 웹에서 복사한 표는 탭으로 나뉘고 숫자에 쉼표가 있으므로, 탭이 있으면 탭으로만 나눈다 (쉼표로 나누면 1,100,000 이 깨짐)
+  const rows = /\t/.test(text) ? text.split(/\r?\n/).map((l) => l.split("\t")) : parseCsv(text);
+  const asTable = ubRowsToTx(rows);
+  if (!asTable.error) return asTable;
+  // 날짜가 나올 때마다 한 묶음 (체결시간·주문시간 두 번 나오면 종류가 없는 묶음은 버림)
+  const parts = text.split(UB_DATE);
+  const tx = [];
+  let skipped = 0;
+  for (let i = 1; i < parts.length; i += 2) {
+    const when = parts[i], body = parts[i + 1] || "";
+    const kindM = body.match(/매수|매도|입금|출금/);
+    if (!kindM) continue;
+    const kind = ubKind(kindM[0]);
+    const tokens = body.replace(/	/g, " ").split(/\s+/).filter(Boolean);
+    const coin = (tokens.find((x) => /^[A-Z][A-Z0-9]{1,14}$/.test(x) && !/^(KRW|BTC|USDT)$/.test(x) ? true : false) ||
+      tokens.find((x) => /^[A-Z][A-Z0-9]{1,14}$/.test(x) && x !== "KRW") || "").toUpperCase();
+    const market = /BTC\s*마켓|BTC-|USDT\s*마켓|USDT-/.test(body) ? "OTHER" : "KRW";
+    const after = body.slice(body.indexOf(kindM[0]) + kindM[0].length);
+    const nums = (after.match(/-?\d[\d,]*\.?\d*/g) || []).map((x) => parseFloat(x.replace(/,/g, ""))).filter((x) => Number.isFinite(x));
+    const [qty, price, amount, fee] = nums;
+    if (!coin || !qty) { skipped++; continue; }
+    if ((kind === "buy" || kind === "sell") && market !== "KRW") continue;
+    tx.push({ t: ubTime(when.replace(/\.\s?/g, "-").replace(/-(\s)/, "$1")), coin, kind, qty, price: price || 0, amount: amount ?? qty * (price || 0), fee: fee || 0 });
+  }
+  if (!tx.length) return { error: "붙여넣은 내용에서 거래를 찾지 못했어요. 업비트 웹 → 투자내역 → 거래내역 표를 체결시간부터 복사했는지 확인해 주세요." };
+  tx.sort((a, b) => (a.t || 0) - (b.t || 0));
+  return { tx, skipped, otherMarket: 0 };
+}
+
 async function ubLoadPrices(coins) {
   if (!window.UPBIT_URL || !coins.length) return {};
   try {
@@ -195,13 +227,23 @@ async function ubHandle(file) {
 }
 
 $("ub-file")?.addEventListener("change", (e) => { if (e.target.files[0]) ubHandle(e.target.files[0]); });
+$("ub-run")?.addEventListener("click", async () => {
+  const text = $("ub-paste").value.trim();
+  const st = $("ub-status");
+  if (!text) { st.innerHTML = `<span class="neg">먼저 업비트 거래내역을 붙여넣어 주세요.</span>`; return; }
+  const res = ubParsePaste(text);
+  if (res.error) { st.innerHTML = `<span class="neg">${res.error}</span>`; $("ub-result").innerHTML = ""; return; }
+  st.innerHTML = `<span class="pos">✅ 붙여넣은 거래 ${res.tx.length}건 읽음</span>${res.skipped ? ` · 알아볼 수 없는 줄 ${res.skipped}개 건너뜀` : ""} · 내 브라우저 안에서만 처리됐어요.`;
+  await ubRender(res);
+  try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=upbit-paste"); } catch (e) {}
+});
 const ubDrop = $("ub-drop");
 if (ubDrop) {
   ubDrop.addEventListener("dragover", (e) => { e.preventDefault(); ubDrop.classList.add("over"); });
   ubDrop.addEventListener("dragleave", () => ubDrop.classList.remove("over"));
   ubDrop.addEventListener("drop", (e) => { e.preventDefault(); ubDrop.classList.remove("over"); if (e.dataTransfer.files[0]) ubHandle(e.dataTransfer.files[0]); });
 }
-$("ub-clear")?.addEventListener("click", () => { $("ub-result").innerHTML = ""; $("ub-status").textContent = ""; $("ub-file").value = ""; $("ub-clear").hidden = true; });
+$("ub-clear")?.addEventListener("click", () => { $("ub-result").innerHTML = ""; $("ub-status").textContent = ""; $("ub-file").value = ""; $("ub-paste").value = ""; $("ub-clear").hidden = true; });
 $("ub-sample")?.addEventListener("click", (e) => {
   e.preventDefault();
   const csv = "체결시간,코인,마켓,종류,거래수량,거래단가,거래금액,수수료,정산금액,주문시간\n" +

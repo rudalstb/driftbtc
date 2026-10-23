@@ -392,10 +392,20 @@
     <section class="card upbit-card" id="upbit" data-sec="upbit">
       <h2>🇰🇷 업비트 거래내역 손익 계산기</h2>
       <p class="muted small">업비트는 거래내역만 주고 얼마 벌었는지는 안 알려 주죠. 거래내역 파일을 올리면 <b>코인별 실현 손익·수수료·평균단가·남은 수량·지금 평가손익</b>, 매도 건별 손익과 월별 합계를 자동으로 계산해요. <b>파일은 내 브라우저 안에서만 처리돼요.</b></p>
+      <div class="label">① 가장 쉬운 방법: 업비트 웹 화면을 복사해서 붙여넣기</div>
+      <ol class="ub-steps muted small">
+        <li>PC로 <b>upbit.com</b> 로그인 → 위 메뉴 <b>투자내역</b> → <b>거래내역</b> 탭</li>
+        <li>기간을 넉넉히(처음 산 날부터) 고르고, 아래로 끝까지 내려 <b>더보기</b>를 눌러 전부 펼치기</li>
+        <li>표의 첫 줄(체결시간)부터 마지막 줄까지 <b>마우스로 드래그해 선택 → Ctrl+C</b> (또는 Ctrl+A로 화면 전체를 복사해도 돼요)</li>
+        <li>아래 칸에 <b>Ctrl+V</b> 하고 <b>계산하기</b></li>
+      </ol>
+      <textarea id="ub-paste" class="ub-paste" rows="6" placeholder="여기에 업비트 거래내역을 붙여넣으세요 (Ctrl+V)"></textarea>
+      <div class="ub-actions"><button class="say-btn" id="ub-run" type="button">🧮 계산하기</button><a href="#" class="muted small" id="ub-sample">견본 파일 받기</a></div>
+      <div class="label game-sub">② 파일이 있다면: 엑셀(.xlsx)·CSV 올리기</div>
       <label class="drop" id="ub-drop">
-        <input id="ub-file" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden>
-        <span>📂 업비트 거래내역 파일(.xlsx 또는 .csv)을 끌어다 놓거나 눌러서 선택</span>
-        <span class="muted small">업비트 웹 → 입출금 → 거래내역(또는 투자내역 → 거래내역) → 기간 선택 → 다운로드 · <a href="#" id="ub-sample">견본 파일 받기</a></span>
+        <input id="ub-file" type="file" accept=".xlsx,.xls,.csv,.txt,text/csv,text/plain" hidden>
+        <span>📂 거래내역 파일을 끌어다 놓거나 눌러서 선택</span>
+        <span class="muted small">업비트는 엑셀 파일을 웹에서 바로 주지 않고, 고객센터(1588-5682)에 요청해야 보내 줘요. 웹·앱에서 신청하는 거래내역서는 PDF라 아직은 읽을 수 없어요.</span>
       </label>
       <div class="small" id="ub-status"></div>
       <div id="ub-result"></div>
