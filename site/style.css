@@ -202,6 +202,8 @@ table.where tr.pick td { background: rgba(247, 147, 26, 0.08); }
 .news-list a:visited { color: var(--muted); }
 @media (max-width: 720px) { .news-widget.tv { min-height: 600px; } .news-list a { font-size: 14px; } }
 table.ub td:first-child { white-space: nowrap; }
+.ub-unknown { border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; background: rgba(247, 147, 26, 0.06); }
+.ub-unknown-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin-top: 8px; }
 .ub-steps { margin: 4px 0 8px; padding-left: 20px; line-height: 1.7; }
 .ub-paste { width: 100%; box-sizing: border-box; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 13px; resize: vertical; }
 .ub-actions { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
