@@ -333,7 +333,15 @@ async function ubHandle(file) {
       st.textContent = "PDF 읽는 중…";
       const text = await ubPdfText(file);
       const res = ubParsePaste(text);
-      if (res.error) { st.innerHTML = `<span class="neg">PDF에서 거래를 찾지 못했어요. 업비트 거래내역서 PDF가 맞는지 확인해 주세요. (글자를 그림으로 넣은 PDF는 읽을 수 없어요)</span>`; $("ub-result").innerHTML = ""; return; }
+      if (res.error) {
+        // 어떤 글자가 읽혔는지 보여 줘서 형식 문제인지(글자는 있음) 그림 PDF 인지(글자 없음) 알 수 있게 — 숫자는 9로 가려 개인정보 노출을 줄인다
+        const sample = text.split("\n").filter((l) => l.trim()).slice(0, 25).map((l) => l.replace(/\d/g, "9")).join("\n");
+        st.innerHTML = `<span class="neg">PDF에서 거래를 찾지 못했어요.</span> ` +
+          (text.trim().length < 30 ? `PDF 안에 글자가 거의 없어요 — 글자를 그림으로 넣은 PDF라 읽을 수 없어요.` : `글자는 읽혔는데 표 형식이 예상과 달라요. 아래 내용을 운영자에게 보내 주시면 맞춰 드려요.`) +
+          (text.trim() ? `<details class="more" open><summary>읽힌 글자 앞부분 (숫자는 9로 가림)</summary><pre class="ub-debug">${sample.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</pre></details>` : "");
+        $("ub-result").innerHTML = "";
+        return;
+      }
       st.innerHTML = `<span class="pos">✅ ${file.name}</span> · PDF에서 거래 ${res.tx.length}건 읽음${res.skipped ? ` · 알아볼 수 없는 줄 ${res.skipped}개 건너뜀` : ""} · 이 파일은 내 브라우저 안에서만 처리됐어요.`;
       await ubRender(res);
       try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=upbit-pdf"); } catch (e) {}
