@@ -30,3 +30,6 @@ window.NQ_URL = "https://driftbtc.vercel.app/api/nq";
 
 // 한국어 코인 뉴스 중계 (Vercel 서버리스 함수, api/news.js) — 제목·링크·시각만
 window.NEWS_URL = "https://driftbtc.vercel.app/api/news";
+
+// 업비트 원화 시세 중계 (Vercel 서버리스 함수, api/upbit.js) — 업비트 거래내역 계산기의 평가손익용
+window.UPBIT_URL = "https://driftbtc.vercel.app/api/upbit";

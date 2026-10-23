@@ -171,7 +171,7 @@
     </section>
 
     <nav class="calc-nav" id="calc-nav" aria-label="계산기 목록">
-      <a href="#calc">🎯 이 가격 될까</a><a href="#risk">🛡️ 얼마나 들어갈까</a><a href="#avg">🪣 물타기</a><a href="#pnl">💵 손익</a><a href="#edge">📐 기대값·켈리</a><a href="#kimp">🇰🇷 김프 차익</a>
+      <a href="#calc">🎯 이 가격 될까</a><a href="#risk">🛡️ 얼마나 들어갈까</a><a href="#avg">🪣 물타기</a><a href="#pnl">💵 손익</a><a href="#edge">📐 기대값·켈리</a><a href="#kimp">🇰🇷 김프 차익</a><a href="#mine">📂 업비트 손익</a>
     </nav>
 
     <section class="card calc" id="calc" data-sec="calc">
@@ -389,6 +389,20 @@
       <details class="more" open><summary>판정 기준</summary><p class="muted small">24시간 변동성이 지난 1년 상위 10% · FOMC/CPI 발표 12시간 전~2시간 후 · 펀딩 +0.05% 초과/−0.02% 미만 · 전체 계정 롱 비율 65% 초과/35% 미만 · 미결제약정 24시간 ±10%. 기준값은 통상 쓰는 값이며 "적중률" 탭의 가상 계좌(필터 적용)로 검증해요.</p></details>
     </section>
 
+    <section class="card upbit-card" id="upbit" data-sec="upbit">
+      <h2>🇰🇷 업비트 거래내역 손익 계산기</h2>
+      <p class="muted small">업비트는 거래내역만 주고 얼마 벌었는지는 안 알려 주죠. 거래내역 파일을 올리면 <b>코인별 실현 손익·수수료·평균단가·남은 수량·지금 평가손익</b>, 매도 건별 손익과 월별 합계를 자동으로 계산해요. <b>파일은 내 브라우저 안에서만 처리돼요.</b></p>
+      <label class="drop" id="ub-drop">
+        <input id="ub-file" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden>
+        <span>📂 업비트 거래내역 파일(.xlsx 또는 .csv)을 끌어다 놓거나 눌러서 선택</span>
+        <span class="muted small">업비트 웹 → 입출금 → 거래내역(또는 투자내역 → 거래내역) → 기간 선택 → 다운로드 · <a href="#" id="ub-sample">견본 파일 받기</a></span>
+      </label>
+      <div class="small" id="ub-status"></div>
+      <div id="ub-result"></div>
+      <button class="rk-clear" id="ub-clear" hidden>지우기</button>
+      <p class="muted small">정확하게 보려면 <b>처음 산 날부터의 전체 기간</b>을 받아 올리세요. 기간 중간부터면 그 전에 산 코인의 원가를 몰라 손익이 틀어질 수 있어요(⚠ 표시).</p>
+    </section>
+
     <section class="card my-analysis" id="my-analysis" data-sec="my-analysis">
       <h2>🩺 내 매매 진단</h2>
       <p class="muted small">거래소 <b>포지션(청산) 내역</b> 파일을 올리면 손익비·시간대·보유 시간과 한 줄 진단을 보여드려요. <b>파일은 내 브라우저 안에서만 처리돼요.</b></p>
@@ -521,5 +535,6 @@
   <script src="avg.js"></script>
   <script src="tools2.js"></script>
   <script src="news.js"></script>
+  <script src="upbit.js"></script>
 </body>
 </html>
