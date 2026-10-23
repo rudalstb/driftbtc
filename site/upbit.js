@@ -1,4 +1,4 @@
-// 🇰🇷 업비트 거래내역 계산기: 업비트에서 내려받은 거래내역(엑셀 .xlsx 또는 .csv)을 올리면
+// 🇰🇷 업비트 거래내역 계산기: 업비트 거래내역(엑셀 .xlsx · .csv · PDF 거래내역서 · 웹 화면 붙여넣기)을 넣으면
 // 코인별 실현 손익·수수료·평균단가·남은 수량·지금 평가손익, 매도 건별 손익, 월별 합계를 계산한다.
 // 계산 방식은 업비트와 같은 '이동평균 단가'(매수할 때마다 평균단가 갱신, 매도할 때 그 평균단가로 손익 확정).
 // 파일은 브라우저 안에서만 읽고 어디에도 보내지 않는다. (엑셀 읽기 라이브러리는 엑셀 파일을 올릴 때만 불러온다)
@@ -254,11 +254,66 @@ async function ubRender(res) {
   $("ub-clear").hidden = false;
 }
 
+// 📄 PDF 거래내역서: pdf.js 로 글자와 위치를 읽어 줄 단위로 다시 맞춘 뒤(같은 높이 = 한 줄, 칸 사이가 벌어지면 탭),
+// 엑셀·붙여넣기와 같은 해석기(ubParsePaste)로 넘긴다. 비밀번호가 걸린 PDF 는 열 수 없어 안내만 한다.
+const UB_PDF = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const UB_PDF_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+async function ubPdfText(file) {
+  if (!window.pdfjsLib) await new Promise((ok, no) => { const s = document.createElement("script"); s.src = UB_PDF; s.onload = ok; s.onerror = () => no(new Error("PDF 읽기 도구를 불러오지 못했어요")); document.head.appendChild(s); });
+  pdfjsLib.GlobalWorkerOptions.workerSrc = UB_PDF_WORKER;
+  let doc;
+  try {
+    doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  } catch (e) {
+    if (e?.name === "PasswordException") throw new Error("비밀번호가 걸린 PDF예요. PDF를 연 뒤 '인쇄 → PDF로 저장'으로 잠금 없는 사본을 만들어 올려 주세요");
+    throw e;
+  }
+  const lines = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    const page = await doc.getPage(n);
+    const { items } = await page.getTextContent();
+    // 같은 줄(높이 차이 3 이내)끼리 묶고 왼쪽부터 정렬
+    const rows = [];
+    for (const it of items) {
+      const str = it.str;
+      if (!str || !str.trim()) continue;
+      const x = it.transform[4], y = it.transform[5];
+      let row = rows.find((r) => Math.abs(r.y - y) <= 3);
+      if (!row) { row = { y, parts: [] }; rows.push(row); }
+      row.parts.push({ x, w: it.width || 0, s: str });
+    }
+    rows.sort((a, b) => b.y - a.y); // PDF 좌표는 아래가 0
+    for (const r of rows) {
+      r.parts.sort((a, b) => a.x - b.x);
+      let line = "", end = null;
+      for (const p of r.parts) {
+        if (end != null) line += p.x - end > 6 ? "\t" : (p.x - end > 1 ? " " : "");
+        line += p.s;
+        end = p.x + p.w;
+      }
+      lines.push(line.trim());
+    }
+  }
+  return lines.join("\n");
+}
+
 async function ubHandle(file) {
   const st = $("ub-status");
   st.textContent = "읽는 중…";
   try {
     let rows;
+    if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
+      // PDF 는 표 모양이 제각각이라 글자를 줄 단위로 되살려 붙여넣기 해석기로 읽는다
+      st.textContent = "PDF 읽는 중…";
+      const text = await ubPdfText(file);
+      const res = ubParsePaste(text);
+      if (res.error) { st.innerHTML = `<span class="neg">PDF에서 거래를 찾지 못했어요. 업비트 거래내역서 PDF가 맞는지 확인해 주세요. (글자를 그림으로 넣은 PDF는 읽을 수 없어요)</span>`; $("ub-result").innerHTML = ""; return; }
+      st.innerHTML = `<span class="pos">✅ ${file.name}</span> · PDF에서 거래 ${res.tx.length}건 읽음${res.skipped ? ` · 알아볼 수 없는 줄 ${res.skipped}개 건너뜀` : ""} · 이 파일은 내 브라우저 안에서만 처리됐어요.`;
+      await ubRender(res);
+      try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=upbit-pdf"); } catch (e) {}
+      return;
+    }
     if (/\.xlsx?$/i.test(file.name)) {
       if (!window.XLSX) await new Promise((ok, no) => { const s = document.createElement("script"); s.src = UB_XLSX; s.onload = ok; s.onerror = () => no(new Error("엑셀 읽기 도구를 불러오지 못했어요")); document.head.appendChild(s); });
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
