@@ -229,11 +229,16 @@ function ubCompute(tx) {
   };
 }
 
+// 코인 이름: 업비트 한글명이 있으면 "비트코인(BTC)", 없으면(상장 폐지 등) 기호만
+let ubNames = {};
+const ubCoinName = (c) => ubNames[c] ? `<b>${ubNames[c]}</b><span class="muted small">(${c})</span>` : `<b>${c}</b>`;
+
 async function ubLoadPrices(coins) {
-  if (!window.UPBIT_URL || !coins.length) return {};
+  if (!window.UPBIT_URL) return {};
   try {
-    const r = await fetch(`${window.UPBIT_URL}?markets=${coins.map((c) => "KRW-" + c).join(",")}`, { cache: "no-store" });
+    const r = await fetch(`${window.UPBIT_URL}?markets=${coins.map((c) => "KRW-" + c).join(",")}${Object.keys(ubNames).length ? "" : "&names=1"}`, { cache: "no-store" });
     const j = await r.json();
+    if (j.names) ubNames = j.names;
     return j.prices || {};
   } catch (e) { return {}; }
 }
@@ -276,20 +281,20 @@ async function ubRender(res) {
   const unkBox = unk.length
     ? `<div class="ub-unknown"><div class="label">⚠ 원가를 모르는 코인이 있어요</div>
        <div class="muted small">산 기록 없이 판 것(기록 시작 전에 샀거나 다른 곳에서 입금받은 코인)은 원가를 몰라서 <b>실현 손익에서 빼 두었어요</b>. 그 코인의 평균 매수가를 알면 넣어 주세요 — 바로 다시 계산해요. 모르면 비워 두세요.</div>
-       <div class="ub-unknown-grid">${unk.map((c) => `<label class="calc-field"><span><b>${c.coin}</b> 평균 매수가 (₩) <span class="muted">· 원가 모르는 ${qtyF(c.unknownSoldAll + c.uq)}개${c.unknownProceeds ? ` · 판 금액 ${won(c.unknownProceeds)}` : ""}</span></span>
+       <div class="ub-unknown-grid">${unk.map((c) => `<label class="calc-field"><span>${ubCoinName(c.coin)} 평균 매수가 (₩) <span class="muted">· 원가 모르는 ${qtyF(c.unknownSoldAll + c.uq)}개${c.unknownProceeds ? ` · 판 금액 ${won(c.unknownProceeds)}` : ""}</span></span>
          <input type="number" inputmode="decimal" step="any" data-coin="${c.coin}" class="ub-cost" value="${ubUserCost[c.coin] || ""}" placeholder="모르면 비워 두기"></label>`).join("")}</div></div>`
     : "";
 
   const coinRows = r.list.sort((a, b) => b.realized + (b.unreal || 0) - (a.realized + (a.unreal || 0))).map((c) => {
     const isUnk = r.unknownCoins.includes(c.coin), user = ubUserCost[c.coin];
     const qtyAll = c.qty + c.uq;
-    return `<tr><td><b>${c.coin}</b>${isUnk ? ` <span class="warn small" title="원가를 모르는 물량이 있어요">${user > 0 ? "✏️" : "⚠"}</span>` : ""}</td>` +
+    return `<tr><td>${ubCoinName(c.coin)}${isUnk ? ` <span class="warn small" title="원가를 모르는 물량이 있어요">${user > 0 ? "✏️" : "⚠"}</span>` : ""}</td>` +
       `<td>${won(c.buy)}</td><td>${won(c.sell)}</td><td>${wonS(c.realized)}${c.unknownProceeds && !(user > 0) ? `<div class="muted small">+원가 모름 매도 ${won(c.unknownProceeds)}</div>` : ""}</td><td class="hide-m">${won(c.fee)}</td>` +
       `<td>${qtyAll > 1e-10 ? qtyF(qtyAll) : "—"}${c.uq > 1e-10 && !(user > 0) ? `<div class="muted small">원가 모름 ${qtyF(c.uq)}</div>` : ""}</td><td class="hide-m">${c.evalQty ? won(c.evalCost / c.evalQty) : c.qty > 1e-10 ? won(c.cost / c.qty) : "—"}</td>` +
       `<td>${c.unreal != null && c.now ? `${wonS(c.unreal)}<div class="muted small">현재 ${won(c.now)} · ${((c.unreal / c.evalCost) * 100).toFixed(1)}%</div>` : qtyAll > 1e-10 ? `<span class="muted small">${c.now ? "원가 모름" : "시세 없음"}</span>` : "—"}</td></tr>`;
   }).join("");
   const sellRows = [...r.sells].reverse().slice(0, 300).map((s) =>
-    `<tr><td class="muted small">${s.t ? ubDate(s.t) : "—"}</td><td><b>${s.coin}</b></td><td>${qtyF(s.qty)}</td><td>${won(s.price)}</td><td class="hide-m">${s.avg ? won(s.avg) : "?"}</td>` +
+    `<tr><td class="muted small">${s.t ? ubDate(s.t) : "—"}</td><td>${ubCoinName(s.coin)}</td><td>${qtyF(s.qty)}</td><td>${won(s.price)}</td><td class="hide-m">${s.avg ? won(s.avg) : "?"}</td>` +
     `<td>${s.pnl != null ? `${wonS(s.pnl)}${s.pct != null ? `<div class="muted small">${s.pct >= 0 ? "+" : ""}${s.pct.toFixed(2)}%${s.unknownQty > 1e-12 ? " · 일부 원가 모름" : ""}</div>` : ""}` : `<span class="muted small">원가 모름</span>`}</td><td class="hide-m">${won(s.fee)}</td></tr>`).join("");
   const monthRows = [...r.months.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([m, v]) =>
     `<tr><td>${m.replace("-", "년 ")}월</td><td>${v.n}번 매도</td><td>${wonS(v.pnl)}${v.unknown ? `<div class="muted small">+원가 모름 ${won(v.unknown)}</div>` : ""}</td><td>${won(v.fee)}</td></tr>`).join("");
