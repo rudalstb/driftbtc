@@ -298,6 +298,8 @@ details.more[open] > summary { margin-bottom: 8px; }
 .group-hidden { display: none !important; }
 .card { position: relative; }
 .share-btn { position: absolute; top: 12px; right: 12px; background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; z-index: 2; }
+/* 공유 버튼 바로 다음 줄(제목·배지)은 버튼 자리만큼 오른쪽을 비워 겹치지 않게 */
+.share-btn + * { padding-right: 78px; }
 .share-btn:hover { color: var(--accent); border-color: var(--accent); }
 .drop { display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; text-align: center; border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px 14px; cursor: pointer; margin: 8px 0; }
 .drop:hover, .drop.over { border-color: var(--accent); background: rgba(247, 147, 26, 0.05); }
@@ -395,6 +397,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .page-tabs { flex-wrap: wrap; }
   .page-tabs a { flex: 1 0 23%; font-size: 12px; padding: 8px 4px; }
   .share-btn { top: 10px; right: 10px; padding: 2px 7px; }
+  .share-btn + * { padding-right: 68px; }
   .ana-tiles, .rk-tiles, .paper-tiles { grid-template-columns: repeat(2, 1fr); }
   .ana-grid { grid-template-columns: 1fr; }
   .ana-row { grid-template-columns: 74px 64px 1fr 74px; gap: 6px; font-size: 12.5px; }
