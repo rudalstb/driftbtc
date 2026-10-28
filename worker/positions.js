@@ -374,7 +374,7 @@ export const corsHeaders = (request, env) => ({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
 });
-export { readFlows, summarizeFlows };
+export { readFlows, summarizeFlows, get as bitgetGet };
 
 export default {
   async fetch(request, env) {

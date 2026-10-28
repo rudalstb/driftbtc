@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>내 지갑 한눈에</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --up:#3fb950; --down:#f85149; --accent:#f7931a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  h1 { font-size:20px; margin:0; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .pos { color:var(--up); } .neg { color:var(--down); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+  .tile { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .tile .k { color:var(--muted); font-size:12px; } .tile .v { font-size:22px; font-weight:700; margin-top:2px; }
+  .tile.big .v { font-size:28px; color:var(--accent); }
+  .wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { padding:7px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  th:first-child, td:first-child { text-align:left; }
+  .err { background:rgba(248,81,73,.12); border:1px solid rgba(248,81,73,.4); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .setup { background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.4); border-radius:8px; padding:10px 12px; }
+  button { background:transparent; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  .tag { font-size:11px; padding:1px 6px; border-radius:8px; }
+  .tag.buy { background:rgba(63,185,80,.15); color:var(--up); } .tag.sell { background:rgba(248,81,73,.15); color:var(--down); }
+  .login { max-width:320px; margin:80px auto; text-align:center; }
+  .login input { width:100%; padding:10px 12px; margin:12px 0 8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; font:inherit; font-size:16px; }
+  .login button { width:100%; padding:9px; }
+  .bar { height:8px; border-radius:4px; overflow:hidden; display:flex; margin:10px 0 4px; background:var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>💰 내 지갑 한눈에 <span class="muted small">개인용 · 비밀번호 잠금</span></h1>
+    <div class="small muted" id="tools" hidden><span id="at">불러오는 중…</span> · 30초마다 새로고침 <button id="reload">지금 새로고침</button> <button id="hide" title="금액 가리기">🙈 가리기</button> <button id="logout">잠그기</button></div>
+  </header>
+  <form class="login" id="login" hidden>
+    <div style="font-size:40px">🔒</div>
+    <div>비밀번호를 넣어야 볼 수 있어요</div>
+    <input type="password" id="pw" autocomplete="current-password" placeholder="비밀번호" autofocus>
+    <button type="submit">열기</button>
+    <div class="small neg" id="login-msg" style="margin-top:8px"></div>
+  </form>
+  <div id="root"></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+let token = ""; try { token = localStorage.getItem("wallet_token") || ""; } catch (e) {}
+let hidden = false; try { hidden = localStorage.getItem("wallet_hide") === "1"; } catch (e) {}
+const mask = (s) => hidden ? "•••••" : s;
+const won = (v) => v == null ? "—" : mask("₩" + Math.round(v).toLocaleString("ko-KR"));
+const wonS = (v) => v == null ? "—" : `<span class="${v >= 0 ? "pos" : "neg"}">${mask((v >= 0 ? "+" : "−") + "₩" + Math.abs(Math.round(v)).toLocaleString("ko-KR"))}</span>`;
+const usd = (v, d = 2) => v == null ? "—" : mask("$" + Number(v).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }));
+const usdS = (v) => v == null ? "—" : `<span class="${v >= 0 ? "pos" : "neg"}">${mask((v >= 0 ? "+" : "−") + "$" + Math.abs(v).toFixed(2))}</span>`;
+const pct = (v) => v == null ? "" : `<span class="${v >= 0 ? "pos" : "neg"}">${v >= 0 ? "+" : ""}${v.toFixed(2)}%</span>`;
+const qty = (v) => hidden ? "•••" : v >= 1000 ? v.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) : v.toLocaleString("ko-KR", { maximumFractionDigits: 8 });
+const price = (v) => v == null ? "—" : "₩" + (v >= 100 ? Math.round(v).toLocaleString("ko-KR") : v.toLocaleString("ko-KR", { maximumFractionDigits: 4 }));
+const nm = (c, n) => n ? `<b>${n}</b><span class="muted small">(${c})</span>` : `<b>${c}</b>`;
+const t = (s) => { const d = new Date(s); return isNaN(d) ? "—" : d.toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
+let last = null;
+
+function render(d) {
+  last = d;
+  const up = d.upbit || {}, bg = d.bitget || {}, rate = d.usdt_krw;
+  const bgUsd = bg.equity_usd || bg.account?.equity || 0;
+  const bgKrw = rate ? bgUsd * rate : null;
+  const total = (up.total || 0) + (bgKrw || 0);
+  const tile = (k, v, sub = "", cls = "") => `<div class="tile ${cls}"><div class="k">${k}</div><div class="v">${v}</div>${sub ? `<div class="small muted">${sub}</div>` : ""}</div>`;
+  let h = `<div class="tiles" style="margin-bottom:14px">` +
+    tile("총자산", won(total), rate ? `USDT ${price(rate)} 기준 환산` : "", "big") +
+    tile("업비트", up.setup ? "동기화 전" : won(up.total), up.total ? `원화 ${won(up.cash)} · 코인 ${won(up.coin_value)}` : "") +
+    tile("업비트 코인 손익", up.cost ? wonS(up.pnl) : "—", up.cost ? `매수 원가 ${won(up.cost)} 대비 ${pct((up.pnl / up.cost) * 100)}` : "") +
+    tile("비트겟", usd(bgUsd), bgKrw ? `≈ ${won(bgKrw)}` : "") +
+    tile("비트겟 미실현 손익", bg.account ? usdS(bg.account.unrealized_pnl) : "—", bg.positions?.length ? `포지션 ${bg.positions.length}개` : "포지션 없음") +
+    `</div>`;
+  if (total > 0 && up.total && bgKrw) {
+    const a = (up.cash / total) * 100, b = (up.coin_value / total) * 100, c = (bgKrw / total) * 100;
+    h += `<div class="card"><h2>자산 비중</h2><div class="bar"><div style="width:${a}%;background:#58a6ff"></div><div style="width:${b}%;background:var(--accent)"></div><div style="width:${c}%;background:#a371f7"></div></div>
+      <div class="small"><span style="color:#58a6ff">■</span> 업비트 원화 ${a.toFixed(1)}% · <span style="color:var(--accent)">■</span> 업비트 코인 ${b.toFixed(1)}% · <span style="color:#a371f7">■</span> 비트겟 ${c.toFixed(1)}%</div></div>`;
+  }
+
+  // 업비트
+  h += `<div class="card"><h2>🟦 업비트 보유 코인</h2>`;
+  if (up.setup) h += `<div class="setup">업비트 정보가 아직 안 올라왔어요. 집 컴퓨터에서 <b>업비트동기화.bat</b> 을 한 번 실행해 주세요.</div>`;
+  else if (up.error) h += `<div class="err">${esc(up.error)}</div>`;
+  else {
+    const ago = Math.round((Date.now() - up.synced) / 60000);
+    h += `<div class="small ${ago > 60 ? "neg" : "muted"}" style="margin-bottom:8px">보유 수량·체결은 집 컴퓨터가 ${ago < 1 ? "방금" : ago < 60 ? ago + "분 전" : Math.round(ago / 60) + "시간 전"}에 올린 것 · 가격은 실시간${ago > 60 ? " — 동기화 프로그램이 꺼져 있나 봐요" : ""}</div>`;
+    if (up.sync_error) h += `<div class="err">동기화 오류: ${esc(up.sync_error)}</div>`;
+    h += `<div class="wrap"><table><thead><tr><th>코인</th><th>수량</th><th>평단가</th><th>현재가</th><th>24시간</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead><tbody>` +
+      up.coins.map((c) => `<tr><td>${nm(c.coin, c.name)}</td><td>${qty(c.qty)}</td><td>${c.avg ? price(c.avg) : "—"}</td><td>${price(c.price)}</td><td>${pct(c.change)}</td><td>${won(c.value)}</td><td>${wonS(c.pnl)}</td><td>${pct(c.pct)}</td></tr>`).join("") +
+      `<tr><td><b>원화</b></td><td colspan="4"></td><td>${won(up.cash)}</td><td colspan="2"></td></tr></tbody></table></div>`;
+  }
+  h += `</div>`;
+
+  // 비트겟
+  h += `<div class="card"><h2>🟪 비트겟</h2>`;
+  if (bg.error) h += `<div class="err">${esc(bg.error)}</div>`;
+  if (bg.account) h += `<div class="small muted" style="margin-bottom:8px">계좌 ${usd(bg.account.equity)} · 쓸 수 있는 돈 ${usd(bg.account.available)} · 미실현 ${usdS(bg.account.unrealized_pnl)}</div>`;
+  if (bg.positions?.length) {
+    h += `<div class="wrap"><table><thead><tr><th>포지션</th><th>수량</th><th>진입가</th><th>현재가</th><th>청산가</th><th>증거금</th><th>손익</th><th>ROE</th></tr></thead><tbody>` +
+      bg.positions.map((p) => `<tr><td><b>${p.symbol}</b> <span class="tag ${p.side === "long" ? "buy" : "sell"}">${p.side === "long" ? "롱" : "숏"} ${p.leverage}배</span> <span class="muted small">${p.margin_mode === "crossed" ? "교차" : "격리"}</span></td><td>${qty(p.size)}</td><td>${usd(p.entry, 1)}</td><td>${usd(p.mark, 1)}</td><td>${p.liq ? usd(p.liq, 1) : "—"}</td><td>${usd(p.margin)}</td><td>${usdS(p.upnl)}</td><td>${pct(p.roe_pct)}</td></tr>`).join("") + `</tbody></table></div>`;
+  } else if (bg.account) h += `<div class="muted small">열린 포지션 없음</div>`;
+  if (bg.assets?.length) {
+    h += `<h2 style="margin-top:14px">코인별 자산</h2><div class="wrap"><table><thead><tr><th>코인</th><th>수량</th><th>달러 가치</th><th>원화 환산</th></tr></thead><tbody>` +
+      bg.assets.map((a) => `<tr><td><b>${a.coin}</b></td><td>${qty(a.qty)}</td><td>${usd(a.usd)}</td><td>${a.usd && rate ? won(a.usd * rate) : "—"}</td></tr>`).join("") + `</tbody></table></div>`;
+  } else if (bg.assets_error) h += `<div class="err">코인별 자산: ${esc(bg.assets_error)}</div>`;
+  h += `</div>`;
+
+  // 최근 거래
+  h += `<div class="card"><h2>🧾 최근 거래</h2>`;
+  const rows = [];
+  if (Array.isArray(up.orders)) for (const o of up.orders) rows.push({ at: new Date(o.t).getTime(), html: `<tr><td class="muted small">${t(o.t)}</td><td>업비트</td><td>${nm(o.coin, o.name)}</td><td><span class="tag ${o.side === "매수" ? "buy" : "sell"}">${o.side}</span></td><td>${qty(o.qty)}</td><td>${o.market === "KRW" ? price(o.price) : o.price + " " + o.market}</td><td>${o.market === "KRW" ? won(o.amount) : "—"}</td><td>—</td></tr>` });
+  for (const x of bg.history || []) rows.push({ at: x.closed, html: `<tr><td class="muted small">${t(x.closed)}</td><td>비트겟</td><td><b>${x.symbol}</b></td><td><span class="tag ${x.side === "long" ? "buy" : "sell"}">${x.side === "long" ? "롱" : "숏"} 청산</span></td><td>${qty(x.size)}</td><td>${usd(x.exit, 1)}</td><td>—</td><td>${usdS(x.net)}</td></tr>` });
+  rows.sort((a, b) => b.at - a.at);
+  if (up.orders?.error) h += `<div class="err">업비트 거래 내역: ${esc(up.orders.error)}</div>`;
+  h += rows.length ? `<div class="wrap"><table><thead><tr><th>시각</th><th>거래소</th><th>코인</th><th>구분</th><th>수량</th><th>가격</th><th>금액</th><th>손익</th></tr></thead><tbody>${rows.slice(0, 60).map((r) => r.html).join("")}</tbody></table></div>` : `<div class="muted small">거래 기록이 없어요</div>`;
+  h += `</div>`;
+  $("root").innerHTML = h;
+  $("at").textContent = new Date(d.at).toLocaleTimeString("ko-KR", { hour12: false }) + " 기준";
+}
+
+function locked(msg = "") {
+  token = ""; try { localStorage.removeItem("wallet_token"); } catch (e) {}
+  $("root").innerHTML = ""; $("tools").hidden = true; $("login").hidden = false; $("login-msg").textContent = msg; $("pw").focus();
+}
+async function load() {
+  if (!token) return locked();
+  try {
+    const r = await fetch(location.pathname + "?data=1", { cache: "no-store", headers: { Authorization: "Bearer " + token } });
+    const d = await r.json();
+    if (r.status === 401) return locked("다시 로그인해 주세요");
+    if (d.error) throw new Error(d.error);
+    $("login").hidden = true; $("tools").hidden = false;
+    render(d);
+  } catch (e) { $("at").textContent = "불러오지 못했어요: " + e.message; }
+}
+$("login").onsubmit = async (e) => {
+  e.preventDefault();
+  $("login-msg").textContent = "확인 중…";
+  try {
+    const r = await fetch(location.pathname, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "login", password: $("pw").value }) });
+    const d = await r.json();
+    if (!d.token) return ($("login-msg").textContent = d.error || "실패");
+    token = d.token; try { localStorage.setItem("wallet_token", token); } catch (e) {}
+    $("pw").value = ""; $("login-msg").textContent = "";
+    load();
+  } catch (e) { $("login-msg").textContent = "연결 실패: " + e.message; }
+};
+$("logout").onclick = () => locked();
+$("reload").onclick = load;
+$("hide").onclick = () => { hidden = !hidden; try { localStorage.setItem("wallet_hide", hidden ? "1" : "0"); } catch (e) {} $("hide").textContent = hidden ? "👀 보이기" : "🙈 가리기"; if (last) render(last); };
+$("hide").textContent = hidden ? "👀 보이기" : "🙈 가리기";
+load();
+setInterval(() => token && !document.hidden && load(), 30000);
+</script>
+</body>
+</html>
