@@ -33,7 +33,7 @@ let tvChart = null, tvCandles = null, tvVolume = null, tvLines = [];
 let tvLoaded = false, tvLoading = null, tvCandleData = [], tvTimer = null;
 let tvWs = null, tvWsIv = null, tvWsOk = false;
 let tvAuto = true, tvHover = false, tvLastTick = 0, tvFirstLoad = true; // 자동: 최신 봉을 따라가고, 간격을 바꾸면 보기를 초기화
-try { tvAuto = localStorage.getItem("driftbtc_tv_auto") !== "0"; } catch (e) {}
+// 자동은 페이지를 열 때마다 항상 켜진 상태로 시작한다 (끈 상태를 기억하면 다음에 와서 옛 봉만 보게 됨)
 
 function tvLoadLib() {
   if (window.LightweightCharts) return Promise.resolve();
@@ -144,7 +144,6 @@ function tvFollow() {
 
 function tvSetAuto(on) {
   tvAuto = on;
-  try { localStorage.setItem("driftbtc_tv_auto", on ? "1" : "0"); } catch (e) {}
   const b = $("tv-auto");
   if (b) b.setAttribute("aria-pressed", String(on));
   if (on) tvFit();
@@ -364,10 +363,20 @@ function tvBindToolbar() {
   $("tv-auto")?.addEventListener("click", () => tvSetAuto(!tvAuto));
   tvSetAuto(tvAuto);
   const el = $("tv-chart");
-  const manual = () => { if (tvAuto) { tvAuto = false; try { localStorage.setItem("driftbtc_tv_auto", "0"); } catch (e) {} $("tv-auto")?.setAttribute("aria-pressed", "false"); } };
+  // 직접 확대(휠)하거나 끌어서 옮길 때만 자동을 끈다 — 그냥 누르거나 짚기만 해서는 꺼지지 않게
+  const manual = () => { if (tvAuto) tvSetAuto(false); };
+  let down = null;
   el.addEventListener("wheel", manual, { passive: true });
-  el.addEventListener("pointerdown", manual);
-  el.addEventListener("touchstart", manual, { passive: true });
+  el.addEventListener("pointerdown", (e) => { down = { x: e.clientX, y: e.clientY }; });
+  el.addEventListener("pointermove", (e) => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) { down = null; manual(); } });
+  addEventListener("pointerup", () => { down = null; });
+  // 자동이 켜져 있는데 마지막 봉이 화면 밖이면 다시 맞춘다 (잠자기·탭 숨김 뒤 등)
+  setInterval(() => {
+    if (!tvAuto || !tvChart || !tvCandleData.length || document.hidden) return;
+    const r = tvChart.timeScale().getVisibleRange();
+    const last = tvCandleData[tvCandleData.length - 1].time;
+    if (!r || last > r.to || last < r.from) tvFit();
+  }, 5000);
   document.querySelectorAll("#tv-toggles input").forEach((c) => {
     c.checked = tvShow[c.dataset.key];
     c.addEventListener("change", () => { tvShow[c.dataset.key] = c.checked; tvDrawOverlays(); });
