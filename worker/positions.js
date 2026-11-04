@@ -64,7 +64,8 @@ const histUta = (h) => ({
   id: h.positionId, symbol: h.symbol, side: h.posSide, entry: num(h.openPriceAvg), exit: num(h.closePriceAvg),
   size: num(h.closeTotalPos), pnl: num(h.cumRealisedPnl), net: num(h.netProfit),
   fees: cost(h.openFeeTotal, h.closeFeeTotal, h.totalFunding),
-  opened: num(h.createdTime), closed: num(h.updatedTime),
+  opened: num(h.createdTime), closed: num(h.updatedTime), lev: num(h.leverage) || null,
+  _f: Object.keys(h).join(","), // TEMP: 필드 이름 확인용 (값 없음)
 });
 const histClassic = (h) => ({
   id: h.positionId, symbol: h.symbol, side: h.holdSide, entry: num(h.openAvgPrice), exit: num(h.closeAvgPrice),
