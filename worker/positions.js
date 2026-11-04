@@ -65,7 +65,6 @@ const histUta = (h) => ({
   size: num(h.closeTotalPos), pnl: num(h.cumRealisedPnl), net: num(h.netProfit),
   fees: cost(h.openFeeTotal, h.closeFeeTotal, h.totalFunding),
   opened: num(h.createdTime), closed: num(h.updatedTime), lev: num(h.leverage) || null,
-  _f: Object.keys(h).join(","), // TEMP: 필드 이름 확인용 (값 없음)
 });
 const histClassic = (h) => ({
   id: h.positionId, symbol: h.symbol, side: h.holdSide, entry: num(h.openAvgPrice), exit: num(h.closeAvgPrice),
@@ -95,6 +94,7 @@ async function readUta(env) {
       opened: num(p.createdTime),
     })),
     history: (hist?.list || []).map(histUta),
+    _settings: await get(env, "/api/v3/account/settings").then((d) => JSON.stringify(d).replace(/"(uid|userId|accountId)":"?[^",}]*"?/g, '"$1":"x"').slice(0, 1500)).catch((e) => "ERR " + e.message), // TEMP
   };
 }
 
