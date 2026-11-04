@@ -1,7 +1,7 @@
 // 📰 한국어 코인 뉴스 (Vercel 서버리스 함수): 구글 뉴스(한국어) 검색 + 코인 전문지 RSS 의 '제목·링크·시각'만 모아 준다.
 // 기사 본문은 가져오지 않고 제목을 누르면 원문으로 이동한다. 브라우저에서 직접 부르면 막혀서(CORS) 서버에서 받는다.
 // GET ?feed=btc|eth|crypto|nq → { items: [{ title, link, source, t }] } 최신순 60개, 5분 캐시
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const G = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q + " when:3d")}&hl=ko&gl=KR&ceid=KR:ko`;
 const PRESS = [

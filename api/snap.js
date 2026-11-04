@@ -1,6 +1,6 @@
 // 📸 시장 지표 스냅샷 (Vercel 서버리스 함수, 서울 리전). GitHub Actions(collector.py)가 매시간 불러 저장한다.
 // 바이낸스 선물 API 는 미국 서버에서 막히므로 여기서 대신 받는다. 키 없이 공개 데이터만.
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const FAPI = "https://fapi.binance.com";
 const J = async (url, opt) => { const r = await fetch(url, { ...opt, headers: { "User-Agent": "Mozilla/5.0", ...(opt?.headers || {}) } }); if (!r.ok) throw new Error(`${url.split("?")[0]} ${r.status}`); return r.json(); };

@@ -1,7 +1,7 @@
 // 나스닥100 선물(NQ=F) 캔들 중계 (Vercel 서버리스 함수)
 // 야후 파이낸스 차트 API 는 브라우저에서 직접 부르면 막혀서(CORS) 서버에서 받아 전달한다. 약 10~15분 지연 시세.
 // GET ?interval=1m|5m|15m|30m|1h|1d|1wk|1mo  → [{time(초), open, high, low, close, volume}, ...] 최근 500개
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const RANGE = { "1m": "5d", "5m": "30d", "15m": "60d", "30m": "60d", "1h": "180d", "1d": "3y", "1wk": "10y", "1mo": "max" };
 const CACHE_MS = 15000;

@@ -379,9 +379,10 @@ async function read(env) {
 }
 
 // 허용 주소: ALLOW_ORIGIN(쉼표로 여러 개) 또는 기본 목록. 요청한 곳이 목록에 있으면 그 주소를 돌려준다
-const DEFAULT_ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const DEFAULT_ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 function pickOrigin(request, env) {
-  const list = env.ALLOW_ORIGIN ? env.ALLOW_ORIGIN.split(",").map((x) => x.trim()).filter(Boolean) : DEFAULT_ORIGINS;
+  // ALLOW_ORIGIN 이 있어도 기본 목록(새 도메인 포함)은 항상 허용
+  const list = [...DEFAULT_ORIGINS, ...(env.ALLOW_ORIGIN ? env.ALLOW_ORIGIN.split(",").map((x) => x.trim()).filter(Boolean) : [])];
   const o = request.headers.get("origin");
   return list.includes(o) ? o : list[0];
 }

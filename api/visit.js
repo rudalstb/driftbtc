@@ -15,7 +15,7 @@
 import { createClient } from "redis";
 
 // 허용하는 사이트 주소들 (옛 깃허브 주소 + 새 도메인)
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const BACKUP_URL = "https://rudalstb.github.io/driftbtc/data/visits.json";
 const ONLINE_MS = 5 * 60 * 1000;

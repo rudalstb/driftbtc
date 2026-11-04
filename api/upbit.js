@@ -2,7 +2,7 @@
 // 업비트 API 는 브라우저에서 직접 부르면 막혀서(CORS) 서버에서 받아 전달한다. 공개 시세만, 키 없음.
 // GET ?markets=KRW-BTC,KRW-XRP (최대 100개) → { prices: { "KRW-BTC": 108903000, ... } }
 // &names=1 을 붙이면 원화 마켓 코인 한글 이름도 함께 → { names: { BTC: "비트코인", ... } } (6시간 보관)
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const cache = new Map(); // market → { at, price }
 const CACHE_MS = 5000;

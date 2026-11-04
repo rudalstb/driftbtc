@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { redisConfig, redis } from "../lib/redis.js";
 
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const headers = (request) => ({
   "Access-Control-Allow-Origin": pickOrigin(request),

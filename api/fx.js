@@ -6,7 +6,7 @@
 // 나스닥100 선물(NQ=F): 야후 파이낸스 (약 10분 지연) — 30초 동안 재사용
 
 // 허용하는 사이트 주소들 (옛 깃허브 주소 + 새 도메인). 요청한 곳이 목록에 있으면 그 주소를 그대로 돌려준다
-const ORIGINS = ["https://rudalstb.github.io", "https://btcagentai.com", "https://www.btcagentai.com"];
+const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
 const CACHE_MS = 60 * 1000;
 let cache = { at: 0, fx: null };
