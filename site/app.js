@@ -732,6 +732,17 @@ function mergedTrades() {
   return [...all.values()].sort((a, b) => b.closed - a.closed);
 }
 
+// 청산 기록 ROE: 비트겟 청산 기록에는 배율이 없어 '종목에 지금 설정된 배율'로 증거금(진입가×수량÷배율)을 추정한다
+function tradeRoe(h) {
+  const lev = h.lev || lastPosData?.leverage?.[h.symbol];
+  if (!lev || !h.entry || !h.size || h.net == null) return null;
+  return { roe: (h.net / ((h.entry * h.size) / lev)) * 100, lev };
+}
+function roeCell(h) {
+  const r = tradeRoe(h);
+  return r ? `<span class="${r.roe >= 0 ? "pos" : "neg"}" title="${r.lev}배 기준 · 수수료·펀딩 뺀 순손익 ÷ 증거금">${r.roe >= 0 ? "+" : ""}${r.roe.toFixed(1)}%</span>` : `<span class="muted">—</span>`;
+}
+
 function renderHistory() {
   const from = Date.now() - histDays * 86400000;
   const hist = mergedTrades().filter((t) => t.closed >= from);
@@ -739,9 +750,9 @@ function renderHistory() {
   const empty = `최근 ${histDays}일 동안 청산 기록이 없어요`;
 
   $("mp-history").innerHTML = hist.length
-    ? `<thead><tr><th>종목</th><th>방향</th><th>진입가</th><th>청산가</th><th>수량</th><th>순손익</th><th>수수료·펀딩</th><th>청산 시각</th></tr></thead><tbody>` +
+    ? `<thead><tr><th>종목</th><th>방향</th><th>진입가</th><th>청산가</th><th>수량</th><th>순손익</th><th>ROE</th><th>수수료·펀딩</th><th>청산 시각</th></tr></thead><tbody>` +
       hist.map((h) => `<tr><td>${h.symbol}</td><td>${sideTag(h.side)}</td><td>${num(h.entry)}</td><td>${num(h.exit)}</td><td>${h.size}</td>
-        <td>${signed(h.net)}</td><td>${money(h.fees)}</td><td>${shortTime(h.closed)}</td></tr>`).join("") +
+        <td>${signed(h.net)}</td><td>${roeCell(h)}</td><td>${money(h.fees)}</td><td>${shortTime(h.closed)}</td></tr>`).join("") +
       `</tbody>` + historyTotal(hist)
     : `<tbody><tr><td class="mp-empty">${empty}</td></tr></tbody>`;
 
@@ -755,7 +766,7 @@ function renderHistory() {
       <div class="pcard-pnl">${signed(t.net)}<span class="muted">수수료 ${money(t.fees)}</span></div></div></div>` +
     hist.map((h) => `<div class="hrow">
         <div><b>${h.symbol}</b> ${sideTag(h.side)}<div class="muted small">${num(h.entry)} → ${num(h.exit)} · ${h.size}</div></div>
-        <div class="hrow-r">${signed(h.net)}<div class="muted small">${shortTime(h.closed)}</div></div>
+        <div class="hrow-r">${signed(h.net)} ${roeCell(h)}<div class="muted small">${shortTime(h.closed)}</div></div>
       </div>`).join("");
 }
 
@@ -868,7 +879,7 @@ function historyStats(hist) {
 function historyTotal(hist) {
   const t = historyStats(hist);
   return `<tfoot><tr class="total-row"><td colspan="5">합계 ${hist.length}건 · <span class="pos">${t.wins}승</span> <span class="neg">${t.losses}패</span> (승률 ${t.rate}%)</td>
-    <td>${signed(t.net)}</td><td>${money(t.fees)}</td><td></td></tr></tfoot>`;
+    <td>${signed(t.net)}</td><td></td><td>${money(t.fees)}</td><td></td></tr></tfoot>`;
 }
 
 setInterval(() => {

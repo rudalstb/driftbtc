@@ -64,7 +64,7 @@ const histUta = (h) => ({
   id: h.positionId, symbol: h.symbol, side: h.posSide, entry: num(h.openPriceAvg), exit: num(h.closePriceAvg),
   size: num(h.closeTotalPos), pnl: num(h.cumRealisedPnl), net: num(h.netProfit),
   fees: cost(h.openFeeTotal, h.closeFeeTotal, h.totalFunding),
-  opened: num(h.createdTime), closed: num(h.updatedTime), lev: num(h.leverage) || null,
+  opened: num(h.createdTime), closed: num(h.updatedTime),
 });
 const histClassic = (h) => ({
   id: h.positionId, symbol: h.symbol, side: h.holdSide, entry: num(h.openAvgPrice), exit: num(h.closeAvgPrice),
@@ -72,6 +72,23 @@ const histClassic = (h) => ({
   fees: cost(h.openFee, h.closeFee, h.totalFunding),
   opened: num(h.ctime), closed: num(h.utime),
 });
+
+// 종목별로 설정해 둔 배율 (청산 기록에는 배율이 없어서 ROE 를 낼 때 쓴다). 10분 보관, 실패하면 빈 값
+let levCache = { at: 0, map: {} };
+async function symbolLeverage(env) {
+  if (Date.now() - levCache.at < 10 * 60 * 1000) return levCache.map;
+  try {
+    const d = await get(env, "/api/v3/account/settings");
+    const map = {};
+    for (const c of d?.symbolConfigList || []) {
+      if (c.category !== "USDT-FUTURES") continue;
+      const lev = num(c.leverage) || num(c.longLeverage) || num(c.shortLeverage);
+      if (lev) map[c.symbol] = lev;
+    }
+    levCache = { at: Date.now(), map };
+  } catch (e) {}
+  return levCache.map;
+}
 
 async function readUta(env) {
   const [assets, cur, hist] = await Promise.all([
@@ -94,7 +111,7 @@ async function readUta(env) {
       opened: num(p.createdTime),
     })),
     history: (hist?.list || []).map(histUta),
-    _settings: await get(env, "/api/v3/account/settings").then((d) => JSON.stringify(d).replace(/"(uid|userId|accountId)":"?[^",}]*"?/g, '"$1":"x"').slice(0, 1500)).catch((e) => "ERR " + e.message), // TEMP
+    leverage: await symbolLeverage(env),
   };
 }
 
