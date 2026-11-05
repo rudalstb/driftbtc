@@ -41,7 +41,7 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
 .cur-toggle button { padding: 5px 12px; }
 .kimp { font-size: 13.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .eth-sym { color: #8c9eff; font-weight: 700; }
-/* 위쪽 작은 상위 사이트 링크 (rudals.app ›) */
+/* 위쪽 작은 상위 사이트 링크 (다른 앱 둘러보기 ›, rudals.app 으로) */
 .up-link { display: inline-block; font-size: 12px; color: var(--muted); text-decoration: none; margin-bottom: 2px; }
 .up-link::after { content: " ›"; }
 .up-link:hover { color: var(--accent); }

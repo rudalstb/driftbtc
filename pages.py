@@ -14,7 +14,7 @@ BASE = "https://btc.rudals.app/"
 UPDATED = "2026년 11월 5일"
 
 FOOT = """<footer>
-  <a href="https://rudals.app/">🏠 rudals.app</a><a href="{p}index.html">BTC Agent 홈</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
+  <a href="{p}index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
   <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/">📚 매매 가이드</a>
   <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
@@ -44,7 +44,7 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 </head>
 <body>
 <main class="page">
-  <header><a class="up" href="https://rudals.app/">rudals.app ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
 {body}
 {FOOT.format(p=p)}
 </main>
