@@ -4,8 +4,26 @@
     {
       "name": "site",
       "runtimeExecutable": ".venv/Scripts/python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "site"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "site"
+      ],
       "port": 8765
+    },
+    {
+      "name": "portal",
+      "runtimeExecutable": ".venv/Scripts/python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4319",
+        "--directory",
+        "../rudals-portal"
+      ],
+      "port": 4319
     }
   ]
 }
