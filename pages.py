@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
-BASE = "https://rudalstb.github.io/driftbtc/"
+BASE = "https://btc.rudals.app/"
 UPDATED = "2026년 10월 19일"
 
 FOOT = """<footer>

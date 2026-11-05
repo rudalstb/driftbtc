@@ -17,7 +17,7 @@ import { createClient } from "redis";
 // 허용하는 사이트 주소들 (옛 깃허브 주소 + 새 도메인)
 const ORIGINS = ["https://rudalstb.github.io", "https://btc.rudals.app"];
 const pickOrigin = (request) => { const o = request?.headers?.get("origin"); return ORIGINS.includes(o) ? o : ORIGINS[0]; };
-const BACKUP_URL = "https://rudalstb.github.io/driftbtc/data/visits.json";
+const BACKUP_URL = "https://btc.rudals.app/data/visits.json";
 const ONLINE_MS = 5 * 60 * 1000;
 const DAY_TTL = 60 * 60 * 24 * 40; // 날짜별 키는 40일 뒤 자동 삭제
 

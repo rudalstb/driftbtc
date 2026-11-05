@@ -94,7 +94,7 @@ async function shareCard(btn) {
     ctx.fillStyle = css("--card"); ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(canvas, 0, 0);
     ctx.fillStyle = css("--muted"); ctx.font = "24px sans-serif";
-    ctx.fillText(`BTC Agent · rudalstb.github.io/driftbtc · ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })} KST · 투자 권유 아님`, 24, out.height - 20);
+    ctx.fillText(`BTC Agent · btc.rudals.app · ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })} KST · 투자 권유 아님`, 24, out.height - 20);
     const blob = await new Promise((r) => out.toBlob(r, "image/png"));
     const file = new File([blob], `${name}-${Date.now()}.png`, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {

@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 DATA = ROOT / "site" / "data"
 STATE = DATA / "notify_state.json"
-SITE = "https://rudalstb.github.io/driftbtc/"
+SITE = "https://btc.rudals.app/"
 KST = timezone(timedelta(hours=9))
 
 
