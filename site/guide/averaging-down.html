@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>물타기 평단 계산법과 위험: 언제 타고 언제 멈출까 · BTC Agent</title>
+  <meta name="description" content="물타기 후 평균 단가 계산 공식, 평단을 원하는 가격까지 내리려면 얼마나 사야 하는지, 선물에서 물타기가 청산가에 미치는 영향을 설명합니다.">
+  <link rel="canonical" href="https://btc.rudals.app/guide/averaging-down.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="BTC Agent">
+  <meta property="og:title" content="물타기 평단 계산법과 위험: 언제 타고 언제 멈출까">
+  <meta property="og:description" content="물타기 후 평균 단가 계산 공식, 평단을 원하는 가격까지 내리려면 얼마나 사야 하는지, 선물에서 물타기가 청산가에 미치는 영향을 설명합니다.">
+  <meta property="og:url" content="https://btc.rudals.app/guide/averaging-down.html">
+  <meta property="og:image" content="https://btc.rudals.app/og.png">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../page.css">
+</head>
+<body>
+<main class="page">
+  <header><a class="home" href="../index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>물타기 평단 계산법과 위험: 언제 타고 언제 멈출까</h1><div class="updated">마지막 수정 2026년 11월 5일</div></header>
+
+<p><b>물타기</b>는 가격이 내려갔을 때 더 사서 평균 단가(평단)를 낮추는 것입니다. 계산은 단순하지만, 잘못 쓰면 작은 손실을 큰 손실로 키우는 가장 빠른 방법이기도 합니다.</p>
+<h2>평단 계산</h2>
+<div class="formula">새 평단 = ( 기존 수량 × 기존 평단 + 추가 수량 × 추가 가격 ) ÷ ( 기존 수량 + 추가 수량 )<br>예: 0.1 BTC @ 80,000 + 0.1 BTC @ 76,000 → 평단 78,000</div>
+<h2>평단을 목표가까지 내리려면 얼마나 사야 하나</h2>
+<div class="formula">필요 수량 = 기존 수량 × ( 기존 평단 − 목표 평단 ) ÷ ( 목표 평단 − 지금 가격 )<br>예: 0.1 BTC @ 80,000, 지금 76,000, 목표 평단 77,000 → 0.1 × 3,000 ÷ 1,000 = 0.3 BTC</div>
+<p>목표 평단이 지금 가격에 가까울수록 필요한 수량이 기하급수적으로 늘어납니다. 평단을 지금 가격까지 내리는 것은 수학적으로 불가능합니다.</p>
+<h2>선물에서 물타기의 함정</h2>
+<ul>
+  <li><b>수량이 늘면 1% 움직임의 손익도 커집니다.</b> 0.1 BTC에서 0.4 BTC가 되면 같은 하락에 4배를 잃습니다.</li>
+  <li><b>청산가가 지금 가격 쪽으로 다가옵니다.</b> 교차 마진에서 증거금(잔고)은 그대로인데 수량만 늘면, 평단이 내려가도 청산가는 오히려 가까워질 수 있습니다.</li>
+  <li><b>"반등하면 본전"은 반등이 와야 성립</b>합니다. 추세가 꺾인 하락에서의 물타기는 손실을 키웁니다.</li>
+</ul>
+<h2>물타기를 쓴다면 지킬 규칙</h2>
+<ol>
+  <li><b>처음부터 계획된 분할 매수</b>여야 합니다. "떨어져서 급하게"는 물타기가 아니라 손절 회피입니다.</li>
+  <li>전체 수량 기준의 <b>최종 손절가와 최대 손실액</b>을 진입 전에 정합니다.</li>
+  <li>추가 매수는 2~3번까지만. 그 뒤에도 내려가면 계획대로 손절합니다.</li>
+  <li>추가 매수 뒤 청산가와 손절가를 다시 확인합니다. 손절가보다 청산가가 가까우면 안 됩니다.</li>
+</ol>
+<p>BTC Agent 의 물타기 계산기는 추가 매수 후 평단·청산가·손익분기 가격을 보여 주고, "어디서 물탈까"에서 예측 범위를 기준으로 추가 매수 후보 가격을 제안합니다.</p>
+<a class="cta" href="../index.html#tools">물타기 계산기 열기 →</a>
+
+<footer>
+  <a href="../index.html">홈</a><a href="../about.html">소개</a><a href="../disclaimer.html">면책 조항</a><a href="../privacy.html">개인정보처리방침</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="../guide/">📚 매매 가이드</a>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</footer>
+</main>
+<script>document.querySelectorAll("a.mail").forEach((a) => { const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; });</script>
+</body>
+</html>

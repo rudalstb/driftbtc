@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>업비트 수익률 계산법: 평균 매수가와 실현 손익 · BTC Agent</title>
+  <meta name="description" content="업비트 같은 원화 거래소에서 평균 매수가(이동평균법)가 어떻게 계산되는지, 실현 손익과 평가 손익의 차이, 거래내역으로 내 진짜 수익을 계산하는 법을 설명합니다.">
+  <link rel="canonical" href="https://btc.rudals.app/guide/upbit-profit.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="BTC Agent">
+  <meta property="og:title" content="업비트 수익률 계산법: 평균 매수가와 실현 손익">
+  <meta property="og:description" content="업비트 같은 원화 거래소에서 평균 매수가(이동평균법)가 어떻게 계산되는지, 실현 손익과 평가 손익의 차이, 거래내역으로 내 진짜 수익을 계산하는 법을 설명합니다.">
+  <meta property="og:url" content="https://btc.rudals.app/guide/upbit-profit.html">
+  <meta property="og:image" content="https://btc.rudals.app/og.png">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../page.css">
+</head>
+<body>
+<main class="page">
+  <header><a class="home" href="../index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>업비트 수익률 계산법: 평균 매수가와 실현 손익</h1><div class="updated">마지막 수정 2026년 11월 5일</div></header>
+
+<p>업비트 앱의 "평가손익"만 보면 <b>이미 팔아서 확정된 손익</b>은 알 수 없습니다. 지금까지 코인으로 실제로 얼마를 벌었는지 알려면 거래내역 전체를 다시 계산해야 합니다.</p>
+<h2>평균 매수가는 이동평균법</h2>
+<p>살 때마다 평균 매수가가 다시 계산되고, <b>팔 때는 평균 매수가가 바뀌지 않습니다.</b></p>
+<div class="formula">살 때: 새 평단 = ( 보유 수량 × 평단 + 산 수량 × 산 가격 ) ÷ ( 보유 수량 + 산 수량 )<br>팔 때: 평단 그대로, 보유 수량만 줄어듦</div>
+<h2>실현 손익과 평가 손익</h2>
+<table><tr><th>구분</th><th>계산</th><th>뜻</th></tr>
+<tr><td>실현 손익</td><td>( 판 가격 − 그때 평단 ) × 판 수량 − 수수료</td><td>팔아서 확정된 돈</td></tr>
+<tr><td>평가 손익</td><td>( 지금 가격 − 평단 ) × 남은 수량</td><td>지금 팔면 생길 돈 (아직 확정 아님)</td></tr></table>
+<p>예: 100만 원어치 사서 절반을 120만 원 가치일 때 팔면 실현 이익은 약 10만 원(수수료 제외)이고, 남은 절반은 평가 손익으로 따로 봅니다.</p>
+<h2>수수료</h2>
+<p>업비트 원화 마켓의 일반 주문 수수료는 0.05% 안팎입니다(정확한 값은 업비트 안내 확인). 매수·매도 모두 붙으므로 자주 사고팔면 왕복 0.1%씩 쌓입니다.</p>
+<h2>계산이 틀어지는 흔한 이유</h2>
+<ul>
+  <li><b>다른 곳에서 입금받은 코인</b> — 산 기록이 없으니 원가를 알 수 없습니다. 판 금액 전체를 이익으로 계산하면 수익이 부풀려집니다.</li>
+  <li><b>기록 시작 전에 산 코인</b> — 같은 이유로 원가를 모릅니다. 당시 평균 매수가를 직접 넣어야 정확해집니다.</li>
+  <li><b>BTC·USDT 마켓 거래</b> — 원화로 사고판 게 아니라 원화 손익을 바로 계산할 수 없습니다.</li>
+</ul>
+<h2>거래내역 받는 법</h2>
+<p>업비트 웹(PC) → 입출금·거래내역에서 기간을 정해 <b>거래내역서(PDF)</b>를 이메일로 받거나, 거래내역 화면을 복사해 붙여 넣을 수 있습니다. BTC Agent 의 매매 진단에 PDF·엑셀·복사한 글을 넣으면 코인별·월별 실현 손익과 평가 손익을 계산해 줍니다. 파일은 브라우저 안에서만 계산하고 서버로 보내지 않습니다.</p>
+<a class="cta" href="../index.html#mine">업비트 수익 계산하기 →</a>
+
+<footer>
+  <a href="../index.html">홈</a><a href="../about.html">소개</a><a href="../disclaimer.html">면책 조항</a><a href="../privacy.html">개인정보처리방침</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="../guide/">📚 매매 가이드</a>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</footer>
+</main>
+<script>document.querySelectorAll("a.mail").forEach((a) => { const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; });</script>
+</body>
+</html>

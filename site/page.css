@@ -15,3 +15,8 @@
 .page table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .page th, .page td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; }
 .page .updated { color: var(--muted); font-size: 13px; }
+.page .guide-list { list-style: none; padding-left: 0; }
+.page .guide-list li { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.page .guide-list a { color: var(--text); text-decoration: none; }
+.page .guide-list a:hover b { color: var(--accent); }
+.page .muted { color: var(--muted); font-size: 14px; }
