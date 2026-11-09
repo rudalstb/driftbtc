@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
 BASE = "https://btc.rudals.app/"
-UPDATED = "2026년 11월 5일"
+UPDATED = "2026년 11월 9일"
 
 FOOT = """<footer>
   <a href="{p}index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
@@ -20,9 +20,16 @@ FOOT = """<footer>
 </footer>"""
 
 
+# 카카오 애드핏 광고를 넣는 페이지 (site/ads.js). 개인정보처리방침·면책 조항에는 넣지 않는다
+def has_ads(path: str) -> bool:
+    return path.startswith("guide/") or path == "about.html"
+
+
 def wrap(path: str, title: str, desc: str, body: str) -> str:
     depth = path.count("/")
     p = "../" * depth
+    ad_head = f'\n  <script src="{p}ads.js" defer></script>' if has_ads(path) else ""
+    ad_end = '\n<div class="ad-slot" data-ad-slot="article-end" aria-label="광고"></div>' if has_ads(path) else ""
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -40,12 +47,12 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
   <meta property="og:locale" content="ko_KR">
   <link rel="icon" href="{p}favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{p}style.css">
-  <link rel="stylesheet" href="{p}page.css">
+  <link rel="stylesheet" href="{p}page.css">{ad_head}
 </head>
 <body>
 <main class="page">
   <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
-{body}
+{body}{ad_end}
 {FOOT.format(p=p)}
 </main>
 <script>document.querySelectorAll("a.mail").forEach((a) => {{ const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; }});</script>
@@ -120,7 +127,12 @@ PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는
 <h2>3. 쿠키와 브라우저 저장소</h2>
 <p>로그인 쿠키는 사용하지 않습니다. 통화 선택(원화/달러), 계산기 입력값, 접은 영역 같은 화면 설정을 브라우저 저장소에 보관합니다.</p>
 <h2>4. 광고</h2>
-<p>사이트에 제3자 광고(예: Google AdSense)가 게재될 수 있습니다. 광고 제공자는 이용자의 관심사에 맞는 광고를 보여 주기 위해 자체 쿠키를 사용할 수 있으며, 이는 해당 제공자의 개인정보처리방침을 따릅니다. 맞춤 광고는 <a href="https://adssettings.google.com" target="_blank" rel="noopener">Google 광고 설정</a>에서 해제할 수 있습니다.</p>
+<p>사이트에는 주식회사 카카오의 광고 서비스인 <b>카카오 애드핏</b> 광고가 나옵니다. 매매 가이드 글의 중간과 끝, 가이드 목록과 소개 페이지 끝, 메인 화면 맨 아래에 한 칸씩이며, 차트·예측·신호등 사이에는 넣지 않습니다. 앞으로 Google AdSense 같은 다른 제3자 광고가 게재될 수도 있습니다.</p>
+<ul>
+  <li>광고 제공자는 광고를 보여 주고 횟수를 세고 관심사에 맞는 광고를 고르기 위해 자체 쿠키나 기기 정보를 사용할 수 있으며, 이는 각 제공자의 방침(<a href="https://www.kakao.com/policy/privacy" target="_blank" rel="noopener">카카오 개인정보 처리방침</a>, <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">Google 광고 정책</a>)을 따릅니다. 브라우저 설정에서 쿠키를 막거나 지울 수 있습니다.</li>
+  <li>광고가 실제로 채워졌는지 알기 위해, 광고 칸을 만들 때와 광고가 채워졌을 때 '앱 이름·광고 자리·PC인지 휴대폰인지'만 rudals.app 익명 집계 서버에 날짜별 횟수로 셉니다. 계산기 입력값이나 거래 내역은 광고에 넘기지 않습니다.</li>
+  <li>광고 내용은 운영자가 보증하지 않으며, 투자 상품 광고도 투자 권유가 아닙니다.</li>
+</ul>
 <h2>5. 외부 서비스</h2>
 <p>시세·시장 데이터는 바이낸스·업비트·야후 파이낸스 등 공개 API 에서 받아오며, 이 과정에서 이용자의 정보가 해당 서비스로 전달되지는 않습니다(서버가 대신 요청하거나 공개 데이터만 요청). 사이트는 GitHub Pages 와 Vercel 에서 호스팅됩니다.</p>
 <h2>6. 보관과 파기</h2>

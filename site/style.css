@@ -416,3 +416,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }
 }
+
+/* 광고 칸 (site/ads.js). 광고가 안 나오면 높이 없이 비어 있다 */
+.ad-slot { display: flex; justify-content: center; margin: 24px 0; }
+.ad-slot ins { max-width: 100%; }
