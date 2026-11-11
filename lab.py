@@ -48,7 +48,10 @@ def _cache(name: str, fetch) -> pd.DataFrame:
     except Exception as e:  # 막힌 지역(GitHub 미국 서버 등)에서는 캐시로
         print(f"{name}: 새로 받지 못해 캐시 사용 ({e})")
     if p.exists():
-        return pd.read_csv(p, index_col=0, parse_dates=[0])
+        # 시각에 밀리초가 섞인 줄(펀딩비)이 있으면 parse_dates 가 날짜로 못 읽어 문자열로 남는다 → 직접 변환
+        df = pd.read_csv(p, index_col=0)
+        df.index = pd.to_datetime(df.index, utc=True, format="mixed")
+        return df
     raise RuntimeError(f"{name}: 데이터 없음")
 
 
