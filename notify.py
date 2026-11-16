@@ -1,7 +1,7 @@
 """📣 텔레그램 채널 알림: forecast.py 가 만든 site/data/forecast.json 을 읽어 공개 채널에 올린다.
 
 보내는 것 (중복 방지 상태는 site/data/notify_state.json):
-- 아침 브리핑 (한국 시간 9시대 첫 실행): 가격 · 1일 예측 범위 · 1일 관점 · 상황 신호등 · 다음 발표
+- 아침 브리핑 (한국 시간 9시대 첫 실행): 어제 예측 채점 · 가격 · 1일 예측 범위 · 1일 관점 · 상황 신호등 · 다음 발표 · 오늘 시장 일지 링크
 - 1일 관점이 롱↔숏으로 바뀔 때
 - 쉬는 구간(변동성 극단·발표 창) 시작/끝
 - 발표 1시간 전
@@ -75,9 +75,12 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
 
     # 1) 아침 브리핑: 한국 시간 9시대, 하루 1번
     today = now.strftime("%Y-%m-%d")
+    daily = _load(DATA / "daily_latest.json", {})
+    has_daily = daily.get("date") == today
     if now.hour == 9 and state.get("brief_date") != today:
         lines = [
             f"☀️ <b>BTC Agent 아침 브리핑</b> {now:%m/%d %H:%M} KST",
+            (f"✅ 어제 예측 <b>{daily['scored']}</b> · 어제 {pct(daily['chg'], 2)}" if has_daily and daily.get("scored") else ""),
             f"BTC {fmt_usd(price)}",
             f"오늘(1일) 95% 범위: {fmt_usd(nxt['lo95'])} ~ {fmt_usd(nxt['hi95'])}",
             f"1일 관점: {sig_side} (상승 확률 {sig1d['p_up'] * 100:.0f}%)" if sig1d else "",
@@ -89,7 +92,7 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
         paper = (report.get("paper") or {}).get("1d")
         if now.weekday() == 0 and paper:
             lines.append(f"💵 가상 계좌(1일 관점) {fmt_usd(paper['equity'])} ({pct(paper['return_pct'], 2)}) · 들고만 있기 {pct(paper['hold_return_pct'], 2)}")
-        lines.append(f"🔗 {SITE}")
+        lines.append(f"📅 오늘 시장 일지: {SITE}{daily['file']}" if has_daily else f"🔗 {SITE}")
         lines.append("재미로 보는 실험 · 투자 권유 아님")
         msgs.append("\n".join(x for x in lines if x))
         new_state["brief_date"] = today

@@ -101,13 +101,6 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python forecast.py --no-update
 
-      - name: 텔레그램 채널 알림
-        if: steps.check.outputs.new == 'true'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python notify.py
-
       - name: 운영자 청산 기록 보관
         if: steps.check.outputs.new == 'true'
         run: python trades.py
@@ -129,6 +122,14 @@ jobs:
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python daily.py
+
+      # 아침 브리핑에 오늘 시장 일지 링크를 넣으려고 일지 다음에 보낸다
+      - name: 텔레그램 채널 알림
+        if: steps.check.outputs.new == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python notify.py
 
       - name: 신호 실험실 채점 (주 1회)
         if: steps.check.outputs.backtest == 'true'
