@@ -15,7 +15,7 @@ UPDATED = "2026년 11월 9일"
 
 FOOT = """<footer>
   <a href="{p}index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
-  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/">📚 매매 가이드</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/">📚 매매 가이드</a><a href="{p}daily/">📅 시장 일지</a>
   <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
 
@@ -25,7 +25,7 @@ def has_ads(path: str) -> bool:
     return path.startswith("guide/") or path == "about.html"
 
 
-def wrap(path: str, title: str, desc: str, body: str) -> str:
+def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None) -> str:
     depth = path.count("/")
     p = "../" * depth
     ad_head = f'\n  <script src="{p}ads.js" defer></script>' if has_ads(path) else ""
@@ -51,7 +51,7 @@ def wrap(path: str, title: str, desc: str, body: str) -> str:
 </head>
 <body>
 <main class="page">
-  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">마지막 수정 {UPDATED}</div></header>
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">{updated or "마지막 수정 " + UPDATED}</div></header>
 {body}{ad_end}
 {FOOT.format(p=p)}
 </main>
@@ -396,18 +396,26 @@ def guide_index() -> str:
 
 def main() -> None:
     PAGES["guide/index.html"] = ("비트코인 매매 가이드 모음", "레버리지, 손절, 청산가, 물타기, 수수료, 펀딩비, 김치 프리미엄, 업비트 수익 계산까지 코인 매매 기본을 공식과 예시로 정리한 가이드 모음입니다.", guide_index())
-    urls = [BASE]
     for path, (title, desc, body) in PAGES.items():
         out = SITE / path
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(wrap(path, title, desc, body), encoding="utf-8", newline="\n")
-        urls.append(BASE + path)
+    write_sitemap()
+    print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
+
+
+def write_sitemap() -> None:
+    """고정 페이지 + 시장 일지(site/daily/YYYY-MM-DD.html, 그날 날짜를 lastmod 로). daily.py 도 부른다."""
     today = date.today().isoformat()
+    items = [(BASE, today)] + [(BASE + p, today) for p in {**PAGES, "guide/index.html": None}]
+    daily = sorted((SITE / "daily").glob("20*.html"), reverse=True) if (SITE / "daily").exists() else []
+    if daily:
+        items.append((BASE + "daily/index.html", today))
+        items += [(f"{BASE}daily/{f.name}", f.stem) for f in daily]
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(
-        f"  <url><loc>{u}</loc><lastmod>{today}</lastmod></url>\n" for u in urls) + "</urlset>\n"
+        f"  <url><loc>{u}</loc><lastmod>{m}</lastmod></url>\n" for u, m in items) + "</urlset>\n"
     (SITE / "sitemap.xml").write_text(sitemap, encoding="utf-8", newline="\n")
     (SITE / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE}sitemap.xml\n", encoding="utf-8", newline="\n")
-    print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
 
 
 if __name__ == "__main__":

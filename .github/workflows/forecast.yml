@@ -124,6 +124,12 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python history.py
 
+      # 하루 한 번 시장 일지 글 (이미 있으면 목록·sitemap 만 갱신)
+      - name: 시장 일지
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python daily.py
+
       - name: 신호 실험실 채점 (주 1회)
         if: steps.check.outputs.backtest == 'true'
         run: python lab.py
@@ -137,7 +143,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
+          git add site/data site/daily site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 
