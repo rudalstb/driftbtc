@@ -114,6 +114,10 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python collector.py
 
+      - name: 과거와 비교 (닮은꼴·조건별 통계)
+        if: steps.check.outputs.new == 'true'
+        run: python history.py
+
       - name: 신호 실험실 채점 (주 1회)
         if: steps.check.outputs.backtest == 'true'
         run: python lab.py

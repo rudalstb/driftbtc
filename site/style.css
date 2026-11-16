@@ -324,6 +324,11 @@ details.more[open] > summary { margin-bottom: 8px; }
 .sig-big.short { color: var(--down); }
 .sig-big.none { color: var(--muted); font-size: 24px; }
 .game-sub { margin-top: 16px; }
+/* 📜 과거와 비교 */
+.hist-dd { margin: 0 0 4px; }
+.hist-chart-wrap { position: relative; height: 220px; margin: 6px 0 4px; }
+.hist-tiles { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
+.hist-cond td, .hist-cond th { vertical-align: top; }
 .hit-row { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; font-size: 15px; }
 table.compact th, table.compact td { padding: 5px 6px; }
 .eq-wrap { position: relative; height: 150px; margin-top: 8px; }
