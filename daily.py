@@ -142,7 +142,8 @@ def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
 <p class="note">이 글은 BTC Agent 가 매일 아침 자동으로 정리한 기록이에요. 과거 통계와 예측 범위는 참고용이며 투자 권유가 아니에요. 지난 일지는 고치지 않고 그대로 남겨 둬요.</p>
 <a class="cta" href="../index.html#home">실시간 예측 보기 →</a> <a class="cta" href="index.html">지난 일지 →</a>
 """
-    summary = {"chg": round(float(chg), 2), "scored": short, "lo68": round(n0["lo68"]), "hi68": round(n0["hi68"])}
+    summary = {"chg": round(float(chg), 2), "scored": short, "lo68": round(n0["lo68"]), "hi68": round(n0["hi68"]),
+               "open": round(float(c.open), 2), "close": round(float(c.close), 2), "label": f"{(day + pd.Timedelta(hours=9)).month}월 {(day + pd.Timedelta(hours=9)).day}일({WD[(day + pd.Timedelta(hours=9)).dayofweek]})"}
     return title, desc, body, summary
 
 
@@ -174,7 +175,15 @@ def main() -> None:
         if built:
             title, desc, body, summary = built
             made = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y년 %m월 %d일 %H:%M 자동 작성 (한국 시간)")
-            path.write_text(pages.wrap(f"daily/{path.name}", title, desc, body, made), encoding="utf-8", newline="\n")
+            image = None
+            try:   # 그날 숫자가 박힌 공유 그림 (실패해도 일지는 사이트 공통 그림으로)
+                import daily_og
+                daily_og.draw(OUT / "og" / f"{path.stem}.png", summary["label"], summary["scored"], summary["chg"],
+                              summary["open"], summary["close"], summary["lo68"], summary["hi68"])
+                image = f"{pages.BASE}daily/og/{path.stem}.png"
+            except Exception as e:
+                print(f"일지 공유 그림 실패: {e}")
+            path.write_text(pages.wrap(f"daily/{path.name}", title, desc, body, made, image), encoding="utf-8", newline="\n")
             print(f"시장 일지 {path.name} 생성")
             # 첫 화면·적중률 탭의 '오늘 일지' 띠가 읽는 요약
             latest = {"date": path.stem, "file": f"daily/{path.name}", "title": title, **summary,

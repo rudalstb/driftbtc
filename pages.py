@@ -25,7 +25,7 @@ def has_ads(path: str) -> bool:
     return path.startswith("guide/") or path == "about.html"
 
 
-def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None) -> str:
+def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None, image: str | None = None) -> str:
     depth = path.count("/")
     p = "../" * depth
     ad_head = f'\n  <script src="{p}ads.js" defer></script>' if has_ads(path) else ""
@@ -43,7 +43,8 @@ def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None
   <meta property="og:title" content="{title}">
   <meta property="og:description" content="{desc}">
   <meta property="og:url" content="{BASE}{path}">
-  <meta property="og:image" content="{BASE}og.png">
+  <meta property="og:image" content="{image or BASE + "og.png"}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta property="og:locale" content="ko_KR">
   <link rel="icon" href="{p}favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{p}style.css">
