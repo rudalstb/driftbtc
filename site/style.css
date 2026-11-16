@@ -329,6 +329,12 @@ details.more[open] > summary { margin-bottom: 8px; }
 .hist-chart-wrap { position: relative; height: 220px; margin: 6px 0 4px; }
 .hist-tiles { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
 .hist-cond td, .hist-cond th { vertical-align: top; }
+/* 🧭 진입 분석 오늘의 요약 */
+.mb-box { display: grid; gap: 6px; }
+.mb-line { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.mb-line:hover { border-color: var(--accent); }
+.mb-icon { flex: none; width: 22px; text-align: center; }
+.mb-go { margin-left: auto; color: var(--muted); }
 /* 🗓 발표 일정 · 🇰🇷 김프 역사 */
 .ev-list { margin: 4px 0 0; padding-left: 18px; }
 .ev-list li + li { margin-top: 6px; }

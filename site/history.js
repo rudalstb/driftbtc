@@ -19,6 +19,7 @@ async function loadHistory() {
   renderEventsCard();
   renderHistoryCard();
   renderKimpCard();
+  renderMarketBrief();
 }
 
 function renderHistoryCard() {
@@ -167,6 +168,49 @@ function renderKimpCard() {
     },
   });
 }
+
+// 🧭 진입 분석 맨 위 '오늘의 요약': 아래 카드들의 핵심만 한 줄씩. 누르면 그 카드로 내려간다.
+function renderMarketBrief() {
+  const box = $("mb-box");
+  if (!box) return;
+  const lines = [];
+  const fs = window.filterState;
+  if (fs) {
+    const t = { red: ["🔴", "쉬는 구간", "neg"], yellow: ["🟡", "주의 구간", "warn"], green: ["🟢", "들어가도 되는 구간", "pos"] }[fs.level];
+    const why = fs.reasons.filter((r) => r.lv === "bad" || r.lv === "warn").length;
+    lines.push(["filter", t[0], `신호등 <b class="${t[2]}">${t[1]}</b>${fs.verdict ? ` · 지금 관점은 <b>${fs.verdict.act}</b>` : ""}${why ? ` <span class="muted">(걸린 조건 ${why}가지)</span>` : ""}`]);
+  }
+  const e = histData?.events;
+  const nx = e?.upcoming?.[0];
+  if (nx) {
+    const h = (new Date(nx.t) - Date.now()) / 3600e3;
+    const when = h < 0 ? "방금 발표, 반응 중" : h < 24 ? `<b class="warn">${Math.round(h)}시간 뒤</b>` : `${Math.round(h / 24)}일 뒤`;
+    const s = nx.kind && e[nx.kind];
+    lines.push(["events-card", "🗓", `다음 발표 <b>${nx.name}</b> ${when}${s ? ` <span class="muted">· 보통 평소의 ${s.ratio}배 움직임</span>` : ""}`]);
+  }
+  const k = histData?.kimp;
+  const liveK = typeof upbit !== "undefined" && upbit && typeof live !== "undefined" && live && typeof FX !== "undefined" && FX ? (upbit / (live * FX) - 1) * 100 : null;
+  if (k || liveK != null) {
+    const v = liveK ?? k.now;
+    const level = v >= 5 ? ["neg", "과열 구간 — 과거엔 30일 뒤 성적이 나빴어요"] : v >= 2 ? ["warn", "높은 편"] : v < 0 ? ["pos", "역프"] : ["", "평소 수준"];
+    lines.push(["kimp-hist", "🇰🇷", `김프 <b class="${level[0]}">${hPct(v, 2)}</b> <span class="muted">· ${level[1]}</span>`]);
+  }
+  const a = histData?.analogs, cs = histData?.conditions;
+  if (a) {
+    const odd = (cs || []).filter((c) => c.verdict.includes("자주"));
+    const dir = odd.length ? odd.map((c) => `${c.name}: ${c.verdict}`).join(", ") : "지금 같은 조건에서 과거 방향은 뚜렷하지 않았어요";
+    lines.push(["history", "📜", `닮은 과거 ${a.fwd7.n}번 중 7일 뒤 ${Math.round((a.fwd7.up * a.fwd7.n) / 100)}번 상승 <span class="muted">(평소 ${a.base7.up}%) · ${dir}</span>`]);
+  }
+  if (!lines.length) return;
+  $("market-brief").hidden = false;
+  box.innerHTML = lines.map(([id, icon, html]) => `<button type="button" class="mb-line" data-go="${id}"><span class="mb-icon">${icon}</span><span>${html}</span><span class="mb-go">›</span></button>`).join("");
+}
+window.renderMarketBrief = renderMarketBrief;
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".mb-line");
+  if (b) $(b.dataset.go)?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+setInterval(() => { if (activeTab === "market") renderMarketBrief(); }, 30000);
 
 document.addEventListener("tabshown", (e) => { if (e.detail === "market") loadHistory(); });
 if (typeof activeTab !== "undefined" && activeTab === "market") loadHistory();
