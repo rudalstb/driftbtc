@@ -264,6 +264,45 @@ def heatmap(h1: pd.DataFrame) -> dict:
             "weekday": round(float(wkday), 3), "weekend": round(float(wkend), 3)}
 
 
+FNG_URL = "https://api.alternative.me/fng/?limit=0&format=json"   # 공포·탐욕 지수 (출처 표기 조건으로 무료)
+FNG_BUCKETS = [("극단적 공포", 0, 25), ("공포", 25, 45), ("중립", 45, 56), ("탐욕", 56, 76), ("극단적 탐욕", 76, 101)]
+
+
+def fear_greed(close: pd.Series) -> dict:
+    """공포·탐욕 지수(alternative.me, 2018-02~)가 구간별일 때 그 뒤 7일·30일 비트코인 결과를 평소(같은 기간 모든 날)와 비교."""
+    import requests
+    rows = requests.get(FNG_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=20).json()["data"]
+    s = pd.Series({pd.Timestamp(int(r["timestamp"]), unit="s", tz="UTC").normalize(): int(r["value"]) for r in rows}).sort_index()
+    s = s[~s.index.duplicated(keep="last")]
+    # 지수는 그날 0시(UTC) 발표 → 같은 날짜 일봉의 시가 시점과 맞춘다. 결과는 그 일봉 시가 대비 7·30일 뒤 종가
+    px = close.shift(1).reindex(s.index)                    # 그날 0시 가격 = 전날 일봉 종가
+    fwd = {n: close.shift(-(n - 1)).reindex(s.index) / px - 1 for n in (7, 30)}
+    b7 = fwd[7].dropna()
+    out_b = []
+    for name, lo, hi in FNG_BUCKETS:
+        m = (s >= lo) & (s < hi)
+        on = s.index[m]
+        episodes = int((on.to_series().diff().dt.days.fillna(999) > 7).sum()) if len(on) else 0
+        row = {"name": name, "lo": lo, "hi": hi - 1, "days": int(m.sum()), "episodes": episodes, "now": bool(lo <= s.iloc[-1] < hi)}
+        for n in (7, 30):
+            f = fwd[n][m].dropna()
+            row[f"up{n}"] = round(float((f > 0).mean()) * 100, 1) if len(f) else None
+            row[f"med{n}"] = pct(f.median()) if len(f) else None
+            row[f"n{n}"] = int(len(f))
+        # 붙어 있는 날의 7일 결과는 서로 겹치므로 '겹치지 않는 7일 묶음 수(일수÷7)'를 표본 수로 보고 판정
+        row["verdict"], row["z"] = verdict(row["up7"] / 100, float((b7 > 0).mean()), row["n7"] // 7) if row["n7"] else ("표본 없음", 0.0)
+        out_b.append(row)
+    base = {n: fwd[n].dropna() for n in (7, 30)}
+    return {
+        "now": int(s.iloc[-1]), "date": s.index[-1].strftime("%Y-%m-%d"), "since": s.index[0].strftime("%Y-%m-%d"),
+        "days": int(len(s)), "rank": round(float((s < s.iloc[-1]).mean()) * 100),
+        "last30": [int(v) for v in s.iloc[-30:].values], "last30_t": [t.strftime("%m-%d") for t in s.index[-30:]],
+        "avg_1y": round(float(s.iloc[-365:].mean()), 1),
+        "buckets": out_b,
+        "base": {f"up{n}": round(float((base[n] > 0).mean()) * 100, 1) for n in (7, 30)} | {f"med{n}": pct(base[n].median()) for n in (7, 30)},
+    }
+
+
 def main() -> None:
     close = data.load("1d")["close"]
     cond, base = conditions(close)
@@ -280,6 +319,16 @@ def main() -> None:
         out["heatmap"] = heatmap(data.load("1h"))
     except Exception as e:
         print(f"요일·시간대 계산 실패: {e}")
+    try:
+        out["fng"] = fear_greed(close)
+    except Exception as e:
+        print(f"공포·탐욕 지수 실패(지난 값 유지): {e}")
+        try:
+            prev = json.loads(OUT.read_text(encoding="utf-8")).get("fng")
+            if prev:
+                out["fng"] = prev
+        except Exception:
+            pass
     try:
         import kimp_hist
         out["kimp"] = kimp_hist.analyze(close)

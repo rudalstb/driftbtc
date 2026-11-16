@@ -354,6 +354,15 @@ details.more[open] > summary { margin-bottom: 8px; }
 .hm-bar { display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(247,147,26,0.08), rgba(247,147,26,1)); }
 .hm-notes { margin: 10px 0 0; padding-left: 18px; }
 .hm-notes li + li { margin-top: 4px; }
+/* 😱 공포·탐욕 */
+.fng-top { display: flex; align-items: center; gap: 14px; }
+.fng-num { font-size: 40px; font-weight: 800; line-height: 1; min-width: 56px; }
+.fng-gauge { position: relative; height: 10px; border-radius: 5px; margin: 12px 0 4px; background: linear-gradient(90deg, var(--down), #d29922 45%, var(--up)); }
+.fng-gauge span { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; background: var(--text); border-radius: 2px; }
+.fng-scale { display: flex; justify-content: space-between; }
+.fng-bars { display: flex; align-items: flex-end; gap: 2px; height: 46px; }
+.fng-b { flex: 1; border-radius: 2px 2px 0 0; opacity: 0.85; }
+#fng-card p a { color: var(--accent); }
 /* 🧭 진입 분석 오늘의 요약 */
 .mb-box { display: grid; gap: 6px; }
 .mb-line { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; }

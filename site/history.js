@@ -20,6 +20,7 @@ async function loadHistory() {
   renderHeatmapCard();
   renderHistoryCard();
   renderKimpCard();
+  renderFngCard();
   renderMarketBrief();
 }
 
@@ -201,6 +202,31 @@ function renderHeatmapCard() {
   box.querySelectorAll(".hm-toggle button").forEach((b) => b.addEventListener("click", () => { hmRange = b.dataset.r; renderHeatmapCard(); }));
 }
 
+// 😱 공포·탐욕 지수 (alternative.me) + 구간별 그 뒤 7·30일 결과를 평소와 비교
+function fngLabel(v) {
+  return v < 25 ? ["극단적 공포", "neg"] : v < 45 ? ["공포", "neg"] : v < 56 ? ["중립", ""] : v < 76 ? ["탐욕", "pos"] : ["극단적 탐욕", "pos"];
+}
+function renderFngCard() {
+  const f = histData?.fng, box = $("fng-box");
+  if (!f || !box) return;
+  $("fng-card").hidden = false;
+  const [lab, cls] = fngLabel(f.now);
+  const bars = f.last30.map((v, i) => `<span class="fng-b" style="height:${Math.max(4, v)}%;background:${v < 45 ? "var(--down)" : v < 56 ? "var(--muted)" : "var(--up)"}" title="${f.last30_t[i]} · ${v}"></span>`).join("");
+  const vcls = (v) => (v.includes("오름") ? "pos" : v.includes("내림") ? "neg" : "muted");
+  const rows = f.buckets.map((b) =>
+    `<tr class="${b.now ? "kh-now" : ""}"><td><b>${b.name}</b> <span class="muted small">${b.lo}~${b.hi}</span>${b.now ? ' <span class="chip-now">지금</span>' : ""}<div class="muted small">${b.days.toLocaleString()}일 · 구간 ${b.episodes}번</div></td>` +
+    `<td>${b.up7}%<div class="muted small">평소 ${f.base.up7}%</div></td>` +
+    `<td class="hide-m ${hCls(b.med30)}">${hPct(b.med30)}<div class="muted small">평소 ${hPct(f.base.med30)}</div></td>` +
+    `<td><span class="${vcls(b.verdict)}">${b.verdict}</span></td></tr>`).join("");
+  box.innerHTML =
+    `<div class="fng-top"><div class="fng-num ${cls}">${f.now}</div><div><b class="${cls}">${lab}</b><div class="muted small">${hDate(f.date)} · ${f.since.slice(0, 4)}년 이후 하위 ${Math.max(1, f.rank)}% · 최근 1년 평균 ${f.avg_1y}</div></div></div>` +
+    `<div class="fng-gauge"><span style="left:${f.now}%"></span></div><div class="fng-scale muted small"><span>0 극단적 공포</span><span>50</span><span>극단적 탐욕 100</span></div>` +
+    `<div class="label game-sub">최근 30일</div><div class="fng-bars">${bars}</div>` +
+    `<div class="label game-sub">지수 구간별, 그 뒤 비트코인</div>` +
+    `<div class="table-wrap"><table class="compact wrap-m"><thead><tr><th>지수 구간</th><th>7일 뒤 상승</th><th class="hide-m">30일 뒤 중간값</th><th>판정</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+    `<p class="muted small">"공포일 때 사라"는 말이 흔하지만, ${f.since.slice(0, 4)}년 이후 기록으로는 어느 구간도 7일 뒤 상승 비율이 평소와 우연 이상으로 다르지 않았어요(붙어 있는 날은 겹치므로 일수÷7 을 표본으로 판정). 시장 분위기를 보는 지표로만 쓰세요. 출처: <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">alternative.me</a></p>`;
+}
+
 // 🧭 진입 분석 맨 위 '오늘의 요약': 아래 카드들의 핵심만 한 줄씩. 누르면 그 카드로 내려간다.
 function renderMarketBrief() {
   const box = $("mb-box");
@@ -226,6 +252,11 @@ function renderMarketBrief() {
     const v = liveK ?? k.now;
     const level = v >= 5 ? ["neg", "과열 구간 — 과거엔 30일 뒤 성적이 나빴어요"] : v >= 2 ? ["warn", "높은 편"] : v < 0 ? ["pos", "역프"] : ["", "평소 수준"];
     lines.push(["kimp-hist", "🇰🇷", `김프 <b class="${level[0]}">${hPct(v, 2)}</b> <span class="muted">· ${level[1]}</span>`]);
+  }
+  const fg = histData?.fng;
+  if (fg) {
+    const [lab, cls] = fngLabel(fg.now);
+    lines.push(["fng-card", "😱", `공포·탐욕 지수 <b class="${cls}">${fg.now} ${lab}</b> <span class="muted">· 과거엔 구간별로 뚜렷한 차이 없었어요</span>`]);
   }
   const a = histData?.analogs, cs = histData?.conditions;
   if (a) {
