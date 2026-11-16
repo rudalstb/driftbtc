@@ -329,6 +329,11 @@ details.more[open] > summary { margin-bottom: 8px; }
 .hist-chart-wrap { position: relative; height: 220px; margin: 6px 0 4px; }
 .hist-tiles { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
 .hist-cond td, .hist-cond th { vertical-align: top; }
+/* 📅 오늘의 시장 일지 띠 (AI 예측·적중률 탭) */
+.daily-strip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--card); color: var(--text); text-decoration: none; }
+.daily-strip:hover { border-color: var(--accent); }
+.daily-strip[hidden] { display: none; }
+.daily-strip .ds-go { margin-left: auto; color: var(--accent); font-weight: 700; white-space: nowrap; }
 /* 🧭 진입 분석 오늘의 요약 */
 .mb-box { display: grid; gap: 6px; }
 .mb-line { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; }

@@ -51,7 +51,7 @@ def first_forecast(target: pd.Timestamp) -> dict | None:
     return None
 
 
-def build(day: pd.Timestamp) -> tuple[str, str, str] | None:
+def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
     fc = json.loads((SITE / "data" / "forecast.json").read_text(encoding="utf-8"))
     f1d = fc["forecasts"]["1d"]
     if pd.Timestamp(f1d["as_of"]) != day:
@@ -71,11 +71,12 @@ def build(day: pd.Timestamp) -> tuple[str, str, str] | None:
 
     # 어제 예측 채점
     prev = first_forecast(day)
-    score = ""
+    score, short = "", None
     if prev:
         a = c.close
         in68, in95 = prev["lo68"] <= a <= prev["hi68"], prev["lo95"] <= a <= prev["hi95"]
         verdict = "68% 범위 안 (적중)" if in68 else "95% 범위 안 (68% 밖)" if in95 else "95% 범위 밖 (빗나감)"
+        short = "적중" if in68 else "95% 범위 안" if in95 else "빗나감"
         pdir = prev.get("point_dir")
         dir_ok = None if not pdir else (pdir > 0) == (a > prev["price"])
         score = (f"<p>어제 아침 BTC Agent 는 오늘 9시 종가가 <b>{usd(prev['lo68'])} ~ {usd(prev['hi68'])}</b>(68%), "
@@ -141,7 +142,8 @@ def build(day: pd.Timestamp) -> tuple[str, str, str] | None:
 <p class="note">이 글은 BTC Agent 가 매일 아침 자동으로 정리한 기록이에요. 과거 통계와 예측 범위는 참고용이며 투자 권유가 아니에요. 지난 일지는 고치지 않고 그대로 남겨 둬요.</p>
 <a class="cta" href="../index.html#home">실시간 예측 보기 →</a> <a class="cta" href="index.html">지난 일지 →</a>
 """
-    return title, desc, body
+    summary = {"chg": round(float(chg), 2), "scored": short, "lo68": round(n0["lo68"]), "hi68": round(n0["hi68"])}
+    return title, desc, body, summary
 
 
 def write_index() -> None:
@@ -167,10 +169,14 @@ def main() -> None:
     else:
         built = build(day)
         if built:
-            title, desc, body = built
+            title, desc, body, summary = built
             made = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y년 %m월 %d일 %H:%M 자동 작성 (한국 시간)")
             path.write_text(pages.wrap(f"daily/{path.name}", title, desc, body, made), encoding="utf-8", newline="\n")
             print(f"시장 일지 {path.name} 생성")
+            # 첫 화면·적중률 탭의 '오늘 일지' 띠가 읽는 요약
+            latest = {"date": path.stem, "file": f"daily/{path.name}", "title": title, **summary,
+                      "count": len(list(OUT.glob("20*.html")))}
+            (SITE / "data" / "daily_latest.json").write_text(json.dumps(latest, ensure_ascii=False), encoding="utf-8")
     write_index()
     pages.write_sitemap()
 

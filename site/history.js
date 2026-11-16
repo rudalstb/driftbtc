@@ -214,3 +214,19 @@ setInterval(() => { if (activeTab === "market") renderMarketBrief(); }, 30000);
 
 document.addEventListener("tabshown", (e) => { if (e.detail === "market") loadHistory(); });
 if (typeof activeTab !== "undefined" && activeTab === "market") loadHistory();
+
+// 📅 오늘의 시장 일지 띠: AI 예측 탭(예측 카드 아래)·적중률 탭(맨 위). daily.py 가 쓰는 data/daily_latest.json
+(async () => {
+  let d;
+  try {
+    const r = await fetch("data/daily_latest.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    d = await r.json();
+  } catch (e) { return; }
+  const [, m, day] = d.date.split("-");
+  const when = `${+m}월 ${+day}일`;
+  const scored = d.scored ? `어제 예측 <b class="${d.scored === "빗나감" ? "neg" : "pos"}">${d.scored}</b> · ` : "";
+  const fill = (id, html) => { const el = $(id); if (!el) return; el.href = d.file; el.innerHTML = html; el.hidden = false; };
+  fill("daily-strip", `<span>📅 <b>${when} 시장 일지</b></span><span class="muted small">${scored}어제 <span class="${hCls(d.chg)}">${hPct(d.chg, 2)}</span> · 오늘 범위 $${d.lo68.toLocaleString()} ~ $${d.hi68.toLocaleString()}</span><span class="ds-go">읽기 ›</span>`);
+  fill("daily-strip-v", `<span>📅 <b>매일 채점 기록 · 시장 일지</b></span><span class="muted small">${when} ${scored}지금까지 ${d.count}편, 틀린 날도 고치지 않고 남겨요</span><span class="ds-go">오늘 일지 ›</span>`);
+})();
