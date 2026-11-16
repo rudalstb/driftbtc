@@ -15,7 +15,7 @@ UPDATED = "2026년 11월 9일"
 
 FOOT = """<footer>
   <a href="{p}index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
-  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/">📚 매매 가이드</a><a href="{p}daily/">📅 시장 일지</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}guide/">📚 매매 가이드</a><a href="{p}daily/">📅 시장 일지</a><a href="{p}monthly/">📊 월간 성적표</a>
   <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
 
@@ -413,6 +413,10 @@ def write_sitemap() -> None:
     if daily:
         items.append((BASE + "daily/index.html", today))
         items += [(f"{BASE}daily/{f.name}", f.stem) for f in daily]
+    monthly = sorted((SITE / "monthly").glob("20*.html"), reverse=True) if (SITE / "monthly").exists() else []
+    if monthly:
+        items.append((BASE + "monthly/index.html", today))
+        items += [(f"{BASE}monthly/{f.name}", today) for f in monthly]
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(
         f"  <url><loc>{u}</loc><lastmod>{m}</lastmod></url>\n" for u, m in items) + "</urlset>\n"
     (SITE / "sitemap.xml").write_text(sitemap, encoding="utf-8", newline="\n")

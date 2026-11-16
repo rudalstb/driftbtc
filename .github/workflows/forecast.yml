@@ -123,6 +123,12 @@ jobs:
         continue-on-error: true
         run: python daily.py
 
+      # 매달 1일: 지난달 성적표 (이미 있으면 목록·sitemap 만 갱신)
+      - name: 월간 성적표
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python monthly.py
+
       # 아침 브리핑에 오늘 시장 일지 링크를 넣으려고 일지 다음에 보낸다
       - name: 텔레그램 채널 알림
         if: steps.check.outputs.new == 'true'
@@ -144,7 +150,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data site/daily site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
+          git add site/data site/daily site/monthly site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           git pull --rebase --autostash && git push
 

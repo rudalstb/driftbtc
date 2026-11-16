@@ -229,7 +229,7 @@ async function loadDailyTab() {
     $("dl-box").innerHTML =
       `<a class="dl-latest" href="${top.file}"><div class="label">가장 최근 일지</div><b>${top.title}</b><div class="muted small">${top.desc}</div><div class="ds-go">읽기 ›</div></a>` +
       (rest.length ? `<div class="label">지난 일지</div><ul class="dl-list">${rest.map((x) => `<li><a href="${x.file}"><b>${x.title}</b><div class="muted small">${x.desc}</div></a></li>`).join("")}</ul>` : `<p class="muted small">지난 일지는 내일부터 하루에 한 편씩 쌓여요.</p>`) +
-      `<p class="small"><a href="daily/">전체 목록 페이지 →</a></p>`;
+      `<p class="small"><a href="daily/">전체 목록 페이지 →</a> · <a href="monthly/">📊 월간 성적표 →</a></p>`;
     $("daily-card").hidden = false;
   } catch (e) {}
 }
