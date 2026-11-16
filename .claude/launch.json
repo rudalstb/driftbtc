@@ -24,6 +24,18 @@
         "../rudals-portal"
       ],
       "port": 4319
+    },
+    {
+      "name": "bundle-test",
+      "runtimeExecutable": ".venv/Scripts/python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8768",
+        "--directory",
+        "C:/Users/DG-250~1/AppData/Local/Temp/claude/5fc59de11599dd27/a79d29ad-eb3c-40c6-bad1-1ff047682c46/scratchpad/bt/site"
+      ],
+      "port": 8768
     }
   ]
 }

@@ -23,7 +23,8 @@ def main(version: str) -> None:
     tags = "".join(f'  <script src="{n}"></script>\n' for n in names)
     if tags not in html:
         raise SystemExit("스크립트 태그 묶음이 연속으로 있지 않음")
-    html = html.replace(tags, f'  <script src="bundle.js?v={version}"></script>\n')
+    # defer: HTML 을 끝까지 읽고 화면을 그린 뒤 실행 (머리의 Chart.js 도 defer 라 그 다음 순서로 실행된다)
+    html = html.replace(tags, f'  <script defer src="bundle.js?v={version}"></script>\n')
     html = html.replace('href="style.css"', f'href="style.css?v={version}"')
     index.write_text(html, encoding="utf-8", newline="\n")
     print(f"합친 파일: {names} → bundle.js {(SITE / 'bundle.js').stat().st_size:,} 바이트, 버전 {version}")
