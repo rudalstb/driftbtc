@@ -15,7 +15,7 @@
 .page footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
 .page footer a { color: var(--muted); margin-right: 12px; }
 .page table { border-collapse: collapse; width: 100%; font-size: 14px; }
-.page th, .page td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; }
+.page th, .page td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; white-space: normal; }
 .page .updated { color: var(--muted); font-size: 13px; }
 .page .guide-list { list-style: none; padding-left: 0; }
 .page .guide-list li { padding: 12px 0; border-bottom: 1px solid var(--border); }

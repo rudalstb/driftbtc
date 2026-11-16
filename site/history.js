@@ -17,6 +17,7 @@ async function loadHistory() {
     } catch (e) { return; }
   }
   renderEventsCard();
+  renderHeatmapCard();
   renderHistoryCard();
   renderKimpCard();
   renderMarketBrief();
@@ -167,6 +168,37 @@ function renderKimpCard() {
       },
     },
   });
+}
+
+// ⏰ 요일·시간대별 움직임 (한국 시간): 1시간 동안 보통 움직이는 폭의 중간값을 색으로. 지금 칸은 테두리
+let hmRange = "year";
+function renderHeatmapCard() {
+  const h = histData?.heatmap, box = $("hm-box");
+  if (!h || !box) return;
+  $("heatmap-card").hidden = false;
+  const W = "월화수목금토일";
+  const g = h[hmRange];
+  const max = Math.max(...g.flat());
+  const now = new Date(Date.now() + 9 * 3600e3);
+  const nowWd = (now.getUTCDay() + 6) % 7, nowH = now.getUTCHours();
+  const cell = (v, w, hr) => {
+    const a = Math.min(1, v / max);
+    return `<div class="hm-c${w === nowWd && hr === nowH ? " hm-now" : ""}" style="background:rgba(247,147,26,${(0.08 + a * 0.92).toFixed(2)})" title="${W[w]} ${hr}시 · 보통 ±${v.toFixed(2)}%"></div>`;
+  };
+  const head = `<div class="hm-l"></div>` + [...Array(24)].map((_, i) => `<div class="hm-h">${i % 3 === 0 ? i : ""}</div>`).join("");
+  const rows = g.map((row, w) => `<div class="hm-l">${W[w]}</div>` + row.map((v, hr) => cell(v, w, hr)).join("")).join("");
+  const slot = (x) => `${W[x.wd]} ${x.h}시 <span class="muted">±${x.v.toFixed(2)}%</span>`;
+  const nowV = g[nowWd][nowH];
+  box.innerHTML =
+    `<div class="period hm-toggle" role="group"><button data-r="year" aria-pressed="${hmRange === "year"}">최근 1년</button><button data-r="all" aria-pressed="${hmRange === "all"}">${h.since_all.slice(0, 4)}년 이후</button></div>` +
+    `<div class="hm-grid">${head}${rows}</div>` +
+    `<div class="hm-legend muted small"><span>조용</span><span class="hm-bar"></span><span>크게 움직임</span> · 테두리 = 지금(${W[nowWd]} ${nowH}시, 보통 ±${nowV.toFixed(2)}%, 평소의 ${(nowV / h.median).toFixed(1)}배)</div>` +
+    `<ul class="hm-notes small">` +
+    `<li>가장 크게 움직이는 시간: ${h.top.map(slot).join(" · ")} — 미국 주식시장이 열리는 밤 10시 30분~11시 30분 전후예요</li>` +
+    `<li>가장 조용한 시간: ${h.calm.map(slot).join(" · ")}</li>` +
+    `<li>주말은 평일의 <b>${Math.round((h.weekend / h.weekday) * 100)}%</b>만큼만 움직여요 (1시간 보통 ±${h.weekend}% vs ±${h.weekday}%, 최근 1년)</li></ul>` +
+    `<p class="muted small">각 칸 = 그 요일·시각(한국 시간)에 시작한 1시간 봉의 시가→종가 변동폭(절댓값) 중간값. 크게 움직이는 시간엔 손절이 쉽게 털리고, 조용한 시간엔 목표가까지 오래 걸려요. 방향과는 상관없어요.</p>`;
+  box.querySelectorAll(".hm-toggle button").forEach((b) => b.addEventListener("click", () => { hmRange = b.dataset.r; renderHeatmapCard(); }));
 }
 
 // 🧭 진입 분석 맨 위 '오늘의 요약': 아래 카드들의 핵심만 한 줄씩. 누르면 그 카드로 내려간다.

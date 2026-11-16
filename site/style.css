@@ -343,6 +343,17 @@ details.more[open] > summary { margin-bottom: 8px; }
 .dl-list a { display: block; padding: 10px 2px; text-decoration: none; color: var(--text); }
 .dl-list a:hover b { color: var(--accent); }
 #daily-card p a { color: var(--accent); }
+/* ⏰ 요일·시간대 히트맵 */
+.hm-toggle { margin-bottom: 10px; }
+.hm-grid { display: grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; }
+.hm-c { aspect-ratio: 1; border-radius: 3px; min-width: 0; }
+.hm-c.hm-now { outline: 2px solid var(--text); outline-offset: 0; }
+.hm-l { font-size: 11px; color: var(--muted); display: flex; align-items: center; }
+.hm-h { font-size: 10px; color: var(--muted); text-align: left; }
+.hm-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.hm-bar { display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(247,147,26,0.08), rgba(247,147,26,1)); }
+.hm-notes { margin: 10px 0 0; padding-left: 18px; }
+.hm-notes li + li { margin-top: 4px; }
 /* 🧭 진입 분석 오늘의 요약 */
 .mb-box { display: grid; gap: 6px; }
 .mb-line { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; }

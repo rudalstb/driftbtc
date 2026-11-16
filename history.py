@@ -242,6 +242,28 @@ def event_reactions(h1: pd.DataFrame) -> dict:
     return out
 
 
+def heatmap(h1: pd.DataFrame) -> dict:
+    """한국 시간 요일×시간별 '1시간 동안 보통 얼마나 움직이나'(시가→종가 변동폭 절댓값의 중간값, %). 최근 1년과 2020년 이후 전체."""
+    move = (h1["close"] / h1["open"] - 1).abs() * 100
+    kst = move.index + pd.Timedelta(hours=9)
+    df = pd.DataFrame({"m": move.values, "wd": kst.dayofweek, "h": kst.hour}, index=move.index)
+
+    def grid(d: pd.DataFrame) -> list[list[float]]:
+        g = d.groupby(["wd", "h"])["m"].median().unstack()
+        return [[round(float(g.loc[w, h]), 3) for h in range(24)] for w in range(7)]
+
+    last = df[df.index >= df.index[-1] - pd.Timedelta(days=365)]
+    g1 = grid(last)
+    flat = sorted(((v, w, h) for w, row in enumerate(g1) for h, v in enumerate(row)), reverse=True)
+    wkday = last[last.wd < 5]["m"].median()
+    wkend = last[last.wd >= 5]["m"].median()
+    return {"year": g1, "all": grid(df), "since_all": df.index[0].strftime("%Y-%m-%d"),
+            "top": [{"wd": w, "h": h, "v": v} for v, w, h in flat[:3]],
+            "calm": [{"wd": w, "h": h, "v": v} for v, w, h in flat[-3:][::-1]],
+            "median": round(float(last["m"].median()), 3),
+            "weekday": round(float(wkday), 3), "weekend": round(float(wkend), 3)}
+
+
 def main() -> None:
     close = data.load("1d")["close"]
     cond, base = conditions(close)
@@ -254,6 +276,10 @@ def main() -> None:
         out["events"] = event_reactions(data.load("1h"))
     except Exception as e:
         print(f"발표 반응 계산 실패: {e}")
+    try:
+        out["heatmap"] = heatmap(data.load("1h"))
+    except Exception as e:
+        print(f"요일·시간대 계산 실패: {e}")
     try:
         import kimp_hist
         out["kimp"] = kimp_hist.analyze(close)
