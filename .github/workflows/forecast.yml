@@ -91,6 +91,12 @@ jobs:
           python signals.py
           date +%s > reports/backtest_at.txt
 
+      # CPI·FOMC 일정(events.json)을 원장(event_dates.json)과 연준 공식 페이지로 갱신 — 실패해도 예측은 계속
+      - name: 발표 일정 갱신
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python events_update.py
+
       - name: 예측 생성
         if: steps.check.outputs.new == 'true'
         run: python forecast.py --no-update
