@@ -329,6 +329,15 @@ details.more[open] > summary { margin-bottom: 8px; }
 .hist-chart-wrap { position: relative; height: 220px; margin: 6px 0 4px; }
 .hist-tiles { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
 .hist-cond td, .hist-cond th { vertical-align: top; }
+/* 🗓 발표 일정 · 🇰🇷 김프 역사 */
+.ev-list { margin: 4px 0 0; padding-left: 18px; }
+.ev-list li + li { margin-top: 6px; }
+.ev-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; }
+.ev-recent > .muted { min-width: 66px; }
+.ev-chip { font-size: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 1px 7px; }
+.kh-line { margin: 0 0 6px; }
+tr.kh-now td { background: rgba(247, 147, 26, 0.08); }
+.chip-now { font-size: 11px; background: var(--accent); color: #0d1117; border-radius: 6px; padding: 1px 6px; }
 .hit-row { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; font-size: 15px; }
 table.compact th, table.compact td { padding: 5px 6px; }
 .eq-wrap { position: relative; height: 150px; margin-top: 8px; }

@@ -182,6 +182,66 @@ def drawdown(close: pd.Series) -> dict:
     }
 
 
+EVENT_DATES = Path(__file__).parent / "site" / "data" / "event_dates.json"
+EVENTS = Path(__file__).parent / "site" / "data" / "events.json"
+EVENT_TIME = {"cpi": (8, 30), "fomc": (14, 0)}     # 미국 동부 시간 발표 시각
+EVENT_NAME = {"cpi": "미국 CPI(소비자물가)", "fomc": "FOMC 금리 결정"}
+REACT_H = 4                                         # 발표 뒤 몇 시간 움직임을 보나
+
+
+def event_reactions(h1: pd.DataFrame) -> dict:
+    """과거 CPI·FOMC 발표 때 비트코인이 발표 뒤 4시간 동안 얼마나 움직였나 — 평소 같은 시각(같은 요일)과 비교."""
+    from zoneinfo import ZoneInfo
+    ny = ZoneInfo("America/New_York")
+    dates = json.loads(EVENT_DATES.read_text(encoding="utf-8"))
+    o, c = h1["open"], h1["close"]
+    # 시각 t 에 시작한 봉의 시가 → t+3h 봉의 종가 (= 4시간 움직임)
+    move = (c.shift(-(REACT_H - 1)) / o - 1)
+    out = {}
+    for kind in ("cpi", "fomc"):
+        hh, mm = EVENT_TIME[kind]
+        stamps = []
+        for d in dates[kind]:
+            t = pd.Timestamp(f"{d} {hh:02d}:{mm:02d}", tz=ny).tz_convert("UTC").floor("h")
+            if t in move.index and pd.notna(move.get(t)) and t < h1.index[-1] - pd.Timedelta(hours=REACT_H):
+                stamps.append(t)
+        ev = move.loc[stamps]
+        ev_set = set(t.normalize() for t in stamps)
+        # 평소: 같은 시각(UTC 시)·같은 요일, 발표가 없던 날
+        hours = {t.hour for t in stamps}
+        wd = {t.dayofweek for t in stamps}
+        mask = move.index.hour.isin(list(hours)) & move.index.dayofweek.isin(list(wd)) & ~move.index.normalize().isin(list(ev_set))
+        base = move[mask].dropna()
+        ev_abs, base_abs = ev.abs(), base.abs()
+        recent = [{"date": t.strftime("%Y-%m-%d"), "move": pct(v)} for t, v in ev.iloc[::-1].items()][:12]
+        big = ev.abs().sort_values(ascending=False).head(3)
+        out[kind] = {
+            "name": EVENT_NAME[kind], "n": int(len(ev)), "since": stamps[0].strftime("%Y-%m-%d") if stamps else None,
+            "abs_median": pct(ev_abs.median()), "abs_mean": pct(ev_abs.mean()),
+            "base_abs_median": pct(base_abs.median()),
+            "ratio": round(float(ev_abs.median() / base_abs.median()), 1) if len(base_abs) else None,
+            "big_share": round(float((ev_abs > 0.02).mean()) * 100, 1),      # 2% 넘게 움직인 비율
+            "base_big_share": round(float((base_abs > 0.02).mean()) * 100, 1),
+            "up": round(float((ev > 0).mean()) * 100, 1),
+            "biggest": [{"date": t.strftime("%Y-%m-%d"), "move": pct(ev[t])} for t in big.index],
+            "recent": recent,
+        }
+    # 다가오는 발표 (events.json): 발표 직후 4시간까지 포함해 가까운 순으로 3개
+    up = []
+    try:
+        now = pd.Timestamp.now(tz="UTC")
+        for e in json.loads(EVENTS.read_text(encoding="utf-8")):
+            t = pd.Timestamp(e["t"])
+            if now - pd.Timedelta(hours=REACT_H) <= t and len(up) < 3:
+                kind = "cpi" if "CPI" in e["name"] else "fomc" if "FOMC" in e["name"] else None
+                up.append({"t": e["t"], "name": e["name"], "kind": kind, "note": e.get("note")})
+    except Exception:
+        pass
+    out["upcoming"] = up
+    out["hours"] = REACT_H
+    return out
+
+
 def main() -> None:
     close = data.load("1d")["close"]
     cond, base = conditions(close)
@@ -190,10 +250,33 @@ def main() -> None:
         "since": close.index[0].strftime("%Y-%m-%d"), "days": int(len(close)),
         "analogs": analogs(close), "conditions": cond, "baseline": base, "drawdown": drawdown(close),
     }
+    try:
+        out["events"] = event_reactions(data.load("1h"))
+    except Exception as e:
+        print(f"발표 반응 계산 실패: {e}")
+    try:
+        import kimp_hist
+        out["kimp"] = kimp_hist.analyze(close)
+    except Exception as e:
+        # 업비트·야후가 잠깐 막혀도 카드가 사라지지 않게 지난 값을 그대로 둔다
+        print(f"김프 역사 계산 실패(지난 값 유지): {e}")
+        try:
+            prev = json.loads(OUT.read_text(encoding="utf-8")).get("kimp")
+            if prev:
+                out["kimp"] = prev
+        except Exception:
+            pass
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     a = out["analogs"]
     print(f"과거와 비교 {out['as_of']}: 닮은꼴 7일 뒤 {a['fwd7']['up']}% 상승(평소 {a['base7']['up']}%), "
           f"조건 {len(cond)}개, 고점 대비 {out['drawdown']['now']}%")
+    if "events" in out:
+        for k in ("cpi", "fomc"):
+            e = out["events"][k]
+            print(f"  {e['name']} {e['n']}번: 4시간 움직임 중간값 ±{e['abs_median']}% (평소 ±{e['base_abs_median']}%, {e['ratio']}배)")
+    if "kimp" in out:
+        k = out["kimp"]
+        print(f"  김프 지금 {k['now']}% (백분위 {k['now_rank']}), {k['since']}~ {k['days']}일")
 
 
 if __name__ == "__main__":
