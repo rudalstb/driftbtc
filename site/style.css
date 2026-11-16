@@ -334,6 +334,15 @@ details.more[open] > summary { margin-bottom: 8px; }
 .daily-strip:hover { border-color: var(--accent); }
 .daily-strip[hidden] { display: none; }
 .daily-strip .ds-go { margin-left: auto; color: var(--accent); font-weight: 700; white-space: nowrap; }
+/* 📅 시장 일지 탭 */
+.dl-latest { display: block; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 12px; text-decoration: none; color: var(--text); margin: 6px 0 16px; }
+.dl-latest:hover { background: rgba(247, 147, 26, 0.06); }
+.dl-latest .ds-go { color: var(--accent); font-weight: 700; }
+.dl-list { list-style: none; padding: 0; margin: 0; }
+.dl-list li { border-top: 1px solid var(--border); }
+.dl-list a { display: block; padding: 10px 2px; text-decoration: none; color: var(--text); }
+.dl-list a:hover b { color: var(--accent); }
+#daily-card p a { color: var(--accent); }
 /* 🧭 진입 분석 오늘의 요약 */
 .mb-box { display: grid; gap: 6px; }
 .mb-line { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
@@ -424,7 +433,7 @@ td.best { color: var(--accent); font-weight: 700; }
   .say-bar-wrap { grid-column: 1 / -1; order: 3; }
   .say-list { max-height: 320px; }
   .page-tabs { flex-wrap: wrap; }
-  .page-tabs a { flex: 1 0 23%; font-size: 12px; padding: 8px 4px; }
+  .page-tabs a { flex: 1 0 31%; font-size: 12px; padding: 8px 4px; }
   .share-btn { top: 10px; right: 10px; padding: 2px 7px; }
   .share-btn + * { padding-right: 68px; }
   .ana-tiles, .rk-tiles, .paper-tiles { grid-template-columns: repeat(2, 1fr); }

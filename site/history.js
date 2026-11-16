@@ -215,7 +215,28 @@ setInterval(() => { if (activeTab === "market") renderMarketBrief(); }, 30000);
 document.addEventListener("tabshown", (e) => { if (e.detail === "market") loadHistory(); });
 if (typeof activeTab !== "undefined" && activeTab === "market") loadHistory();
 
-// 📅 오늘의 시장 일지 띠: AI 예측 탭(예측 카드 아래)·적중률 탭(맨 위). daily.py 가 쓰는 data/daily_latest.json
+// 📅 시장 일지 탭: data/daily_list.json(최근 60편) — 맨 위에 오늘 일지를 크게, 아래로 지난 일지
+let dailyLoaded = false;
+async function loadDailyTab() {
+  if (dailyLoaded) return;
+  try {
+    const r = await fetch("data/daily_list.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const list = await r.json();
+    if (!list.length) return;
+    dailyLoaded = true;
+    const [top, ...rest] = list;
+    $("dl-box").innerHTML =
+      `<a class="dl-latest" href="${top.file}"><div class="label">가장 최근 일지</div><b>${top.title}</b><div class="muted small">${top.desc}</div><div class="ds-go">읽기 ›</div></a>` +
+      (rest.length ? `<div class="label">지난 일지</div><ul class="dl-list">${rest.map((x) => `<li><a href="${x.file}"><b>${x.title}</b><div class="muted small">${x.desc}</div></a></li>`).join("")}</ul>` : `<p class="muted small">지난 일지는 내일부터 하루에 한 편씩 쌓여요.</p>`) +
+      `<p class="small"><a href="daily/">전체 목록 페이지 →</a></p>`;
+    $("daily-card").hidden = false;
+  } catch (e) {}
+}
+document.addEventListener("tabshown", (e) => { if (e.detail === "daily") loadDailyTab(); });
+if (typeof activeTab !== "undefined" && activeTab === "daily") loadDailyTab();
+
+// 📅 오늘의 시장 일지 띠: AI 예측 탭(맨 위 요약 아래)·적중률 탭(맨 위). daily.py 가 쓰는 data/daily_latest.json
 (async () => {
   let d;
   try {

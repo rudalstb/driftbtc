@@ -148,12 +148,15 @@ def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
 
 def write_index() -> None:
     files = sorted(OUT.glob("20*.html"), reverse=True)
-    items = []
+    items, rows = [], []
     for f in files:
         h = f.read_text(encoding="utf-8")
         t = h.split("<title>")[1].split(" · BTC Agent")[0] if "<title>" in h else f.stem
         d = h.split('name="description" content="')[1].split('"')[0] if 'name="description"' in h else ""
         items.append(f'<li><a href="{f.name}"><b>{t}</b></a><br><span class="muted">{d}</span></li>')
+        rows.append({"date": f.stem, "file": f"daily/{f.name}", "title": t, "desc": d})
+    # 사이트의 📅 시장 일지 탭이 읽는 목록 (최근 60편)
+    (SITE / "data" / "daily_list.json").write_text(json.dumps(rows[:60], ensure_ascii=False), encoding="utf-8")
     body = ("<p>BTC Agent 가 매일 아침 9시(한국 시간) 일봉 마감 뒤 자동으로 쓰는 비트코인 시장 기록이에요. "
             "어제 예측이 맞았는지, 오늘 범위와 지금 상황을 과거와 비교한 내용을 날마다 남겨요.</p>"
             f'<ul class="guide-list">{"".join(items)}</ul><a class="cta" href="../index.html">BTC Agent 홈으로 →</a>')
