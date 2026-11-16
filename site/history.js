@@ -63,10 +63,10 @@ function renderHistoryCard() {
     `<div class="hist-chart-wrap"><canvas id="hist-chart"></canvas></div>` +
     `<div class="muted small">주황 굵은 선 = 지금까지 ${a.window}일 · 회색 = 닮은 과거 구간(그날을 0%로 맞춤) · 주황 점선 = 그 뒤 흐름의 중간값</div>` +
     `<div class="ana-tiles hist-tiles">${sum(a.fwd7, a.base7, "7일")}${sum(a.fwd30, a.base30, "30일")}</div>` +
-    `<details class="more"><summary>닮은 과거 ${a.items.length}번 자세히</summary><div class="table-wrap"><table class="compact"><thead><tr><th>날짜</th><th class="hide-m">그때 가격</th><th>닮은 정도</th><th>7일 뒤</th><th>30일 뒤</th></tr></thead><tbody>${rows}</tbody></table></div></details>` +
+    `<details class="more"><summary>닮은 과거 ${a.items.length}번 자세히</summary><div class="table-wrap"><table class="compact wrap-m"><thead><tr><th>날짜</th><th class="hide-m">그때 가격</th><th>닮은 정도</th><th>7일 뒤</th><th>30일 뒤</th></tr></thead><tbody>${rows}</tbody></table></div></details>` +
     `<div class="label game-sub">📊 지금 같은 날, 그다음엔?</div>` +
     (d.conditions.length
-      ? `<div class="table-wrap"><table class="compact hist-cond"><thead><tr><th>지금 해당하는 조건</th><th>다음 날 상승</th><th>7일 뒤 상승</th><th class="hide-m">7일 뒤 중간값</th><th>판정</th></tr></thead><tbody>${crow}</tbody></table></div>`
+      ? `<div class="table-wrap"><table class="compact hist-cond wrap-m"><thead><tr><th>지금 해당하는 조건</th><th>다음 날 상승</th><th>7일 뒤 상승</th><th class="hide-m">7일 뒤 중간값</th><th>판정</th></tr></thead><tbody>${crow}</tbody></table></div>`
       : `<p class="muted small">지금은 눈에 띄는 조건(연속 등락·급등락·큰 낙폭·변동성 극단)이 없어요.</p>`) +
     `<p class="muted small">일수는 조건이 맞았던 날을 모두 센 것이라 붙어 있는 날이 겹쳐 있어요. '판정'은 7일 뒤 상승 비율이 평소와 우연으로 보기 어려울 만큼(표준오차 2배 이상) 다를 때만 다르다고 적어요. 과거 통계는 미래를 보장하지 않고, BTC Agent 의 예측 모델에는 넣지 않았어요.</p>`;
   drawHistChart();
@@ -124,7 +124,7 @@ function renderEventsCard() {
   box.innerHTML =
     (up ? `<div class="label">다가오는 발표 (한국 시간)</div><ul class="ev-list">${up}</ul>` : "") +
     `<div class="label game-sub">과거 발표 때 비트코인 (발표 뒤 ${e.hours}시간)</div>` +
-    `<div class="table-wrap"><table class="compact"><thead><tr><th>발표</th><th>보통 움직임</th><th>평소 대비</th><th>2% 넘게 움직인 비율</th><th class="hide-m">오른 비율</th></tr></thead><tbody>${row("cpi")}${row("fomc")}</tbody></table></div>` +
+    `<div class="table-wrap"><table class="compact wrap-m"><thead><tr><th>발표</th><th>보통 움직임</th><th>평소 대비</th><th>2% 넘게 움직인 비율</th><th class="hide-m">오른 비율</th></tr></thead><tbody>${row("cpi")}${row("fomc")}</tbody></table></div>` +
     `<div class="ev-recent"><span class="muted small">최근 CPI</span>${recent("cpi")}</div>` +
     `<div class="ev-recent"><span class="muted small">최근 FOMC</span>${recent("fomc")}</div>` +
     `<p class="muted small">가장 크게 움직인 날 — CPI: ${big("cpi")} / FOMC: ${big("fomc")}</p>` +
@@ -147,7 +147,7 @@ function renderKimpCard() {
     `<div class="hist-chart-wrap"><canvas id="kh-chart"></canvas></div>` +
     `<p class="muted small">역대 최고: ${k.peaks.map((p) => `${hDate(p.date)} <b>${hPct(p.v, 1)}</b>`).join(" · ")} · 최저: ${hDate(k.min.date)} ${hPct(k.min.v, 1)} · 빨간 점선 = +5%</p>` +
     `<div class="label game-sub">김프 구간별, 그 뒤 ${k.fwd}일 비트코인</div>` +
-    `<div class="table-wrap"><table class="compact"><thead><tr><th>김프 구간</th><th>${k.fwd}일 뒤 상승 비율</th><th>${k.fwd}일 뒤 중간값</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+    `<div class="table-wrap"><table class="compact wrap-m"><thead><tr><th>김프 구간</th><th>${k.fwd}일 뒤 상승 비율</th><th>${k.fwd}일 뒤 중간값</th></tr></thead><tbody>${rows}</tbody></table></div>` +
     `<p class="muted small">김프 = 업비트 원화 가격 ÷ (바이낸스 달러 가격 × 원·달러 환율) − 1, 한국 시간 오전 9시 마감 일봉 기준. 환율 마감 시각이 조금 달라 하루 값에 ±1%p 정도 오차가 있어요. 같은 구간의 날은 서로 붙어 있어서(예: '5% 이상' ${hot ? hot.days : ""}일은 ${hot ? hot.episodes : ""}번의 구간) 독립된 사례는 '구간' 수만큼이라고 보는 게 정확해요. 과거 통계는 미래를 보장하지 않아요.</p>`;
   const el = $("kh-chart");
   const grey = css("--muted") || "#8b949e", orange = css("--accent") || "#f7931a";

@@ -446,6 +446,11 @@ td.best { color: var(--accent); font-weight: 700; }
   .pc-only { display: none; }
   .acc-grid { grid-template-columns: 1fr; }
   .hide-m { display: none; }
+  /* 새 표들: 휴대폰에서는 머리글과 첫 칸(설명) 줄바꿈 허용 — 옆으로 밀지 않게 */
+  table.wrap-m th, table.wrap-m td:first-child { white-space: normal; }
+  table.wrap-m th { font-size: 11.5px; }
+  table.hist-cond td, table.lab td { white-space: normal; }
+  table.lab td:first-child { min-width: 110px; }
   .m-only { display: block; }
   .big { font-size: 28px; }
   .chart-wrap { height: 280px; }

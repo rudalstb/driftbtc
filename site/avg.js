@@ -155,7 +155,7 @@ function renderWhereToAdd(o) {
     split = `<div class="rk-line">3번에 나눠 타면 (${steps.map((px) => usd(px)).join(" → ")}, 각 ${each.toFixed(4)}개) 평단 <b>${usd(avg3)}</b> · 한 번에 ${usd(pick.px)}에서 타면 ${usd(pick.avg)}. 나눠 타면 평단은 조금 높지만 <b>다 안 내려와도 일부는 탈 수 있어요.</b></div>`;
   }
   return `<div class="label game-sub">🪣 어디서 물탈까? <span class="muted">· ${label} 기준 · 추가 ${q2.toFixed(4)}개 · 현재가 ${usd(mark)}</span></div>
-    <div class="table-wrap"><table class="compact where"><thead><tr><th>후보</th><th>가격</th><th>${label} 안에 닿을 확률</th><th>물탄 뒤 평단</th><th>물탄 뒤 청산가</th></tr></thead><tbody>${rows.map(tr).join("")}</tbody></table></div>
+    <div class="table-wrap"><table class="compact where wrap-m"><thead><tr><th>후보</th><th>가격</th><th>${label} 안에 닿을 확률</th><th>물탄 뒤 평단</th><th>물탄 뒤 청산가</th></tr></thead><tbody>${rows.map(tr).join("")}</tbody></table></div>
     <ul class="ana-diag rk-warn">${verdict}</ul>${split}
     <div class="muted small">추천 규칙: 닿을 확률 30% 이상 + 물탄 뒤 청산가가 그 기간 95% 범위 밖인 후보 중 가장 깊은 가격. 확률은 변동성 기준 근사치이고, 큰 뉴스가 있으면 더 크게 움직여요.</div>`;
 }

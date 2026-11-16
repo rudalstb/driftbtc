@@ -824,7 +824,7 @@ function renderMonthly() {
   const label = (k) => `${k.slice(0, 4)}년 ${Number(k.slice(5))}월`;
   const bar = (v) => `<span class="mbar"><i class="${v >= 0 ? "up" : "down"}" style="width:${Math.round((Math.abs(v) / maxAbs) * 100)}%"></i></span>`;
   el.innerHTML =
-    `<div class="table-wrap"><table class="compact monthly"><thead><tr><th>월</th><th>거래</th><th>승률</th><th>순손익</th><th class="hide-m">수수료·펀딩</th></tr></thead><tbody>` +
+    `<div class="table-wrap"><table class="compact monthly wrap-m"><thead><tr><th>월</th><th>거래</th><th>승률</th><th>순손익</th><th class="hide-m">수수료·펀딩</th></tr></thead><tbody>` +
     keys.map((k) => {
       const m = months.get(k);
       return `<tr><td>${label(k)}</td><td>${m.n}건 <span class="muted small"><span class="pos">${m.win}승</span> <span class="neg">${m.loss}패</span></span></td>
@@ -1255,8 +1255,8 @@ async function loadLab() {
       return `<span class="neg">❌ 탈락</span>`;
     };
     el.innerHTML =
-      `<thead><tr><th>신호</th><th>기간</th><th class="hide-m">노출</th><th>적중률</th><th>비용 후 수익</th><th class="hide-m">항상 롱</th><th class="hide-m">최대 낙폭</th><th class="hide-m">거래</th><th>최근 2년</th><th>판정</th></tr></thead><tbody>` +
-      rows.map((x) => `<tr title="${x.desc}"><td><b>${x.name}</b><div class="muted small">${x.desc}</div></td><td class="muted small">${x.since.slice(0, 7)}~</td><td class="hide-m">${Math.round(x.exposure * 100)}%</td><td>${hit(x.hit_rate)}</td>${cell(x.net_pct)}<td class="hide-m muted">${pct(x.long_net_pct, 0)}</td><td class="hide-m">${x.mdd_pct.toFixed(0)}%</td><td class="hide-m">${x.trades}</td><td>${x.recent ? `<span class="${x.recent.net_pct >= 0 ? "pos" : "neg"}">${pct(x.recent.net_pct, 0)}</span> <span class="muted small">(롱 ${pct(x.recent.long_net_pct, 0)})</span>` : "—"}</td><td>${verdict(x)}</td></tr>`).join("") +
+      `<thead><tr><th>신호</th><th class="hide-m">기간</th><th class="hide-m">노출</th><th>적중률</th><th>비용 후 수익</th><th class="hide-m">항상 롱</th><th class="hide-m">최대 낙폭</th><th class="hide-m">거래</th><th>최근 2년</th><th>판정</th></tr></thead><tbody>` +
+      rows.map((x) => `<tr title="${x.desc}"><td><b>${x.name}</b><div class="muted small">${x.desc}</div></td><td class="hide-m muted small">${x.since.slice(0, 7)}~</td><td class="hide-m">${Math.round(x.exposure * 100)}%</td><td>${hit(x.hit_rate)}</td>${cell(x.net_pct)}<td class="hide-m muted">${pct(x.long_net_pct, 0)}</td><td class="hide-m">${x.mdd_pct.toFixed(0)}%</td><td class="hide-m">${x.trades}</td><td>${x.recent ? `<span class="${x.recent.net_pct >= 0 ? "pos" : "neg"}">${pct(x.recent.net_pct, 0)}</span> <span class="muted small">(롱 ${pct(x.recent.long_net_pct, 0)})</span>` : "—"}</td><td>${verdict(x)}</td></tr>`).join("") +
       `</tbody>`;
     const d = new Date(lab.generated_at);
     $("lab-updated").textContent = `${d.getMonth() + 1}/${d.getDate()} 채점 · 1일 관점 · 레버리지 1배`;
