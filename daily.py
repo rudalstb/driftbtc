@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 import data
 import pages
@@ -33,6 +34,34 @@ def sp(v: float, d: int = 2) -> str:
 
 def kdate(t: pd.Timestamp) -> str:
     return f"{t.year}년 {t.month}월 {t.day}일({WD[t.dayofweek]})"
+
+
+NEWS_URL = "https://driftbtc.vercel.app/api/news?feed=btc"
+
+
+def news_of(start: pd.Timestamp, end: pd.Timestamp, n: int = 5) -> list[dict]:
+    """start~end 에 나온 비트코인 기사 제목·링크만 n개. 비슷한 제목은 하나만, 출처는 골고루.
+    뉴스 서버는 최신 60개(몇 시간치)만 주므로 매일 아침 9시 실행 때 받은 것이 그날 일지에 들어간다."""
+    try:
+        r = requests.get(NEWS_URL, headers={"User-Agent": "Mozilla/5.0", "Origin": "https://btc.rudals.app"}, timeout=15)
+        items = r.json().get("items", [])
+    except Exception as e:
+        print(f"일지 뉴스 못 받음: {e}")
+        return []
+    lo, hi = start.timestamp() * 1000, end.timestamp() * 1000
+    day = [x for x in items if lo <= x.get("t", 0) < hi and x.get("title") and x.get("link")]
+    day.sort(key=lambda x: ("비트코인" not in x["title"] and "BTC" not in x["title"].upper(), -x["t"]))
+    out, seen, per_src = [], set(), {}
+    for x in day:
+        key = "".join(ch for ch in x["title"] if ch.isalnum())[:14]
+        if key in seen or per_src.get(x.get("source"), 0) >= 2:
+            continue
+        seen.add(key)
+        per_src[x.get("source")] = per_src.get(x.get("source"), 0) + 1
+        out.append(x)
+        if len(out) == n:
+            break
+    return out
 
 
 def kd(t: pd.Timestamp) -> str:
@@ -105,6 +134,12 @@ def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
     cond_txt = ", ".join(f"{x['name']}" for x in cond)
     up = ev.get("upcoming", [])[:2]
 
+    news = news_of(yday, pd.Timestamp.now(tz="UTC"))   # 어제 9시 ~ 일지를 쓰는 지금
+    esc = lambda t: t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    news_html = ("<h2>지난 하루 비트코인 뉴스</h2><ul>" + "".join(
+        f'<li><a href="{esc(x["link"])}" target="_blank" rel="noopener nofollow">{esc(x["title"])}</a> <span class="muted">· {esc(x.get("source") or "")}</span></li>'
+        for x in news) + "</ul><p class=\"muted\">일지를 쓴 시점의 최근 기사 제목과 원문 링크만 모았어요. 내용은 각 언론사 기사에서 확인하세요.</p>") if news else ""
+
     title = f"비트코인 시장 일지 {kdate(day + pd.Timedelta(hours=9))}"
     desc = (f"어제 비트코인 {sp(chg)} ({usd(c.open)}→{usd(c.close)}), 오늘 예측 범위 {usd(n0['lo68'])}~{usd(n0['hi68'])}. "
             f"어제 예측 채점, 김프, 고점 대비 낙폭, 다가오는 발표까지 정리했어요.")
@@ -136,6 +171,7 @@ def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
   {f"<li>김프(어제 마감) <b>{sp(kp['now'])}</b> — 2017년 이후 상위 {max(1, 100 - kp['now_rank'])}% 수준." + (" 김프가 5%를 넘었던 때는 30일 뒤 성적이 평소보다 나빴어요." if kp['now'] >= 5 else "") + "</li>" if kp else ''}
 </ul>
 
+{news_html}
 <h2>다가오는 발표</h2>
 {('<ul>' + ''.join(f"<li><b>{u['name']}</b> — {pd.Timestamp(u['t']).tz_convert('Asia/Seoul').strftime('%m월 %d일 %H:%M')} (한국 시간)" + (f" · 지난 {ev[u['kind']]['n']}번 발표 뒤 4시간 동안 평소의 {ev[u['kind']]['ratio']}배 움직였어요" if u.get('kind') in ev else '') + "</li>" for u in up) + '</ul>') if up else '<p>가까운 발표 일정이 없어요.</p>'}
 
