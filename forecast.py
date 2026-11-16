@@ -36,6 +36,11 @@ STEP = {"1h": pd.Timedelta(hours=1), "1d": pd.Timedelta(days=1), "1w": pd.Timede
 HORIZON = {"1h": 24, "1d": 30, "1w": 12}
 HISTORY = {"1h": 72, "1d": 90, "1w": 52}
 Z68, Z95 = 0.9945, 1.96
+# 68% 배수는 정규분포값(0.9945) 대신 '최근 실제 움직임 ÷ GARCH σ'의 68% 분위수로 보정한다.
+# 비트코인은 꼬리가 두꺼워 σ×0.9945 범위에 80% 넘게 들어왔다(범위가 필요 이상으로 넓음).
+# lab/calibrate.py 로 처음 보는 기간 두 번씩 검증: 1h·1d·1w 모두 68% 포함률이 목표에 가까워지고 구간 점수도 좋아짐.
+# 95% 는 기간마다 결과가 엇갈려 1.96 그대로 둔다.
+CALIB_N = {"1h": 8760, "1d": 730, "1w": 156}   # 보정에 쓰는 최근 캔들 수 (약 1년·2년·3년)
 
 
 def garch_path(ret: pd.Series, horizon: int, max_obs: int = 10000) -> np.ndarray:
@@ -47,6 +52,18 @@ def garch_path(ret: pd.Series, horizon: int, max_obs: int = 10000) -> np.ndarray
         res = am.fit(disp="off")
         var = res.forecast(horizon=horizon, reindex=False).variance.iloc[-1].to_numpy()
     return np.sqrt(np.cumsum(var)) / 100
+
+
+def calib68(ret: pd.Series, freq: str) -> float:
+    """최근 CALIB_N 개 캔들에서 표본 외 σ 로 표준화한 다음 캔들 수익률 |z| 의 68% 분위수 (0.6~0.9945 로 제한)."""
+    try:
+        idx = ret.index[-CALIB_N[freq] - 1:-1]
+        sig = models.garch_sigma(ret, idx[0], idx).to_numpy()
+        z = ret.shift(-1).reindex(idx).to_numpy() / sig
+        return float(np.clip(np.nanquantile(np.abs(z), 0.68), 0.6, Z68))
+    except Exception as e:
+        print(f"[{freq}] 68% 보정 실패, 정규분포값 사용: {e}")
+        return Z68
 
 
 def run(freq: str) -> dict:
@@ -70,17 +87,21 @@ def run(freq: str) -> dict:
         lean[m.name] = float(m.predict(X[ok].iloc[[-1]])[0])
 
     sd = garch_path(ret, HORIZON[freq])
+    m68 = calib68(ret, freq)
     # 🎯 한 점 예측(재미용 콜): 방향은 릿지 기울기 부호, 크기는 |기울기|와 '평소 움직임'(0.6σ ≈ 실제 움직임 크기의 중앙값) 중 큰 쪽
     lean_r = lean.get("ridge", 0.0)
     direction = 1 if lean_r >= 0 else -1
     future = []
     for k, s in enumerate(sd, 1):
         move = max(abs(lean_r), 0.6 * s)
+        # 여러 캔들을 합친 움직임은 정규분포에 가까워지므로 보정 효과를 1/√k 로 줄인다
+        z68 = Z68 + (m68 - Z68) / np.sqrt(k)
         future.append({
             "t": (now_time + k * step).isoformat(),
-            "lo95": price * np.exp(-Z95 * s), "lo68": price * np.exp(-Z68 * s),
+            "lo95": price * np.exp(-Z95 * s), "lo68": price * np.exp(-z68 * s),
             "mid": price,
-            "hi68": price * np.exp(Z68 * s), "hi95": price * np.exp(Z95 * s),
+            "hi68": price * np.exp(z68 * s), "hi95": price * np.exp(Z95 * s),
+            "sigma": float(s),
             "point": price * np.exp(direction * move), "point_dir": direction,
         })
 
@@ -105,6 +126,7 @@ def run(freq: str) -> dict:
         "future": future,
         "lean_pct": {k: v * 100 for k, v in lean.items()},
         "sigma_next": float(sd[0]),
+        "mult68": round(m68, 4),
         "history": history,
         "recent_cover95": float(np.mean(hits)),
     }

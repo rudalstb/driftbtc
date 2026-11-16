@@ -276,8 +276,8 @@ document.querySelectorAll("#cur-toggle button").forEach((b) =>
 const TOUCH_LEVELS = { "1h": [0.3, 0.5, 1, 2], "1d": [1, 2, 3, 5], "1w": [3, 5, 10, 15] };
 let lastPositions = [];
 
-// 다음 캔들 수익률 표준편차 (68% 상단 = price * exp(0.9945 * sigma))
-const nextSigma = (f) => Math.log(f.next.hi68 / f.price) / 0.9945;
+// 다음 캔들 수익률 표준편차: 서버가 준 σ (68% 범위는 실제 움직임으로 보정돼 σ×0.9945 가 아님). 옛 파일이면 거꾸로 계산
+const nextSigma = (f) => f.sigma_next ?? Math.log(f.next.hi68 / f.price) / 0.9945;
 
 // 기간 안에 ±d 거리에 한 번이라도 닿을 확률 (무작위 행보 근사, 반사 원리: 2 × 끝에서 넘어 있을 확률)
 const touchProb = (d, sigma) => Math.min(1, 2 * (1 - normCdf(d / sigma)));
@@ -286,7 +286,7 @@ function renderMove(f) {
   const n = f.next;
   const s = nextSigma(f);
   const w68 = n.hi68 - f.price, w95 = n.hi95 - f.price;
-  $("move68").textContent = `±${usd(w68)} (±${(s * 0.9945 * 100).toFixed(2)}%)`;
+  $("move68").textContent = `±${usd(w68)} (±${((n.hi68 / f.price - 1) * 100).toFixed(2)}%)`;
   $("move95").textContent = `크게 움직여도 ±${usd(w95)} (±${((n.hi95 / f.price - 1) * 100).toFixed(2)}%) 안이에요 (95%)`;
 
   // 최근 기록 대비 지금 변동성 수준
@@ -325,7 +325,7 @@ function renderTouchTable(f) {
 function renderLeverage(f) {
   const btc = lastPositions.filter((p) => p.symbol === "BTCUSDT");
   const lev = btc.length ? Math.max(...btc.map((p) => p.leverage)) : 10;
-  const move = nextSigma(f) * 0.9945 * 100;
+  const move = (f.next.hi68 / f.price - 1) * 100; // 보통(68%) 움직임
   $("lev-line").innerHTML = btc.length
     ? `지금 보유한 BTC 포지션(${lev}배) 기준으로는 보통 손익이 <b>±${(move * lev).toFixed(1)}%</b> 흔들려요.`
     : `${lev}배 레버리지라면 보통 손익이 <b>±${(move * lev).toFixed(1)}%</b> 흔들려요.`;
@@ -406,8 +406,8 @@ function renderDirection(f) {
   } else {
     $("point-score").innerHTML = `<span class="muted">첫 결과가 나오면 방향 적중·오차를 여기서 매시간 채점해요.</span>`;
   }
-  // 다음 캔들 수익률 표준편차 (68% 상단 = price * exp(0.9945 * sigma))
-  const sigma = Math.log(n.hi68 / f.price) / 0.9945;
+  // 다음 캔들 수익률 표준편차 (서버가 준 σ, 옛 파일이면 거꾸로 계산)
+  const sigma = nextSigma(f);
   // 백테스트상 가장 보정이 잘 된(과신하지 않는) Ridge 기울기를 사용
   const pUp = Math.round(normCdf(f.lean_pct.ridge / 100 / sigma) * 100);
   $("dir-verdict").textContent = Math.abs(pUp - 50) <= 5 ? "사실상 반반" : pUp > 50 ? "약간 상승 쪽" : "약간 하락 쪽";
@@ -1095,7 +1095,7 @@ function calcSigma(key) {
   const [fq, k] = key.split(":");
   const f = report?.forecasts?.[fq];
   const p = f?.future?.[Number(k) - 1];
-  return p ? Math.log(p.hi68 / f.price) / 0.9945 : null;
+  return p ? (p.sigma ?? Math.log(p.hi68 / f.price) / 0.9945) : null;
 }
 
 function renderCalc() {
