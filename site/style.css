@@ -510,3 +510,8 @@ td.best { color: var(--accent); font-weight: 700; }
 .wk-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wk-quick { margin: 8px 0 6px; flex-wrap: wrap; }
 .wk-submit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.lq-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin-top: 4px; }
+.lq-col { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; min-width: 3px; }
+.lq-col i { background: var(--up); display: block; }
+.lq-col b { background: var(--down); display: block; }
+.lq-axis { display: flex; justify-content: space-between; margin-bottom: 4px; }

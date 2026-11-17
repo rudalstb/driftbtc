@@ -81,7 +81,7 @@ function liqRender() {
     const hm = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:${String(d.getUTCSeconds()).padStart(2, "0")}`;
     return `<tr class="${x.usd >= LIQ_BIG ? "liq-big" : ""}"><td class="muted">${hm}</td><td>${liqCoin(x.s)}</td><td class="${x.long ? "neg" : "pos"}">${x.long ? "롱 청산" : "숏 청산"}</td><td>${liqMoney(x.usd)}</td><td class="muted hide-m">${x.p < 10 ? x.p.toPrecision(4) : Math.round(x.p).toLocaleString("en-US")}</td></tr>`;
   }).join("");
-  box.innerHTML =
+  box.innerHTML = liqServerHtml() +
     `<div class="liq-head"><div class="period" id="liq-scope" role="group"><button data-k="all" aria-pressed="${liqScope === "all"}">🪙 전체 코인</button><button data-k="btc" aria-pressed="${liqScope === "btc"}">₿ 비트코인</button></div>` +
     `<span class="small">${on ? `<span class="pos">● 실시간</span>` : `<span class="muted">○ 연결 중…</span>`} <span class="muted">${mins ? `${mins >= 60 ? "최근 1시간" : mins + "분째"} 집계` : ""}</span></span></div>` +
     `<div class="liq-mood small">${mood}</div>` +
@@ -97,12 +97,40 @@ function liqRender() {
   }));
 }
 
+// 🕐 지난 24시간 시간별 (서버 liq.py 가 매시간 OKX 비트코인 선물의 빠짐없는 청산 기록으로 집계)
+var liqServer = null; // var: 다른 파일(오늘의 요약)이 먼저 읽어도 오류가 나지 않게
+async function liqLoadServer() {
+  try {
+    const r = await fetch("data/liq.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) { liqServer = await r.json(); liqRender(); if (typeof renderMarketBrief === "function") renderMarketBrief(); }
+  } catch (e) {}
+}
+
+function liqServerHtml() {
+  const s = liqServer;
+  if (!s?.hours24?.length) return "";
+  const max = Math.max(1, ...s.hours24.map(([, l, sh]) => l + sh));
+  const bars = s.hours24.map(([t, l, sh]) => {
+    const d = new Date(Date.parse(t) + 9 * 3600 * 1000);
+    return `<span class="lq-col" title="${d.getUTCHours()}시 · 롱 ${liqMoney(l)} · 숏 ${liqMoney(sh)}"><i style="height:${(sh / max) * 100}%"></i><b style="height:${(l / max) * 100}%"></b></span>`;
+  }).join("");
+  const h = s.hour;
+  const ratio = s.ratio != null && s.hist_hours >= 72
+    ? ` · <span class="${s.spike ? "neg" : "muted"}">평소(시간당 ${liqMoney(s.median_hour)})의 <b>${s.ratio.toFixed(1)}배</b>${s.spike ? " 급증" : ""}</span>` : "";
+  return `<div class="label game-sub">지난 24시간 · 시간별 <span class="muted">(OKX 비트코인 선물, 빠짐없는 기록 · 매시간 갱신)</span></div>` +
+    `<div class="lq-bars">${bars}</div><div class="lq-axis muted small"><span>24시간 전</span><span>지금</span></div>` +
+    `<div class="small">24시간 <span class="neg">롱 ${liqMoney(s.day.long)}</span> · <span class="pos">숏 ${liqMoney(s.day.short)}</span> · ` +
+    `지난 1시간 <span class="neg">롱 ${liqMoney(h.long)}</span> · <span class="pos">숏 ${liqMoney(h.short)}</span>${ratio}</div>` +
+    `<div class="label game-sub">실시간 <span class="muted">(바이낸스 선물)</span></div>`;
+}
+
 function liqStart() {
   const card = $("liq-card");
   if (!card) return;
   card.hidden = false;
   liqConnect();
   liqRender();
+  if (!liqServer) { liqLoadServer(); setInterval(liqLoadServer, 10 * 60 * 1000); }
   if (!liqTimer) liqTimer = setInterval(() => { if (typeof activeTab === "undefined" || activeTab === "market") liqRender(); liqSave(); }, 2000);
 }
 

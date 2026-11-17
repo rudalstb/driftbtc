@@ -253,6 +253,13 @@ function renderMarketBrief() {
     const level = v >= 5 ? ["neg", "과열 구간 — 과거엔 30일 뒤 성적이 나빴어요"] : v >= 2 ? ["warn", "높은 편"] : v < 0 ? ["pos", "역프"] : ["", "평소 수준"];
     lines.push(["kimp-hist", "🇰🇷", `김프 <b class="${level[0]}">${hPct(v, 2)}</b> <span class="muted">· ${level[1]}</span>`]);
   }
+  // 💥 지난 1시간 강제 청산 (liq.py, OKX 비트코인 선물)
+  const lq = typeof liqServer !== "undefined" ? liqServer : null;
+  if (lq?.hour) {
+    const h = lq.hour, tot = h.long + h.short;
+    const side = tot ? (h.long >= h.short ? `<span class="neg">롱 ${liqMoney(h.long)}</span> 많음` : `<span class="pos">숏 ${liqMoney(h.short)}</span> 많음`) : "없음";
+    lines.push(["liq-card", "💥", `지난 1시간 청산 <b>${liqMoney(tot)}</b> · ${side}${lq.ratio != null && lq.hist_hours >= 72 ? ` <span class="${lq.spike ? "neg" : "muted"}">· 평소의 ${lq.ratio.toFixed(1)}배${lq.spike ? " 급증" : ""}</span>` : ""}`]);
+  }
   const fg = histData?.fng;
   if (fg) {
     const [lab, cls] = fngLabel(fg.now);

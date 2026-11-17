@@ -6,6 +6,7 @@
 - 쉬는 구간(변동성 극단·발표 창) 시작/끝
 - 발표 1시간 전
 - 가상 계좌 주간 성적 (월요일 아침 브리핑에 덧붙임)
+- 💥 강제 청산 급증 (liq.py 가 판정, 같은 시간은 1번만)
 
 환경 변수 TELEGRAM_BOT_TOKEN · TELEGRAM_CHAT_ID 가 없으면 아무것도 보내지 않고 조용히 끝난다.
     python notify.py            # 보내기
@@ -118,6 +119,17 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
         if 45 <= mins <= 75 and not state.get(key):
             msgs.append(f"⏰ <b>{e['name']}</b> 약 1시간 뒤 ({kst(e['t']):%H:%M} KST)\n발표 전후는 방향이 뉴스 한 줄로 뒤집혀요. 발표 2시간 뒤까지 쉬는 구간입니다.")
             new_state[key] = True
+    # 5) 💥 강제 청산 급증 (liq.py: 지난 1시간 합계가 평소의 4배 이상 · $3M 이상)
+    lq = _load(DATA / "liq.json", {})
+    if lq.get("spike") and state.get("liq_spike") != lq["hour"]["t"]:
+        h = lq["hour"]
+        big_long = h["long"] >= h["short"]
+        msgs.append(f"💥 <b>{'롱' if big_long else '숏'} 강제 청산 급증</b> ({kst(h['t']):%H}시대 KST)\n"
+                    f"1시간 롱 청산 {fmt_usd(h['long'])} · 숏 청산 {fmt_usd(h['short'])} — 평소의 {lq['ratio']:.0f}배 ({lq['source']})\n"
+                    + ("롱이 대량으로 털렸어요. 하락이 연쇄 청산을 부르는 구간이라 바닥 잡기는 조심하세요." if big_long
+                       else "숏이 대량으로 털렸어요. 숏 스퀴즈로 급등이 이어질 수 있어 추격 매수는 조심하세요.")
+                    + f"\n🔗 {SITE}#market")
+        new_state["liq_spike"] = h["t"]
     # 오래된 pre_ 키 정리
     for k in list(new_state):
         if k.startswith("pre_") and kst(k[4:]) < now - timedelta(days=2):

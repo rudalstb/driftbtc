@@ -58,7 +58,7 @@ function renderWeek(err) {
   const d = weekDraft || { lo: 0, hi: 0 };
   const left = n.deadline - Date.now();
   const leftTxt = left > 0 ? `마감까지 ${Math.floor(left / 3600000)}시간 ${Math.floor((left % 3600000) / 60000)}분` : "마감";
-  let html = `<div class="wk-head small"><span>📅 ${wkKst(n.start, false)} ~ ${wkKst(n.close_at - 1, false)} · 정답: <b>${wkKst(n.close_at)} 가격</b></span><span class="${n.open ? "pos" : "muted"}">${leftTxt} · 참가 ${n.n}명</span></div>`;
+  let html = `<div class="wk-head small"><span>📅 ${wkKst(n.start, false)} ~ ${wkKst(n.close_at - 86400000, false)} · 정답: <b>${wkKst(n.close_at)} 가격</b></span><span class="${n.open ? "pos" : "muted"}">${leftTxt} · 참가 ${n.n}명</span></div>`;
   if (n.open) {
     html += `<div class="wk-form">
       <label class="calc-field"><span>아래 가격 ($)</span><input id="wk-lo" type="number" inputmode="decimal" step="100" value="${d.lo || ""}"></label>

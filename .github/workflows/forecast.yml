@@ -119,6 +119,12 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python collector.py
 
+      # 💥 OKX 비트코인 선물 강제 청산 시간별 집계 (실패해도 계속)
+      - name: 강제 청산 집계
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python liq.py
+
       - name: 과거와 비교 (닮은꼴·조건별 통계)
         if: steps.check.outputs.new == 'true'
         run: python history.py
