@@ -101,6 +101,12 @@ jobs:
         if: steps.check.outputs.new == 'true'
         run: python forecast.py --no-update
 
+      # Ξ 이더리움 예측 범위 (같은 방법, 실패해도 비트코인 예측·배포는 계속)
+      - name: 이더리움 예측
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python eth.py
+
       - name: 운영자 청산 기록 보관
         if: steps.check.outputs.new == 'true'
         run: python trades.py

@@ -34,11 +34,11 @@ def _get(path: str, params: dict) -> list:
     raise RuntimeError(f"Binance 요청 실패: {last_err}")
 
 
-def fetch_klines(interval: str, start_ms: int) -> pd.DataFrame:
+def fetch_klines(interval: str, start_ms: int, symbol: str = SYMBOL) -> pd.DataFrame:
     rows: list = []
     while True:
         batch = _get("/api/v3/klines", {
-            "symbol": SYMBOL, "interval": interval, "startTime": start_ms, "limit": 1000,
+            "symbol": symbol, "interval": interval, "startTime": start_ms, "limit": 1000,
         })
         if not batch:
             break
@@ -58,20 +58,20 @@ def fetch_klines(interval: str, start_ms: int) -> pd.DataFrame:
     return df.set_index("time")[NUMERIC]
 
 
-def update(interval: str) -> pd.DataFrame:
+def update(interval: str, symbol: str = SYMBOL, start: str | None = None) -> pd.DataFrame:
     DATA_DIR.mkdir(exist_ok=True)
-    path = DATA_DIR / f"{SYMBOL}_{interval}.csv"
+    path = DATA_DIR / f"{symbol}_{interval}.csv"
     if path.exists():
         old = load_csv(path)
         start_ms = int(old.index[-1].timestamp() * 1000) + 1
     else:
         old = None
-        start_ms = int(pd.Timestamp(START[interval], tz="UTC").timestamp() * 1000)
-    new = fetch_klines(interval, start_ms)
+        start_ms = int(pd.Timestamp(start or START[interval], tz="UTC").timestamp() * 1000)
+    new = fetch_klines(interval, start_ms, symbol)
     df = new if old is None else pd.concat([old, new])
     df = df[~df.index.duplicated(keep="last")].sort_index()
     df.to_csv(path)
-    print(f"{interval}: {len(df):,}개 캔들 ({df.index[0]} ~ {df.index[-1]}), 신규 {len(new):,}개")
+    print(f"{symbol} {interval}: {len(df):,}개 캔들 ({df.index[0]} ~ {df.index[-1]}), 신규 {len(new):,}개")
     return df
 
 
@@ -88,11 +88,11 @@ def load_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, index_col="time", parse_dates=["time"])
 
 
-def load(freq: str) -> pd.DataFrame:
+def load(freq: str, symbol: str = SYMBOL) -> pd.DataFrame:
     """freq: '1h' | '1d' | '1w'"""
     if freq == "1w":
-        return to_weekly(load("1d"))
-    return load_csv(DATA_DIR / f"{SYMBOL}_{freq}.csv")
+        return to_weekly(load("1d", symbol))
+    return load_csv(DATA_DIR / f"{symbol}_{freq}.csv")
 
 
 if __name__ == "__main__":

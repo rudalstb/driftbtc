@@ -195,6 +195,29 @@ async function pollEth() {
   }
 }
 
+// Ξ 이더리움 예측 범위 (eth.py 가 매시간 site/data/eth.json 에 씀): 비트코인과 같은 방법
+let ethReport = null;
+async function pollEthReport() {
+  try {
+    const r = await fetch("data/eth.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) {
+      ethReport = await r.json();
+      renderEthRange();
+      document.dispatchEvent(new Event("reportloaded"));
+    }
+  } catch (e) {}
+  setTimeout(pollEthReport, 5 * 60 * 1000);
+}
+
+function renderEthRange() {
+  const f = ethReport?.forecasts?.[freq], el = $("eth-range");
+  if (!f || !el) return;
+  const m68 = (f.next.hi68 / f.price - 1) * 100, m95 = (f.next.hi95 / f.price - 1) * 100;
+  const lr = ethReport.live_record?.[freq];
+  const rec = lr?.n >= 10 ? ` · 실제 95% 적중 ${Math.round((lr.hit95 / lr.n) * 100)}%(${lr.n}번)` : ` · 최근 ${f.recent_n}번 95% 적중 ${Math.round(f.recent_cover95 * 100)}%`;
+  el.innerHTML = `이번 ${UNIT[freq]} 보통 <b>±${m68.toFixed(2)}%</b> <span class="muted">(${usd(f.next.lo68)}~${usd(f.next.hi68)})</span><br><span class="muted">95% ±${m95.toFixed(2)}%${rec}</span>`;
+}
+
 // 카드 제목 옆 24시간 등락률
 const chgTag = (c, name = "24시간") => `<span class="muted">${name}</span> <b class="${c >= 0 ? "pos" : "neg"}">${pct(c, 2)}</b>`;
 
@@ -1053,6 +1076,7 @@ document.querySelectorAll(".tabs button").forEach((b) =>
     freq = b.dataset.freq;
     document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
     render();
+    renderEthRange();
   })
 );
 
@@ -1231,6 +1255,7 @@ setInterval(loadFutures, 60 * 1000);
 renderCalc();
 
 pollEth();
+pollEthReport();
 setInterval(pollEth, 5000);
 
 // ✉️ 문의 메일 링크: 주소를 그대로 적어 두면 스팸 수집기에 긁히므로 열 때 조립한다

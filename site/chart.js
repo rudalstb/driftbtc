@@ -16,8 +16,8 @@ const TV_INTERVALS = [
 const WS_HOST = "wss://stream.binance.com:9443/ws";
 // 종목: 바이낸스(BTC·ETH)는 웹소켓 실시간, 나스닥100 선물은 야후(약 10~15분 지연)를 15초마다 폴링
 const TV_SYMBOLS = {
-  btc: { name: "BTC/USDT", src: "binance", pair: "BTCUSDT", stream: "btcusdt", precision: 0, minMove: 1, live: () => live, overlays: true },
-  eth: { name: "ETH/USDT", src: "binance", pair: "ETHUSDT", stream: "ethusdt", precision: 2, minMove: 0.01, live: () => eth?.price, overlays: false },
+  btc: { name: "BTC/USDT", src: "binance", pair: "BTCUSDT", stream: "btcusdt", precision: 0, minMove: 1, live: () => live, overlays: true, fc: () => report?.forecasts },
+  eth: { name: "ETH/USDT", src: "binance", pair: "ETHUSDT", stream: "ethusdt", precision: 2, minMove: 0.01, live: () => eth?.price, overlays: false, fc: () => (typeof ethReport !== "undefined" ? ethReport?.forecasts : null) },
   nq: { name: "나스닥100 선물", src: "yahoo", precision: 2, minMove: 0.25, live: () => null, overlays: false },
 };
 const YAHOO_IV = { "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "1h", "4h": "1h", "1d": "1d", "1w": "1wk", "1M": "1mo" };
@@ -154,9 +154,9 @@ function tvDrawOverlays() {
   tvLines = [];
   if (!tvCandles) return;
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
-  const f = report?.forecasts?.[iv.fq];
+  const f = tvSym().fc?.()?.[iv.fq];
   const overlays = tvSym().overlays;
-  if (overlays && tvShow.band && f) {
+  if (tvShow.band && f) {
     // "2026-10-20 10:00:00+00:00" 처럼 공백이 든 형식도 읽히도록
     const toSec = (t) => Math.floor(new Date(String(t).replace(" ", "T")).getTime() / 1000);
     const nowT = toSec(f.as_of);
@@ -274,7 +274,7 @@ function tvStatus() {
 let tvHealing = false;
 async function tvHealthCheck() {
   if (!tvLoaded || !tvActive() || tvHealing) return;
-  if (typeof report !== "undefined" && report && tvLines.length === 0 && tvShow.band && tvSym().overlays && tvCandleData.length) tvDrawOverlays(); // 선이 빠져 있으면 다시
+  if (tvSym().fc?.() && tvLines.length === 0 && tvShow.band && tvCandleData.length) tvDrawOverlays(); // 선이 빠져 있으면 다시
   const iv = TV_INTERVALS.find((x) => x.k === tvInterval);
   const d = tvCandles?.data?.() || [];
   const lastT = d.length ? d[d.length - 1].time : 0;
@@ -331,7 +331,9 @@ function tvApplySymbolUi() {
   const sym = tvSym();
   document.querySelectorAll("#tv-sym button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sym === tvSymbol));
   $("tv-title").textContent = `📈 ${sym.name} 차트`;
-  $("tv-toggles").hidden = !sym.overlays; // 예측 범위·관점은 비트코인 전용
+  $("tv-toggles").hidden = !sym.fc; // 예측 범위는 BTC·ETH, 롱/숏 관점 표시는 비트코인 전용
+  const mk = document.querySelector('#tv-toggles input[data-key="marks"]')?.closest("label");
+  if (mk) mk.style.display = sym.overlays ? "" : "none";
   const b4 = document.querySelector('#tv-iv button[data-iv="4h"]');
   if (b4) b4.title = sym.src === "yahoo" ? "나스닥은 4시간봉이 없어 1시간봉으로 보여줘요" : "";
 }
