@@ -526,3 +526,6 @@ td.best { color: var(--accent); font-weight: 700; }
 .wk-shot-big span { font-size: 20px; color: var(--muted); font-weight: 600; }
 .wk-shot-vs { margin-top: 12px; font-weight: 700; font-size: 19px; }
 .wk-shot-foot { margin-top: 16px; color: var(--muted); font-size: 13px; }
+/* 📱 홈 화면 설치 안내 */
+.pwa-install { margin-left: 0; }
+.pwa-tip { margin-top: 6px; }

@@ -1,0 +1,23 @@
+{
+  "name": "BTC Agent · 비트코인 AI 예측 범위",
+  "short_name": "BTC Agent",
+  "description": "비트코인이 1시간·1일·1주 안에 어디까지 움직일지 예측 범위와 실시간 가격, 청산·계산기까지",
+  "id": "/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "ko",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "계산기", "url": "./#tools" },
+    { "name": "시장", "url": "./#market" },
+    { "name": "범위 맞히기", "url": "./#say" }
+  ]
+}
