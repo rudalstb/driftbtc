@@ -11,6 +11,7 @@
 // 선택 변수: MOVE_PCT (기본 1 = ±1%), MOVE_MIN (기본 5분)
 // Cron Trigger: "* * * * *"  (1분마다)
 // 브라우저로 Worker 주소를 열면 지금 상태만 보여 준다 (알림은 보내지 않음).
+// 주소 뒤에 ?test=<TELEGRAM_CHAT_ID> 를 붙여 열면 테스트 알림을 1번 보낸다.
 
 const SITE = "https://btc.rudals.app/";
 const FORECAST = SITE + "data/forecast.json";
@@ -112,7 +113,7 @@ async function send(env, text) {
   return r.status;
 }
 
-let lastRun = null;
+let lastRun = null, lastTest = 0;
 export { check, firstBreak };
 export default {
   async scheduled(event, env, ctx) {
@@ -125,6 +126,20 @@ export default {
   },
   async fetch(request, env) {
     const r = await check(env);
+    // 🧪 테스트 알림: ?test=<TELEGRAM_CHAT_ID> 로 열면 지금 값으로 만든 샘플을 1번 보낸다
+    // (대화 번호는 주인만 알아서 남이 보내게 만들 수 없음, 같은 서버에서는 30초에 1번)
+    const test = new URL(request.url).searchParams.get("test");
+    if (test) {
+      if (!env.TELEGRAM_BOT_TOKEN || test !== String(env.TELEGRAM_CHAT_ID)) return new Response("테스트 번호가 맞지 않아요", { status: 403 });
+      if (Date.now() - lastTest < 30000) return new Response("30초 뒤에 다시 시도해 주세요", { status: 429 });
+      lastTest = Date.now();
+      const f = (a) => (a ? `${usd(a[0])} ~ ${usd(a[1])}` : "정보 없음");
+      const text = `🧪 <b>테스트 알림</b> — 실시간 감시가 잘 연결됐어요\n` +
+        (r.ok ? `BTC ${usd(r.price)} (${r.src}) · 5분 ${pct(r.move_5m / 100)}\n이번 시간 95% 범위 ${f(r.range_1h)}\n오늘 95% 범위 ${f(r.range_1d)}\n` : `⚠️ 지금은 가격을 받지 못했어요\n`) +
+        `1분마다 확인해서 5분 ±${Number(env.MOVE_PCT || 1)}% 급변이나 이 범위를 벗어나면 바로 알려 드려요.\n🔗 ${SITE}`;
+      const status = await send(env, text);
+      return new Response(status === 200 ? "✅ 테스트 알림을 보냈어요. 텔레그램을 확인하세요." : `❌ 텔레그램 응답 ${status} — 토큰이나 대화 번호를 확인하세요.`, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    }
     const body = { telegram_set: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), now: { ...r, msgs: r.msgs.length }, last_cron_run: lastRun && { at: lastRun.at, msgs: lastRun.msgs.length, sent: lastRun.sent } };
     return new Response(JSON.stringify(body, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
   },
