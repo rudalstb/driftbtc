@@ -515,3 +515,14 @@ td.best { color: var(--accent); font-weight: 700; }
 .lq-col i { background: var(--up); display: block; }
 .lq-col b { background: var(--down); display: block; }
 .lq-axis { display: flex; justify-content: space-between; margin-bottom: 4px; }
+/* 🏆 맞히기 게임: 홈 배너 · 공유 버튼 · 공유 이미지(화면 밖에서 찍음) */
+.week-home { display: block; margin-top: 4px; }
+.wk-share { margin-left: 6px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px; cursor: pointer; }
+.wk-share:hover { border-color: var(--accent); color: var(--accent); }
+.wk-submit .wk-share { margin-left: 0; font-size: 14px; padding: 8px 14px; }
+.wk-shot { position: fixed; left: -10000px; top: 0; width: 520px; padding: 28px 30px 20px; background: var(--card); color: var(--text); border: 2px solid var(--accent); border-radius: 18px; font-size: 17px; line-height: 1.7; }
+.wk-shot-t { color: var(--accent); font-weight: 700; font-size: 18px; margin-bottom: 6px; }
+.wk-shot-big { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; margin: 4px 0 8px; }
+.wk-shot-big span { font-size: 20px; color: var(--muted); font-weight: 600; }
+.wk-shot-vs { margin-top: 12px; font-weight: 700; font-size: 19px; }
+.wk-shot-foot { margin-top: 16px; color: var(--muted); font-size: 13px; }
