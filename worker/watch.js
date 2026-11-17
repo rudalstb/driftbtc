@@ -5,6 +5,7 @@
 //   ⚡ 5분 동안 ±1% 이상 급변 (30분 안에 이미 알렸으면 건너뜀)
 //   🚨 이번 1시간 예측 95% 범위를 벗어남 (그 시간에 위·아래 각각 1번)
 //   🚨 오늘(1일) 예측 95% 범위를 벗어남 (그날 위·아래 각각 1번)
+//   ↪️ 위 알림을 보낸 지 30분 뒤: 그 사이 더 갔는지·되돌렸는지 (30분 전 시점을 같은 규칙으로 다시 보고 판단)
 // 예측 범위는 사이트가 매시간 만드는 data/forecast.json 을 그대로 쓴다.
 //
 // 필요한 Secret: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
@@ -17,6 +18,7 @@ const SITE = "https://btc.rudals.app/";
 const FORECAST = SITE + "data/forecast.json";
 const M = 60 * 1000;
 const COOLDOWN_MIN = 30;
+const FOLLOW_MIN = 30; // 알림 뒤 몇 분 뒤에 결과를 이어서 보낼지
 
 const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
 const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
@@ -66,11 +68,33 @@ function firstBreak(start, lo, hi, m1, m15) {
   return null;
 }
 
+// m1 의 마지막 캔들 시점에서 "처음" 생긴 알림들 (지금도, 30분 전 시점을 다시 볼 때도 같은 규칙)
+function alertsAt(m1, f1h, f1d, m15, movePct, moveMin) {
+  const last = m1[m1.length - 1], t = last.t + M, out = [];
+  // ⚡ 5분 급변: 이 캔들에서 처음 기준을 넘었고, 그 전 30분 동안은 넘은 적이 없을 때
+  const move = (i) => (i - moveMin >= 0 ? m1[i].c / m1[i - moveMin].c - 1 : 0);
+  const n = m1.length - 1, mv = move(n);
+  let recent = false;
+  for (let i = n - COOLDOWN_MIN; i < n; i++) if (Math.abs(move(i)) >= movePct) recent = true;
+  if (Math.abs(mv) >= movePct && !recent) out.push({ kind: "move", up: mv > 0, px: last.c, mv, from: m1[n - moveMin].c, t });
+  // 🚨 예측 범위 이탈 (그 예측이 덮는 시간 안에서만)
+  for (const [f, label, odds] of [[f1h, "이번 1시간", "1시간"], [f1d, "오늘(1일)", "하루"]]) {
+    if (!f || t > Date.parse(f.next.t) || Date.parse(f.as_of) > last.t) continue;
+    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, odds === "하루" ? m15 : null);
+    if (b) out.push({ kind: "range", up: b.dir === "up", px: b.px, level: b.level, label, odds, t });
+  }
+  return { list: out, mv };
+}
+
+const alertTitle = (a, moveMin) => a.kind === "move"
+  ? `⚡ ${moveMin}분 ${pct(a.mv)} ${a.up ? "급등" : "급락"}`
+  : `🚨 ${a.label} 범위 ${a.up ? "위로" : "아래로"} 이탈`;
+
 async function check(env, now = Date.now()) {
   const movePct = Number(env.MOVE_PCT || 1) / 100, moveMin = Number(env.MOVE_MIN || 5);
   const fails = [];
   const [one, quarter, fc] = await Promise.all([
-    candles("1m", 61, now, fails),
+    candles("1m", 100, now, fails),
     candles("15m", 100, now),
     fetch(FORECAST + "?t=" + Math.floor(now / M), { cf: { cacheTtl: 0 } }).then((r) => r.json()).catch(() => null),
   ]);
@@ -78,29 +102,43 @@ async function check(env, now = Date.now()) {
   const m1 = one.k, last = m1[m1.length - 1], price = last.c;
   const msgs = [];
   const f1h = fc?.forecasts?.["1h"], f1d = fc?.forecasts?.["1d"];
-  const rangeTxt = f1h && now < Date.parse(f1h.next.t) ? `\n이번 시간 95% 범위 ${usd(f1h.next.lo95)} ~ ${usd(f1h.next.hi95)}` : "";
+  const rangeTxt = f1h && now < Date.parse(f1h.next.t) ? `
+이번 시간 95% 범위 ${usd(f1h.next.lo95)} ~ ${usd(f1h.next.hi95)}` : "";
 
-  // ⚡ 5분 급변: 최근 1분봉에서 처음 기준을 넘었고, 그 전 30분 동안은 넘은 적이 없을 때
-  const move = (i) => (i - moveMin >= 0 ? m1[i].c / m1[i - moveMin].c - 1 : 0);
-  const n = m1.length - 1, mv = move(n);
-  let recent = false;
-  for (let i = n - COOLDOWN_MIN; i < n; i++) if (Math.abs(move(i)) >= movePct) recent = true;
-  if (Math.abs(mv) >= movePct && !recent) {
-    msgs.push(`⚡ <b>BTC ${moveMin}분 새 ${pct(mv)} ${mv > 0 ? "급등" : "급락"}</b> (${kst(last.t + M)} KST)\n` +
-      `${usd(price)} · ${moveMin}분 전 ${usd(m1[n - moveMin].c)}${rangeTxt}\n🔗 ${SITE}`);
+  const cur = alertsAt(m1, f1h, f1d, quarter?.k, movePct, moveMin);
+  for (const a of cur.list) {
+    if (a.kind === "move") {
+      msgs.push(`⚡ <b>BTC ${moveMin}분 새 ${pct(a.mv)} ${a.up ? "급등" : "급락"}</b> (${kst(a.t)} KST)
+` +
+        `${usd(a.px)} · ${moveMin}분 전 ${usd(a.from)}${rangeTxt}
+30분 뒤에 그 뒤 흐름을 이어서 알려 드려요.
+🔗 ${SITE}`);
+    } else {
+      msgs.push(`🚨 <b>${a.label} 예측 범위 ${a.up ? "위로" : "아래로"} 벗어남</b> (${kst(a.t)} KST)
+` +
+        `BTC ${usd(a.px)} — 95% 범위 ${a.up ? "상단" : "하단"} ${usd(a.level)}을 ${a.up ? "넘었어요" : "깼어요"}
+` +
+        `모델이 ${a.odds} 안에 이럴 확률을 5% 이하로 봤던 움직임이에요. ${a.up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.
+🔗 ${SITE}`);
+    }
   }
 
-  // 🚨 예측 범위 이탈 (예측이 덮는 시간 안에서만)
-  for (const [f, label, odds] of [[f1h, "이번 1시간", "1시간"], [f1d, "오늘(1일)", "하루"]]) {
-    if (!f || now >= Date.parse(f.next.t)) continue;
-    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, label.startsWith("오늘") ? quarter?.k : null);
-    if (!b) continue;
-    const up = b.dir === "up";
-    msgs.push(`🚨 <b>${label} 예측 범위 ${up ? "위로" : "아래로"} 벗어남</b> (${kst(last.t + M)} KST)\n` +
-      `BTC ${usd(b.px)} — 95% 범위 ${up ? "상단" : "하단"} ${usd(b.level)}을 ${up ? "넘었어요" : "깼어요"}\n` +
-      `모델이 ${odds} 안에 이럴 확률을 5% 이하로 봤던 움직임이에요. ${up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.\n🔗 ${SITE}`);
+  // ↪️ 30분 전에 보낸 알림의 뒷이야기: 그 시점을 같은 규칙으로 다시 보고, 그때 알림이 있었으면 지금까지의 흐름을 보낸다
+  const p = m1.length - 1 - FOLLOW_MIN;
+  if (p > moveMin + COOLDOWN_MIN) {
+    const past = alertsAt(m1.slice(0, p + 1), f1h, f1d, quarter?.k, movePct, moveMin).list;
+    if (past.length) {
+      const after = m1.slice(p + 1), base = m1[p].c;
+      const hi = Math.max(...after.map((k) => k.h)), lo = Math.min(...after.map((k) => k.l));
+      const chg = price / base - 1, up = past[0].up, same = up ? chg : -chg;
+      const verdict = same >= 0.002 ? `${up ? "더 올랐어요" : "더 내렸어요"} — 움직임이 이어졌어요` : same <= -0.002 ? "되돌렸어요 — 처음 움직임이 일부 풀렸어요" : "제자리예요 — 더 가지도 되돌리지도 않았어요";
+      msgs.push(`↪️ <b>${FOLLOW_MIN}분 뒤</b> · ${past.map((a) => alertTitle(a, moveMin)).join(" · ")} (${kst(past[0].t)} 알림)
+` +
+        `${usd(base)} → <b>${usd(price)}</b> (${pct(chg)}) · 그 사이 최고 ${usd(hi)} 최저 ${usd(lo)}
+${verdict}`);
+    }
   }
-  return { ok: true, src: one.src, skipped: fails.length ? fails : undefined, at: new Date(last.t + M).toISOString(), price, move_5m: +(mv * 100).toFixed(3),
+  return { ok: true, src: one.src, skipped: fails.length ? fails : undefined, at: new Date(last.t + M).toISOString(), price, move_5m: +(cur.mv * 100).toFixed(3),
     range_1h: f1h ? [f1h.next.lo95, f1h.next.hi95] : null, range_1d: f1d ? [f1d.next.lo95, f1d.next.hi95] : null, msgs };
 }
 
@@ -114,7 +152,7 @@ async function send(env, text) {
 }
 
 let lastRun = null, lastTest = 0;
-export { check, firstBreak };
+export { check, firstBreak, alertsAt };
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
