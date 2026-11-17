@@ -482,3 +482,14 @@ td.best { color: var(--accent); font-weight: 700; }
 /* 광고 칸 (site/ads.js). 광고가 안 나오면 높이 없이 비어 있다 */
 .ad-slot { display: flex; justify-content: center; margin: 24px 0; }
 .ad-slot ins { max-width: 100%; }
+/* 💥 실시간 강제 청산 */
+.liq-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.liq-mood { margin: 4px 0 8px; line-height: 1.5; }
+.liq-row { display: grid; grid-template-columns: 3em 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.liq-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--border); }
+.liq-bar i { background: var(--down); }
+.liq-bar b { background: var(--up); }
+.liq-amt { white-space: nowrap; }
+.liq-table { margin-top: 8px; }
+.liq-table tr.liq-big td { font-weight: 700; }
+@media (max-width: 560px) { .liq-row { grid-template-columns: 2.6em 1fr; } .liq-amt { grid-column: 1 / -1; font-size: 12.5px; } }
