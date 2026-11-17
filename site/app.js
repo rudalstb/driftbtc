@@ -203,6 +203,7 @@ async function pollEthReport() {
     if (r.ok) {
       ethReport = await r.json();
       renderEthRange();
+      if (typeof report !== "undefined" && report) renderAccuracySummary();
       document.dispatchEvent(new Event("reportloaded"));
     }
   } catch (e) {}
@@ -1030,9 +1031,21 @@ function renderAccuracySummary() {
     const since = h?.since ? new Date(h.since).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" }) : "";
     cards.push(`<div class="acc-card"><div class="acc-title">📈 실제 운영 기록</div>
       <div class="muted small">사이트를 연 뒤(${since}부터) 실제로 낸 예측이 범위 안에 들어온 비율 · 매시간 채점</div>
-      ${rows}${calibLine(lr)}${dots}<div class="muted small">점: 최근 1시간 예측 (초록 68% 안 · 노랑 95% 안 · 빨강 밖)</div></div>`);
+      ${rows}${calibLine(lr)}${ethLiveLine()}${dots}<div class="muted small">점: 최근 1시간 예측 (초록 68% 안 · 노랑 95% 안 · 빨강 밖)</div></div>`);
   }
   $("acc-summary").innerHTML = cards.join("");
+}
+
+// Ξ 이더리움 실제 운영 기록: BTC 와 같은 방법·같은 채점 (eth.json 의 live_record)
+function ethLiveLine() {
+  const lr = ethReport?.live_record;
+  if (!lr) return "";
+  const since = lr["1h"]?.since ? new Date(lr["1h"].since).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" }) : "";
+  const cells = ["1h", "1d", "1w"].filter((k) => lr[k]?.n).map((k) => {
+    const r = lr[k], p95 = Math.round((r.hit95 / r.n) * 100);
+    return `${UNIT[k]} 95% <b class="${p95 >= 90 ? "pos" : ""}">${p95}%</b> <span class="muted">· 68% ${Math.round((r.hit68 / r.n) * 100)}% (${r.n}번)</span>`;
+  });
+  return `<div class="calib-line small">Ξ 이더리움 (${since}부터): ${cells.length ? cells.join(" · ") : `<span class="muted">첫 채점을 기다리는 중</span>`}${cells.length && lr["1h"].n < 30 ? ` <span class="muted">· 아직 표본이 적어요</span>` : ""}</div>`;
 }
 
 // 🎯 68% 범위 보정(11/16) 전/후 적중률: 바꾼 게 실제로도 맞았는지 공개 검증

@@ -81,7 +81,7 @@ def live_record() -> dict:
         c.index = c.index + STEP[freq]
         sc = [(e["lo68"] <= c[pd.Timestamp(e["t"])] <= e["hi68"], e["lo95"] <= c[pd.Timestamp(e["t"])] <= e["hi95"])
               for e in logs if e["freq"] == freq and pd.Timestamp(e["t"]) in c.index]
-        out[freq] = {"n": len(sc), "hit68": sum(a for a, _ in sc), "hit95": sum(b for _, b in sc),
+        out[freq] = {"n": len(sc), "hit68": int(sum(bool(a) for a, _ in sc)), "hit95": int(sum(bool(b) for _, b in sc)),
                      "since": next((e["made_at"] for e in logs if e["freq"] == freq), None)}
     return out
 
