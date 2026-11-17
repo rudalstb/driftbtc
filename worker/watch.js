@@ -22,7 +22,7 @@ const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
 const kst = (ms) => { const d = new Date(ms + 9 * 3600 * 1000); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
 
 // 캔들 [{t, h, l, c}] 오래된 순, 마감된 것만. Cloudflare 서버 위치에 따라 막히는 거래소가 달라서 여러 곳을 차례로 시도한다
-// (USDT 가격인 곳을 먼저, 달러 가격인 크라켄·코인베이스는 마지막에: 예측 범위가 USDT 기준이라).
+// (예측 범위가 USDT 기준이라 USDT 가격을 먼저 쓰고, 달러 가격인 코인베이스는 마지막에).
 const UA = { "User-Agent": "btc-agent-watch/1.0", Accept: "application/json" };
 function sources(bar, limit) {
   const min = bar === "1m" ? 1 : 15;
@@ -31,7 +31,7 @@ function sources(bar, limit) {
     ["바이낸스", ...binance("https://data-api.binance.vision")],
     ["OKX", `https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=${bar}&limit=${Math.min(limit, 300)}`, (j) => j.data.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }))],
     ["바이비트", `https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=${min}&limit=${limit}`, (j) => j.result.list.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }))],
-    ["크라켄", `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=${min}`, (j) => Object.values(j.result).find(Array.isArray).slice(-limit).map((x) => ({ t: x[0] * 1000, h: +x[2], l: +x[3], c: +x[4] }))],
+    ["크라켄", `https://api.kraken.com/0/public/OHLC?pair=XBTUSDT&interval=${min}`, (j) => Object.values(j.result).find(Array.isArray).slice(-limit).map((x) => ({ t: x[0] * 1000, h: +x[2], l: +x[3], c: +x[4] }))],
     ["코인베이스", `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${min * 60}`, (a) => a.slice(0, limit).map((x) => ({ t: x[0] * 1000, h: +x[2], l: +x[1], c: +x[4] }))],
   ];
 }
