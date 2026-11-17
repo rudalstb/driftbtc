@@ -19,6 +19,7 @@ const FORECAST = SITE + "data/forecast.json";
 const M = 60 * 1000;
 const COOLDOWN_MIN = 30;
 const FOLLOW_MIN = 30;
+const STALE_MIN = 150; // 사이트 예측이 이만큼(분) 넘게 안 바뀌면 작업 멈춤 알림
 // 1시간 범위는 선을 0.3% 넘게 뚫을 때만 (2주 다시 돌려 보니 닿기만 할 때 주 20번·마감도 밖 49% → 0.3% 기준 주 11번·82%)
 const RANGE_MARGIN_1H = 0.003; // 알림 뒤 몇 분 뒤에 결과를 이어서 보낼지
 
@@ -143,7 +144,16 @@ async function check(env, now = Date.now()) {
 ${verdict}`);
     }
   }
-  return { ok: true, src: one.src, skipped: fails.length ? fails : undefined, at: new Date(last.t + M).toISOString(), price, move_5m: +(cur.mv * 100).toFixed(3),
+  // 🩺 예측 작업 전체가 멈췄는지: 사이트 예측(forecast.json)은 매시간 새로 만들어지므로 2시간 반 넘게 그대로면 알린다
+  // (저장소가 없어 '나이가 기준을 막 넘은 1분'에만 보내고, 계속 멈춰 있으면 6시간마다 다시)
+  const age = fc?.generated_at ? (now - Date.parse(fc.generated_at)) / M : null;
+  if (age != null && age >= STALE_MIN && (age - STALE_MIN) % 360 < 1) {
+    msgs.push(`🩺 <b>사이트 예측이 ${Math.floor(age / 60)}시간 ${Math.round(age % 60)}분째 그대로예요</b>
+` +
+      `매시간 돌아야 하는 GitHub 작업이 멈춘 것 같아요. GitHub Actions 와 Cloudflare driftbtc-cron 을 확인하세요.
+실시간 급변 알림은 계속 보내요.`);
+  }
+  return { ok: true, src: one.src, forecast_age_min: age == null ? null : Math.round(age), skipped: fails.length ? fails : undefined, at: new Date(last.t + M).toISOString(), price, move_5m: +(cur.mv * 100).toFixed(3),
     range_1h: f1h ? [f1h.next.lo95, f1h.next.hi95] : null, range_1d: f1d ? [f1d.next.lo95, f1d.next.hi95] : null, msgs };
 }
 

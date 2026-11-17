@@ -62,6 +62,40 @@ def light(rg: dict) -> tuple[str, str]:
     return "🟢", f"변동성 보통 (24시간 {vol:.2f}%)"
 
 
+# 🩺 점검 대상: (이름, 단계 id, 갱신 시각을 꺼내는 함수, 몇 시간 넘게 그대로면 멈춘 걸로 볼지)
+HEALTH = [
+    ("이더리움 예측", "eth", lambda: _load(DATA / "eth.json", {}).get("generated_at"), 3),
+    ("강제 청산 집계", "liq", lambda: _load(DATA / "liq.json", {}).get("updated"), 3),
+    ("발표 일정 갱신", "events", lambda: None, None),
+    ("시장 일지", "daily", lambda: (_load(DATA / "daily_latest.json", {}).get("date") or "") + "T00:00:00+09:00", 50),
+    ("월간 성적표", "monthly", lambda: None, None),
+]
+
+
+def health(state: dict, new_state: dict, now: datetime) -> list[str]:
+    failed = set(os.environ.get("STEP_FAIL", "").split())
+    out = []
+    for name, sid, updated, max_h in HEALTH:
+        why = None
+        if sid in failed:
+            why = "이번 실행에서 실패"
+        elif max_h:
+            try:
+                age = (now - datetime.fromisoformat(updated().replace("Z", "+00:00"))).total_seconds() / 3600
+                if age > max_h:
+                    why = f"{age:.0f}시간째 갱신 안 됨"
+            except Exception:
+                why = "갱신 시각을 읽지 못함"
+        key = f"down_{sid}"
+        if why and not state.get(key):
+            out.append(f"🩺 <b>{name} 멈춤</b> — {why}\n사이트의 다른 부분은 계속 돌아가요. GitHub Actions 기록에서 '{name}' 단계를 확인하세요.")
+            new_state[key] = now.isoformat(timespec="minutes")
+        elif not why and state.get(key):
+            out.append(f"✅ <b>{name} 다시 정상</b> (멈춘 시각 {state[key][5:16].replace('-', '/').replace('T', ' ')} KST)")
+            new_state.pop(key, None)
+    return out
+
+
 def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
     msgs: list[str] = []
     new_state = dict(state)
@@ -137,6 +171,8 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
                        else "숏이 대량으로 털렸어요. 숏 스퀴즈로 급등이 이어질 수 있어 추격 매수는 조심하세요.")
                     + f"\n🔗 {SITE}#market")
         new_state["liq_spike"] = h["t"]
+    # 6) 🩺 조용한 고장: 실패해도 넘어가는 단계가 멈추면 처음 한 번, 다시 살아나면 한 번 알린다
+    msgs += health(state, new_state, now)
     # 오래된 pre_ 키 정리
     for k in list(new_state):
         if k.startswith("pre_") and kst(k[4:]) < now - timedelta(days=2):

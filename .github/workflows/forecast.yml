@@ -97,6 +97,7 @@ jobs:
 
       # CPI·FOMC 일정(events.json)을 원장(event_dates.json)과 연준 공식 페이지로 갱신 — 실패해도 예측은 계속
       - name: 발표 일정 갱신
+        id: s_events
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python events_update.py
@@ -107,6 +108,7 @@ jobs:
 
       # Ξ 이더리움 예측 범위 (같은 방법, 실패해도 비트코인 예측·배포는 계속)
       - name: 이더리움 예측
+        id: s_eth
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python eth.py
@@ -125,6 +127,7 @@ jobs:
 
       # 💥 OKX 비트코인 선물 강제 청산 시간별 집계 (실패해도 계속)
       - name: 강제 청산 집계
+        id: s_liq
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python liq.py
@@ -135,12 +138,14 @@ jobs:
 
       # 하루 한 번 시장 일지 글 (이미 있으면 목록·sitemap 만 갱신)
       - name: 시장 일지
+        id: s_daily
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python daily.py
 
       # 매달 1일: 지난달 성적표 (이미 있으면 목록·sitemap 만 갱신)
       - name: 월간 성적표
+        id: s_monthly
         if: steps.check.outputs.new == 'true'
         continue-on-error: true
         run: python monthly.py
@@ -151,6 +156,13 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 실패해도 넘어가는 단계 가운데 이번에 실패한 것 (notify.py 가 처음 실패·복구 때 한 번씩 알린다)
+          STEP_FAIL: >-
+            ${{ steps.s_events.outcome == 'failure' && 'events' || '' }}
+            ${{ steps.s_eth.outcome == 'failure' && 'eth' || '' }}
+            ${{ steps.s_liq.outcome == 'failure' && 'liq' || '' }}
+            ${{ steps.s_daily.outcome == 'failure' && 'daily' || '' }}
+            ${{ steps.s_monthly.outcome == 'failure' && 'monthly' || '' }}
         run: python notify.py
 
       - name: 신호 실험실 채점 (주 1회)
