@@ -4,7 +4,7 @@
 - 아침 브리핑 (한국 시간 9시대 첫 실행): 어제 예측 채점 · 가격 · 1일 예측 범위 · 1일 관점 · 상황 신호등 · 다음 발표 · 오늘 시장 일지 링크
 - 1일 관점이 롱↔숏으로 바뀔 때
 - 쉬는 구간(변동성 극단·발표 창) 시작/끝
-- 발표 1시간 전
+- 발표 약 1시간 전 (20~90분 전 창, 1번)
 - 가상 계좌 주간 성적 (월요일 아침 브리핑에 덧붙임)
 - 💥 강제 청산 급증 (liq.py 가 판정, 같은 시간은 1번만)
 
@@ -112,12 +112,13 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
                      if red else f"🟢 <b>쉬는 구간 끝</b>\n{why}\n🔗 {SITE}"))
     new_state["red"] = red
 
-    # 4) 발표 1시간 전 (실행 주기가 15분이라 45~75분 전 창에서 1번)
+    # 4) 발표 약 1시간 전 (알림 단계는 새 1시간 캔들마다 = 1시간에 1번 돌므로, 폭 70분 창(20~90분 전)이면 어느 발표든 한 번은 걸린다)
     for e in upcoming:
         mins = (kst(e["t"]) - now).total_seconds() / 60
         key = f"pre_{e['t']}"
-        if 45 <= mins <= 75 and not state.get(key):
-            msgs.append(f"⏰ <b>{e['name']}</b> 약 1시간 뒤 ({kst(e['t']):%H:%M} KST)\n발표 전후는 방향이 뉴스 한 줄로 뒤집혀요. 발표 2시간 뒤까지 쉬는 구간입니다.")
+        if 20 <= mins <= 90 and not state.get(key):
+            left = f"{round(mins / 5) * 5}분" if mins < 55 else ("약 1시간" if mins < 70 else f"1시간 {round((mins - 60) / 5) * 5}분")
+            msgs.append(f"⏰ <b>{e['name']}</b> {left} 뒤 ({kst(e['t']):%H:%M} KST)\n발표 전후는 방향이 뉴스 한 줄로 뒤집혀요. 발표 2시간 뒤까지 쉬는 구간입니다.")
             new_state[key] = True
     # 5) 💥 강제 청산 급증 (liq.py: 지난 1시간 합계가 평소의 4배 이상 · $3M 이상)
     lq = _load(DATA / "liq.json", {})
