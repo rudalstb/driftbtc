@@ -69,6 +69,8 @@ HEALTH = [
     ("발표 일정 갱신", "events", lambda: None, None),
     ("시장 일지", "daily", lambda: (_load(DATA / "daily_latest.json", {}).get("date") or "") + "T00:00:00+09:00", 50),
     ("월간 성적표", "monthly", lambda: None, None),
+    # 주간 일지: 가장 최근 글이 다룬 주가 끝난 월요일 9시에서 30시간 넘게 새 글이 없으면
+    ("주간 일지", "weekly", lambda: (max((p.stem for p in (DATA.parent / "weekly").glob("20*.html")), default="2000-01-01")) + "T09:00:00+09:00", 7 * 24 + 7 * 24 + 30),
 ]
 
 

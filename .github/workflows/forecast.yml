@@ -150,6 +150,13 @@ jobs:
         continue-on-error: true
         run: python monthly.py
 
+      # 매주 월요일: 지난주 주간 일지 (이미 있으면 목록·sitemap 만 갱신)
+      - name: 주간 일지
+        id: s_weekly
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python weekly.py
+
       # 아침 브리핑에 오늘 시장 일지 링크를 넣으려고 일지 다음에 보낸다
       - name: 텔레그램 채널 알림
         if: steps.check.outputs.new == 'true'
@@ -163,6 +170,7 @@ jobs:
             ${{ steps.s_liq.outcome == 'failure' && 'liq' || '' }}
             ${{ steps.s_daily.outcome == 'failure' && 'daily' || '' }}
             ${{ steps.s_monthly.outcome == 'failure' && 'monthly' || '' }}
+            ${{ steps.s_weekly.outcome == 'failure' && 'weekly' || '' }}
         run: python notify.py
 
       - name: 신호 실험실 채점 (주 1회)
@@ -178,7 +186,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data site/daily site/monthly site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
+          git add site/data site/daily site/weekly site/monthly site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           # 그 사이 다른 커밋이 올라오면 push 가 거절되므로 3번까지 다시 받아 올린다
           for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep $((i * 5)); done; exit 1

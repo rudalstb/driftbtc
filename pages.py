@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -15,7 +15,7 @@ UPDATED = "2026년 11월 17일"
 
 FOOT = """<footer>
   <a href="{p}index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="{p}about.html">소개</a><a href="{p}disclaimer.html">면책 조항</a><a href="{p}privacy.html">개인정보처리방침</a>
-  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}faq.html">❓ 자주 묻는 질문</a><a href="{p}guide/">📚 매매 가이드</a><a href="{p}guide/glossary.html">📖 용어 사전</a><a href="{p}daily/">📅 시장 일지</a><a href="{p}monthly/">📊 월간 성적표</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="{p}faq.html">❓ 자주 묻는 질문</a><a href="{p}guide/">📚 매매 가이드</a><a href="{p}guide/glossary.html">📖 용어 사전</a><a href="{p}daily/">📅 시장 일지</a><a href="{p}weekly/">🗓️ 주간 일지</a><a href="{p}monthly/">📊 월간 성적표</a>
   <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
 </footer>"""
 
@@ -538,6 +538,10 @@ def write_sitemap() -> None:
     if daily:
         items.append((BASE + "daily/index.html", today))
         items += [(f"{BASE}daily/{f.name}", f.stem) for f in daily]
+    weekly = sorted((SITE / "weekly").glob("20*.html"), reverse=True) if (SITE / "weekly").exists() else []
+    if weekly:
+        items.append((BASE + "weekly/index.html", today))
+        items += [(f"{BASE}weekly/{f.name}", (date.fromisoformat(f.stem) + timedelta(days=7)).isoformat()) for f in weekly]
     monthly = sorted((SITE / "monthly").glob("20*.html"), reverse=True) if (SITE / "monthly").exists() else []
     if monthly:
         items.append((BASE + "monthly/index.html", today))
