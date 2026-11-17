@@ -164,7 +164,8 @@ jobs:
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
           git add site/data site/daily site/monthly site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
-          git pull --rebase --autostash && git push
+          # 그 사이 다른 커밋이 올라오면 push 가 거절되므로 3번까지 다시 받아 올린다
+          for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep $((i * 5)); done; exit 1
 
       # 공유 미리보기 이미지: 저장소에는 넣지 않고(용량) 배포본에만 포함
       - name: 공유 미리보기 이미지
