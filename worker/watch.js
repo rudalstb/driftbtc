@@ -1,0 +1,119 @@
+// BTC Agent 실시간 감시 (Cloudflare Worker, 1분마다 실행)
+//
+// GitHub 작업은 1시간에 1번만 돌아서 급변을 늦게 알린다. 이 Worker 는 1분마다 비트코인 1분봉을 보고
+// 아래 일이 "처음" 생긴 순간에만 텔레그램으로 바로 보낸다 (저장소 없이 캔들 기록만으로 중복을 막는다).
+//   ⚡ 5분 동안 ±1% 이상 급변 (30분 안에 이미 알렸으면 건너뜀)
+//   🚨 이번 1시간 예측 95% 범위를 벗어남 (그 시간에 위·아래 각각 1번)
+//   🚨 오늘(1일) 예측 95% 범위를 벗어남 (그날 위·아래 각각 1번)
+// 예측 범위는 사이트가 매시간 만드는 data/forecast.json 을 그대로 쓴다.
+//
+// 필요한 Secret: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+// 선택 변수: MOVE_PCT (기본 1 = ±1%), MOVE_MIN (기본 5분)
+// Cron Trigger: "* * * * *"  (1분마다)
+// 브라우저로 Worker 주소를 열면 지금 상태만 보여 준다 (알림은 보내지 않음).
+
+const SITE = "https://btc.rudals.app/";
+const FORECAST = SITE + "data/forecast.json";
+const M = 60 * 1000;
+const COOLDOWN_MIN = 30;
+
+const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
+const kst = (ms) => { const d = new Date(ms + 9 * 3600 * 1000); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
+
+// 캔들 [{t, h, l, c}] 오래된 순, 마감된 것만. 바이낸스가 막히면 OKX 로 받는다.
+async function candles(bar, limit, now) {
+  const done = (a, ms) => a.filter((k) => k.t + ms <= now).sort((x, y) => x.t - y.t);
+  const ms = bar === "1m" ? M : 15 * M;
+  for (const host of ["https://data-api.binance.vision", "https://api.binance.com"]) {
+    try {
+      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${bar}&limit=${limit}`, { cf: { cacheTtl: 0 } });
+      if (!r.ok) continue;
+      const a = await r.json();
+      if (Array.isArray(a) && a.length) return { src: "바이낸스", k: done(a.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), ms) };
+    } catch {}
+  }
+  try {
+    const r = await fetch(`https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=${bar}&limit=${Math.min(limit, 300)}`);
+    const a = (await r.json())?.data;
+    if (Array.isArray(a) && a.length) return { src: "OKX", k: done(a.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), ms) };
+  } catch {}
+  return null;
+}
+
+// 창(start ~ 지금) 안에서 범위를 처음 벗어난 게 "가장 최근 1분봉"인지 (그 전 캔들은 한 번도 안 닿았는지)
+function firstBreak(start, lo, hi, m1, m15) {
+  const last = m1[m1.length - 1];
+  if (!last || last.t < start) return null;
+  const before = [
+    ...m1.filter((k) => k.t >= start && k.t < last.t),
+    ...(m15 || []).filter((k) => k.t + 15 * M > start && k.t < m1[0].t), // 1분봉이 없는 더 오래된 구간
+  ];
+  if (last.h >= hi && !before.some((k) => k.h >= hi)) return { dir: "up", px: last.h, level: hi };
+  if (last.l <= lo && !before.some((k) => k.l <= lo)) return { dir: "down", px: last.l, level: lo };
+  return null;
+}
+
+async function check(env, now = Date.now()) {
+  const movePct = Number(env.MOVE_PCT || 1) / 100, moveMin = Number(env.MOVE_MIN || 5);
+  const [one, quarter, fc] = await Promise.all([
+    candles("1m", 61, now),
+    candles("15m", 100, now),
+    fetch(FORECAST + "?t=" + Math.floor(now / M), { cf: { cacheTtl: 0 } }).then((r) => r.json()).catch(() => null),
+  ]);
+  if (!one || one.k.length < moveMin + COOLDOWN_MIN + 1) return { ok: false, error: "가격을 받지 못함", msgs: [] };
+  const m1 = one.k, last = m1[m1.length - 1], price = last.c;
+  const msgs = [];
+  const f1h = fc?.forecasts?.["1h"], f1d = fc?.forecasts?.["1d"];
+  const rangeTxt = f1h && now < Date.parse(f1h.next.t) ? `\n이번 시간 95% 범위 ${usd(f1h.next.lo95)} ~ ${usd(f1h.next.hi95)}` : "";
+
+  // ⚡ 5분 급변: 최근 1분봉에서 처음 기준을 넘었고, 그 전 30분 동안은 넘은 적이 없을 때
+  const move = (i) => (i - moveMin >= 0 ? m1[i].c / m1[i - moveMin].c - 1 : 0);
+  const n = m1.length - 1, mv = move(n);
+  let recent = false;
+  for (let i = n - COOLDOWN_MIN; i < n; i++) if (Math.abs(move(i)) >= movePct) recent = true;
+  if (Math.abs(mv) >= movePct && !recent) {
+    msgs.push(`⚡ <b>BTC ${moveMin}분 새 ${pct(mv)} ${mv > 0 ? "급등" : "급락"}</b> (${kst(last.t + M)} KST)\n` +
+      `${usd(price)} · ${moveMin}분 전 ${usd(m1[n - moveMin].c)}${rangeTxt}\n🔗 ${SITE}`);
+  }
+
+  // 🚨 예측 범위 이탈 (예측이 덮는 시간 안에서만)
+  for (const [f, label, odds] of [[f1h, "이번 1시간", "1시간"], [f1d, "오늘(1일)", "하루"]]) {
+    if (!f || now >= Date.parse(f.next.t)) continue;
+    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, label.startsWith("오늘") ? quarter?.k : null);
+    if (!b) continue;
+    const up = b.dir === "up";
+    msgs.push(`🚨 <b>${label} 예측 범위 ${up ? "위로" : "아래로"} 벗어남</b> (${kst(last.t + M)} KST)\n` +
+      `BTC ${usd(b.px)} — 95% 범위 ${up ? "상단" : "하단"} ${usd(b.level)}을 ${up ? "넘었어요" : "깼어요"}\n` +
+      `모델이 ${odds} 안에 이럴 확률을 5% 이하로 봤던 움직임이에요. ${up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.\n🔗 ${SITE}`);
+  }
+  return { ok: true, src: one.src, at: new Date(last.t + M).toISOString(), price, move_5m: +(mv * 100).toFixed(3),
+    range_1h: f1h ? [f1h.next.lo95, f1h.next.hi95] : null, range_1d: f1d ? [f1d.next.lo95, f1d.next.hi95] : null, msgs };
+}
+
+async function send(env, text) {
+  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true }),
+  });
+  return r.status;
+}
+
+let lastRun = null;
+export { check, firstBreak };
+export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      const r = await check(env);
+      const sent = [];
+      if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) for (const m of r.msgs) sent.push(await send(env, m));
+      lastRun = { ...r, sent };
+    })());
+  },
+  async fetch(request, env) {
+    const r = await check(env);
+    const body = { telegram_set: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID), now: { ...r, msgs: r.msgs.length }, last_cron_run: lastRun && { at: lastRun.at, msgs: lastRun.msgs.length, sent: lastRun.sent } };
+    return new Response(JSON.stringify(body, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
+  },
+};

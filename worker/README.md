@@ -39,3 +39,18 @@ API 키는 Cloudflare Worker 의 Secret 에만 저장하고, 저장소와 사이
 - 통합 계정(UTA, v3)과 기존 계정(Classic, v2)을 자동 구분
 - 비트겟 호출은 3초에 한 번으로 제한 (방문자가 많아도 동일), 사이트는 5초마다 조회
 - 다른 사이트에서 호출하지 못하도록 `https://rudalstb.github.io` 만 허용 (변수 `ALLOW_ORIGIN` 으로 변경 가능)
+
+---
+
+# ⚡ 실시간 감시 (watch.js) — 1분마다 급변을 텔레그램으로
+
+GitHub 작업은 1시간에 1번만 돌아 급변 알림이 늦다. `worker/watch.js` 는 Cloudflare 에서 1분마다 돌며
+5분 ±1% 급변, 1시간·1일 예측 95% 범위 이탈이 "처음" 생긴 순간에만 바로 보낸다.
+
+1. Cloudflare → **Workers & Pages** → **Create** → **Create Worker** → 이름 `driftbtc-watch` → **Deploy**
+2. **Edit code** → 기존 코드를 지우고 `worker/watch.js` 내용을 붙여 넣기 → **Deploy**
+3. **Settings** → **Variables and Secrets** → **Add** (Type: **Secret**) 2개
+   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (GitHub 에 넣은 것과 같은 값)
+4. **Settings** → **Trigger Events** → **Add** → **Cron Triggers** → `* * * * *` (1분마다)
+5. Worker 주소를 브라우저로 열어 `"telegram_set": true`, `"ok": true` 가 보이면 끝
+- 기준을 바꾸려면 일반 변수(Text) `MOVE_PCT`(기본 1 = ±1%), `MOVE_MIN`(기본 5분)을 추가
