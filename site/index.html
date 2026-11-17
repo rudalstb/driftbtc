@@ -29,6 +29,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
+  <div class="alert-toast" id="alert-toast" role="status" hidden></div>
   <main>
     <header>
       <a class="up-link" href="https://rudals.app/" title="rudals.app">다른 앱 둘러보기</a>
@@ -136,6 +137,7 @@
         <div class="small" id="touch-note"></div>
         <div class="small lev-line" id="lev-line"></div>
         <div class="muted small" id="live-in-band"></div>
+        <a class="small alert-home" id="alert-home" href="#tools" data-goto="calc">🎯 원하는 가격까지 닿을 확률 계산 · 🔔 가격 알림 →</a>
       </div>
       <div class="card">
         <div class="label">🎯 AI 한 점 예측 <span class="muted">· 재미로 보는 콜</span></div>
@@ -202,6 +204,10 @@
         <button data-p="1">+1%</button><button data-p="3">+3%</button><button data-p="5">+5%</button>
       </div>
       <div id="calc-result" class="calc-result"></div>
+      <div class="alert-box">
+        <div class="alert-head"><button class="alert-add" id="alert-add">🔔 이 가격에 닿으면 알려 줘</button><span class="small pos" id="alert-msg"></span></div>
+        <div id="alert-list"></div>
+      </div>
     </section>
 
     <section class="card risk" id="risk" data-sec="risk">
@@ -621,6 +627,7 @@
   <script src="upbit.js"></script>
   <script src="history.js"></script>
   <script src="liq.js"></script>
+  <script src="alert.js"></script>
   <script src="ads.js" defer></script>
 </body>
 </html>

@@ -493,3 +493,15 @@ td.best { color: var(--accent); font-weight: 700; }
 .liq-table { margin-top: 8px; }
 .liq-table tr.liq-big td { font-weight: 700; }
 @media (max-width: 560px) { .liq-row { grid-template-columns: 2.6em 1fr; } .liq-amt { grid-column: 1 / -1; font-size: 12.5px; } }
+/* 🔔 가격 알림 */
+.alert-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.alert-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.alert-add { background: var(--band95); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 7px 12px; font: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.alert-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; font-size: 14px; }
+.alert-row.done { opacity: 0.6; }
+.alert-del { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 6px; }
+.alert-box > .small { margin-top: 6px; }
+.alert-home { display: inline-block; margin-top: 8px; color: var(--accent); text-decoration: none; }
+.alert-toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50; max-width: calc(100% - 32px); background: var(--card, #161b22); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.35); font-size: 14px; }
+.alert-toast[hidden] { display: none; }
+.alert-toast { cursor: pointer; } .alert-x { margin-left: 8px; color: var(--muted); }
