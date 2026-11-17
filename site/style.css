@@ -505,3 +505,8 @@ td.best { color: var(--accent); font-weight: 700; }
 .alert-toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50; max-width: calc(100% - 32px); background: var(--card, #161b22); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.35); font-size: 14px; }
 .alert-toast[hidden] { display: none; }
 .alert-toast { cursor: pointer; } .alert-x { margin-left: 8px; color: var(--muted); }
+/* 🏆 이번 주 범위 맞히기 */
+.wk-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.wk-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wk-quick { margin: 8px 0 6px; flex-wrap: wrap; }
+.wk-submit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }

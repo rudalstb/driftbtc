@@ -22,6 +22,9 @@ window.FX_URL = "https://driftbtc.vercel.app/api/fx";
 // 오늘 한마디·롱/숏 투표 (Vercel 서버리스 함수, api/say.js). 비워 두면 카드가 "불러올 수 없어요"로 남는다
 window.SAY_URL = "https://driftbtc.vercel.app/api/say";
 
+// 이번 주 범위 맞히기 게임 (Vercel 서버리스 함수, api/week.js)
+window.WEEK_URL = "https://driftbtc.vercel.app/api/week";
+
 // 텔레그램 공개 채널 주소 (예: "https://t.me/driftbtc"). 비워 두면 버튼이 숨겨진다
 window.TELEGRAM_URL = "";
 

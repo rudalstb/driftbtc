@@ -11,7 +11,7 @@ const TABS = [
   { id: "operator", name: "💼 실전 계좌", members: ["#mypos"] },
   { id: "tools", name: "🧮 계산기", members: ["#calc-nav", "#calc", "#risk", "#avg", "#pnl", "#edge", "#kimp"] },
   { id: "mine", name: "🩺 매매 진단", members: ["#upbit", "#my-analysis"] },
-  { id: "say", name: "🗳 롱숏 투표", members: ["#say"] },
+  { id: "say", name: "🏆 투표·게임", members: ["#week-game", "#say"] },
 ];
 let activeTab = "home";
 
