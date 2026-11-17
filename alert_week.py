@@ -4,7 +4,7 @@ notify.py 가 월요일 아침 브리핑에 한 줄로 붙인다.
 
 규칙 (watch.js 와 같아야 함)
 - ⚡ 급변: 5분 수익률이 ±1% 이상이 된 첫 1분봉, 그 전 30분 안에 이미 넘은 적 없음
-- 🚨 범위 이탈: 그 시각에 사이트가 보여 주던 1시간·1일 예측 95% 범위를 그 창에서 처음 벗어난 1분봉 (고가·저가 기준)
+- 🚨 범위 이탈: 그 시각에 사이트가 보여 주던 1시간·1일 예측 95% 범위를 그 창에서 처음 벗어난 1분봉 (고가·저가 기준, 1시간은 0.3% 넘게)
 - ↪️ 30분 뒤: 알림 캔들 종가 → 30분 뒤 종가가 알림 방향으로 0.2% 이상이면 '이어짐', 반대로 0.2% 이상이면 '되돌림', 아니면 '제자리'
 
     python alert_week.py     # 지난 7일 결과 출력
@@ -21,6 +21,7 @@ import requests
 DATA = Path(__file__).parent / "site" / "data"
 M = 60_000
 MOVE_PCT, MOVE_MIN, COOLDOWN, FOLLOW, FLAT = 0.01, 5, 30, 30, 0.002
+MARGIN = {"1h": 0.003, "1d": 0.0}   # watch.js RANGE_MARGIN_1H 와 같게
 HOSTS = ["https://data-api.binance.vision", "https://api.binance.com"]
 
 
@@ -87,11 +88,12 @@ def replay(k: list, fc: dict[str, list[dict]], since_ms: int) -> list[dict]:
                 continue
             for up in (True, False):
                 key = (f, e["as_of"], e["lo"], e["hi"], up)
-                hit = k[i][1] >= e["hi"] if up else k[i][2] <= e["lo"]
+                hi, lo = e["hi"] * (1 + MARGIN[f]), e["lo"] * (1 - MARGIN[f])
+                hit = k[i][1] >= hi if up else k[i][2] <= lo
                 if hit and key not in broke:
                     # 창 시작부터 이 캔들 전까지 한 번도 안 닿았는지 (감시기와 같은 판정)
                     a = bisect_right(t, e["as_of"] - 1)
-                    before = any((k[x][1] >= e["hi"]) if up else (k[x][2] <= e["lo"]) for x in range(a, i))
+                    before = any((k[x][1] >= hi) if up else (k[x][2] <= lo) for x in range(a, i))
                     broke.add(key)
                     if not before:
                         kinds.append((f, up))

@@ -3,7 +3,7 @@
 // GitHub 작업은 1시간에 1번만 돌아서 급변을 늦게 알린다. 이 Worker 는 1분마다 비트코인 1분봉을 보고
 // 아래 일이 "처음" 생긴 순간에만 텔레그램으로 바로 보낸다 (저장소 없이 캔들 기록만으로 중복을 막는다).
 //   ⚡ 5분 동안 ±1% 이상 급변 (30분 안에 이미 알렸으면 건너뜀)
-//   🚨 이번 1시간 예측 95% 범위를 벗어남 (그 시간에 위·아래 각각 1번)
+//   🚨 이번 1시간 예측 95% 범위를 0.3% 넘게 뚫음 (그 시간에 위·아래 각각 1번)
 //   🚨 오늘(1일) 예측 95% 범위를 벗어남 (그날 위·아래 각각 1번)
 //   ↪️ 위 알림을 보낸 지 30분 뒤: 그 사이 더 갔는지·되돌렸는지 (30분 전 시점을 같은 규칙으로 다시 보고 판단)
 // 예측 범위는 사이트가 매시간 만드는 data/forecast.json 을 그대로 쓴다.
@@ -18,7 +18,9 @@ const SITE = "https://btc.rudals.app/";
 const FORECAST = SITE + "data/forecast.json";
 const M = 60 * 1000;
 const COOLDOWN_MIN = 30;
-const FOLLOW_MIN = 30; // 알림 뒤 몇 분 뒤에 결과를 이어서 보낼지
+const FOLLOW_MIN = 30;
+// 1시간 범위는 선을 0.3% 넘게 뚫을 때만 (2주 다시 돌려 보니 닿기만 할 때 주 20번·마감도 밖 49% → 0.3% 기준 주 11번·82%)
+const RANGE_MARGIN_1H = 0.003; // 알림 뒤 몇 분 뒤에 결과를 이어서 보낼지
 
 const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
 const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
@@ -56,15 +58,17 @@ async function candles(bar, limit, now, fails = []) {
 }
 
 // 창(start ~ 지금) 안에서 범위를 처음 벗어난 게 "가장 최근 1분봉"인지 (그 전 캔들은 한 번도 안 닿았는지)
-function firstBreak(start, lo, hi, m1, m15) {
+// margin: 선을 그만큼 넘게 뚫어야 이탈로 본다 (0.003 = 0.3%). 1시간 범위는 잠깐 닿는 일이 잦아 걸러 낸다
+function firstBreak(start, lo, hi, m1, m15, margin = 0) {
+  hi = hi * (1 + margin); lo = lo * (1 - margin);
   const last = m1[m1.length - 1];
   if (!last || last.t < start) return null;
   const before = [
     ...m1.filter((k) => k.t >= start && k.t < last.t),
     ...(m15 || []).filter((k) => k.t + 15 * M > start && k.t < m1[0].t), // 1분봉이 없는 더 오래된 구간
   ];
-  if (last.h >= hi && !before.some((k) => k.h >= hi)) return { dir: "up", px: last.h, level: hi };
-  if (last.l <= lo && !before.some((k) => k.l <= lo)) return { dir: "down", px: last.l, level: lo };
+  if (last.h >= hi && !before.some((k) => k.h >= hi)) return { dir: "up", px: last.h };
+  if (last.l <= lo && !before.some((k) => k.l <= lo)) return { dir: "down", px: last.l };
   return null;
 }
 
@@ -80,8 +84,9 @@ function alertsAt(m1, f1h, f1d, m15, movePct, moveMin) {
   // 🚨 예측 범위 이탈 (그 예측이 덮는 시간 안에서만)
   for (const [f, label, odds] of [[f1h, "이번 1시간", "이번 시간"], [f1d, "오늘(1일)", "오늘"]]) {
     if (!f || t > Date.parse(f.next.t) || Date.parse(f.as_of) > last.t) continue;
-    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, odds === "오늘" ? m15 : null);
-    if (b) out.push({ kind: "range", up: b.dir === "up", px: b.px, level: b.level, label, odds, t });
+    const margin = odds === "오늘" ? 0 : RANGE_MARGIN_1H;
+    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, odds === "오늘" ? m15 : null, margin);
+    if (b) out.push({ kind: "range", up: b.dir === "up", px: b.px, level: b.dir === "up" ? f.next.hi95 : f.next.lo95, margin, label, odds, t });
   }
   return { list: out, mv };
 }
@@ -116,9 +121,9 @@ async function check(env, now = Date.now()) {
     } else {
       msgs.push(`🚨 <b>${a.label} 예측 범위 ${a.up ? "위로" : "아래로"} 벗어남</b> (${kst(a.t)} KST)
 ` +
-        `BTC ${usd(a.px)} — 95% 범위 ${a.up ? "상단" : "하단"} ${usd(a.level)}을 ${a.up ? "넘었어요" : "깼어요"}
+        `BTC ${usd(a.px)} — 95% 범위 ${a.up ? "상단" : "하단"} ${usd(a.level)}을 ${a.margin ? `${(a.margin * 100).toFixed(1)}% 넘게 ` : ""}${a.up ? "뚫었어요" : "깼어요"}
 ` +
-        `이 범위는 ${a.odds} <b>마감 가격</b>이 밖일 확률을 5%로 본 선이에요. 잠깐 닿는 일은 더 흔하니, 마감까지 밖에 머무는지 보세요. ${a.up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.
+        `이 범위는 ${a.odds} <b>마감 가격</b>이 밖일 확률을 5%로 본 선이에요. ${a.margin ? "지난 2주엔 이만큼 뚫으면 10번 중 8번은 마감 때도 밖이었어요." : "잠깐 닿는 일은 더 흔하니, 마감까지 밖에 머무는지 보세요."} ${a.up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.
 🔗 ${SITE}`);
     }
   }
