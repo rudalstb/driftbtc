@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>강제 청산 데이터 보는 법: 롱 청산·숏 청산과 연쇄 청산 · BTC Agent</title>
+  <meta name="description" content="선물 강제 청산이 무엇인지, 롱 청산과 숏 청산이 가격에 주는 압력, 연쇄 청산이 생기는 원리, BTC Agent 청산 카드와 급증 알림을 읽는 법을 설명합니다.">
+  <link rel="canonical" href="https://btc.rudals.app/guide/liquidations.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="BTC Agent">
+  <meta property="og:title" content="강제 청산 데이터 보는 법: 롱 청산·숏 청산과 연쇄 청산">
+  <meta property="og:description" content="선물 강제 청산이 무엇인지, 롱 청산과 숏 청산이 가격에 주는 압력, 연쇄 청산이 생기는 원리, BTC Agent 청산 카드와 급증 알림을 읽는 법을 설명합니다.">
+  <meta property="og:url" content="https://btc.rudals.app/guide/liquidations.html">
+  <meta property="og:image" content="https://btc.rudals.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../page.css">
+  <script src="../ads.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="../index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>강제 청산 데이터 보는 법: 롱 청산·숏 청산과 연쇄 청산</h1><div class="updated">마지막 수정 2026년 11월 17일</div></header>
+
+<p>비트코인이 몇 분 만에 1~2%씩 튀는 날에는 거의 언제나 <b>강제 청산</b>이 함께 쏟아집니다. 이 글은 청산이 무엇인지, 그리고 BTC Agent 의 "💥 강제 청산" 카드를 어떻게 읽는지 설명합니다.</p>
+<h2>강제 청산이란</h2>
+<p>선물은 증거금보다 큰 포지션을 잡는 거래입니다. 가격이 반대로 움직여 손실이 증거금을 거의 다 먹으면, 거래소가 남은 증거금을 지키려고 포지션을 <b>시장가로 강제로 정리</b>합니다. 이것이 강제 청산입니다. 청산가가 어떻게 정해지는지는 <a href="liquidation-price.html">청산가 계산법</a>에서 자세히 다룹니다.</p>
+<table><tr><th>종류</th><th>무슨 일이 일어나나</th><th>가격에 주는 압력</th></tr>
+<tr><td>롱 청산</td><td>오를 거라 산 사람의 포지션이 강제로 <b>팔림</b></td><td>하락 쪽 (매도 물량이 더해짐)</td></tr>
+<tr><td>숏 청산</td><td>내릴 거라 판 사람의 포지션이 강제로 <b>사들여짐</b></td><td>상승 쪽 (매수 물량이 더해짐)</td></tr></table>
+<h2>연쇄 청산: 왜 한쪽으로 쏠려 튀나</h2>
+<p>롱 청산이 시장가로 팔리면 가격이 더 내려가고, 그 아래 청산가를 둔 다른 롱이 또 청산됩니다. 이렇게 <b>청산이 청산을 부르는</b> 흐름이 연쇄 청산(캐스케이드)입니다. 숏 쪽에서 같은 일이 일어나 급등하는 것을 <b>숏 스퀴즈</b>라고 부릅니다. 레버리지가 높은 포지션이 한쪽에 몰려 있을수록 연쇄 청산이 커집니다.</p>
+<h2>BTC Agent 청산 카드 읽는 법</h2>
+<ul>
+  <li><b>5분·15분·1시간 줄</b> — 바이낸스 비트코인 선물의 실시간 청산 흐름을 이 브라우저가 직접 받아 더한 값입니다. 바이낸스는 실시간 청산을 1초에 최대 1건만 보내므로 <b>전체가 아닌 표본</b>입니다. 방향과 분위기를 보는 용도예요.</li>
+  <li><b>24시간 막대</b> — OKX 비트코인 무기한 선물의 공개 청산 기록을 서버가 매시간 빠짐없이 모아 시간별로 쌓은 것입니다. 빨강은 롱 청산, 초록은 숏 청산입니다.</li>
+  <li><b>평소 대비 배수</b> — 지난 1시간 청산 합계를 그동안 쌓인 시간별 기록의 <b>중간값</b>과 비교합니다. 평균이 아니라 중간값을 쓰는 이유는 몇 번의 대형 청산이 "평소"를 부풀리지 않게 하려는 것입니다.</li>
+  <li><b>급증</b> — 1시간 합계가 평소의 4배 이상이면서 300만 달러 이상일 때 급증으로 봅니다. 기록이 7일치 쌓이기 전에는 "평소"를 아직 모르므로 판정하지 않습니다.</li>
+</ul>
+<h2>매매에 쓰는 법과 함정</h2>
+<ol>
+  <li><b>추격하지 않기</b> — 대량 청산은 이미 가격이 크게 움직인 <b>결과</b>입니다. 청산 급증을 보고 같은 방향으로 따라 들어가면 꼭지나 바닥을 잡기 쉽습니다.</li>
+  <li><b>쏠림이 풀린 신호로 보기</b> — 한쪽 청산이 크게 쏟아진 뒤에는 과도한 레버리지가 정리돼 움직임이 잦아들거나 되돌리기도 합니다. 다만 늘 그런 것은 아니어서, 되돌림을 노린다면 손절을 반드시 함께 정해야 합니다.</li>
+  <li><b>내 청산가 다시 보기</b> — 청산이 몰리는 시기에는 변동성이 커집니다. 내 청산가가 <a href="forecast-range.html">95% 예측 범위</a> 안쪽에 있다면 레버리지를 낮출 때입니다.</li>
+</ol>
+<p class="muted">청산 금액은 거래소가 공개한 체결 수량 × 파산 가격으로 계산한 추정치이며, 거래소마다 공개 범위가 달라 시장 전체 청산과는 차이가 있습니다.</p>
+<a class="cta" href="../index.html#market">지금 강제 청산 보기 →</a>
+
+<div class="ad-slot" data-ad-slot="article-end" aria-label="광고"></div>
+<footer>
+  <a href="../index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="../about.html">소개</a><a href="../disclaimer.html">면책 조항</a><a href="../privacy.html">개인정보처리방침</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="../faq.html">❓ 자주 묻는 질문</a><a href="../guide/">📚 매매 가이드</a><a href="../guide/glossary.html">📖 용어 사전</a><a href="../daily/">📅 시장 일지</a><a href="../monthly/">📊 월간 성적표</a>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</footer>
+</main>
+<script>document.querySelectorAll("a.mail").forEach((a) => { const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; });</script>
+</body>
+</html>

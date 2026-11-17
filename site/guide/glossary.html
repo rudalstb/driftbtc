@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>코인 선물·예측 용어 사전 · BTC Agent</title>
+  <meta name="description" content="변동성, GARCH, 예측 범위, 펀딩비, 미결제약정, 청산가, 강제 청산, 손익비, 김치 프리미엄 등 비트코인 매매와 BTC Agent 에서 쓰는 용어를 쉽게 풀어 쓴 사전입니다.">
+  <link rel="canonical" href="https://btc.rudals.app/guide/glossary.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="BTC Agent">
+  <meta property="og:title" content="코인 선물·예측 용어 사전">
+  <meta property="og:description" content="변동성, GARCH, 예측 범위, 펀딩비, 미결제약정, 청산가, 강제 청산, 손익비, 김치 프리미엄 등 비트코인 매매와 BTC Agent 에서 쓰는 용어를 쉽게 풀어 쓴 사전입니다.">
+  <meta property="og:url" content="https://btc.rudals.app/guide/glossary.html">
+  <meta property="og:image" content="https://btc.rudals.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../page.css">
+  <script src="../ads.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="../index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>코인 선물·예측 용어 사전</h1><div class="updated">마지막 수정 2026년 11월 17일</div></header>
+
+<p>BTC Agent 와 코인 선물 매매에서 자주 나오는 용어 28개를 한 줄씩 풀었습니다. 더 긴 설명이 있는 용어는 "자세히"로 이어집니다.</p>
+<h3 id="t0">변동성 (σ, 시그마)</h3><p>가격이 평소 얼마나 크게 출렁이는지를 나타내는 숫자. 수익률의 표준편차로 잽니다. BTC Agent 의 예측 범위 폭은 이 값으로 정해집니다. <a href="forecast-range.html">자세히 →</a></p>
+<h3 id="t1">GARCH 모델</h3><p>최근에 크게 움직였으면 당분간 크게 움직이고, 조용했으면 조용한 경향(변동성 군집)을 이용해 다음 변동성을 추정하는 통계 모델. BTC Agent 는 꼬리가 두꺼운 t 분포를 쓰는 GARCH(1,1)-t 를 씁니다.</p>
+<h3 id="t2">예측 범위 (68%·95%)</h3><p>다음 캔들의 종가가 그 확률로 들어올 것으로 보는 가격 구간. 68%는 3번 중 2번, 95%는 20번 중 19번 들어와야 정상입니다. <a href="forecast-range.html">자세히 →</a></p>
+<h3 id="t3">적중률 (커버리지)</h3><p>실제 가격이 예측 범위 안에 들어온 비율. 95% 범위의 적중률이 95% 근처면 범위가 정직하게 만들어진 것입니다. <a href="forecast-range.html">자세히 →</a></p>
+<h3 id="t4">보정 (캘리브레이션)</h3><p>이름은 68%인데 실제로는 80%가 들어오는 식으로 어긋난 범위를, 과거 실제 움직임에 맞게 넓히거나 좁히는 것. <a href="forecast-range.html">자세히 →</a></p>
+<h3 id="t5">캔들 (봉)</h3><p>정해진 시간(1시간·1일·1주) 동안의 시가·고가·저가·종가를 묶은 단위. BTC Agent 는 마감된 캔들만 씁니다.</p>
+<h3 id="t6">롱 / 숏</h3><p>롱은 오르면 버는 포지션(매수), 숏은 내리면 버는 포지션(매도). 선물에서는 둘 다 자유롭게 잡을 수 있습니다.</p>
+<h3 id="t7">무기한 선물</h3><p>만기가 없는 선물. 현물 가격과 벌어지지 않도록 펀딩비를 주고받습니다. <a href="funding-rate.html">자세히 →</a></p>
+<h3 id="t8">펀딩비 (펀딩 레이트)</h3><p>무기한 선물에서 롱과 숏이 8시간마다 서로 주고받는 비용. 양수면 롱이 숏에게 내고, 롱이 과열됐다는 뜻으로 읽힙니다. <a href="funding-rate.html">자세히 →</a></p>
+<h3 id="t9">미결제약정 (OI)</h3><p>아직 정리되지 않고 열려 있는 선물 계약의 총량. 가격과 함께 늘면 새 돈이 들어오는 것, 급감하면 청산·정리가 일어난 것입니다.</p>
+<h3 id="t10">롱숏 비율</h3><p>롱 포지션을 가진 계정 수와 숏 계정 수의 비율. 한쪽이 지나치게 많으면 반대 방향으로 털리는 일이 잦습니다.</p>
+<h3 id="t11">레버리지</h3><p>증거금의 몇 배 크기로 포지션을 잡는지. 10배면 가격이 10% 반대로 가면 증거금이 거의 사라집니다. <a href="leverage.html">자세히 →</a></p>
+<h3 id="t12">증거금 (격리·교차)</h3><p>포지션을 유지하려고 맡겨 둔 돈. 격리는 그 포지션에 넣은 돈만, 교차는 계좌 전체를 담보로 씁니다. <a href="liquidation-price.html">자세히 →</a></p>
+<h3 id="t13">청산가</h3><p>손실이 커져 거래소가 포지션을 강제로 정리하는 가격. <a href="liquidation-price.html">자세히 →</a></p>
+<h3 id="t14">강제 청산</h3><p>청산가에 닿아 포지션이 시장가로 강제 정리되는 것. 롱 청산은 매도, 숏 청산은 매수 물량이 됩니다. <a href="liquidations.html">자세히 →</a></p>
+<h3 id="t15">연쇄 청산 / 숏 스퀴즈</h3><p>청산 물량이 가격을 더 밀어 다른 청산을 부르는 연쇄 반응. 숏 쪽에서 일어나 급등하면 숏 스퀴즈라고 합니다. <a href="liquidations.html">자세히 →</a></p>
+<h3 id="t16">손절 (스톱로스)</h3><p>손실이 정해 둔 크기를 넘기 전에 포지션을 닫는 가격. 변동성보다 너무 가까우면 평소 출렁임에 털립니다. <a href="stop-loss.html">자세히 →</a></p>
+<h3 id="t17">손익비 (R)</h3><p>한 번 이길 때 버는 크기 ÷ 한 번 질 때 잃는 크기. 손익비가 2면 승률 34%만 넘어도 기대값이 플러스입니다(수수료 제외). <a href="win-rate-reward.html">자세히 →</a></p>
+<h3 id="t18">기대값</h3><p>같은 매매를 아주 많이 반복했을 때 1번당 평균으로 남는 손익. 승률 × 평균 이익 − 패율 × 평균 손실. <a href="win-rate-reward.html">자세히 →</a></p>
+<h3 id="t19">물타기 (평단 낮추기)</h3><p>가격이 내려갈 때 더 사서 평균 매수가를 낮추는 것. 선물에서는 청산가도 함께 움직여 위험이 커집니다. <a href="averaging-down.html">자세히 →</a></p>
+<h3 id="t20">메이커 / 테이커</h3><p>호가창에 주문을 걸어 두면 메이커(수수료 낮음), 이미 걸린 주문을 바로 체결시키면 테이커(수수료 높음). <a href="trading-fees.html">자세히 →</a></p>
+<h3 id="t21">슬리피지</h3><p>시장가 주문이 생각한 가격보다 불리하게 체결되는 차이. 급변 구간과 강제 청산 때 커집니다. <a href="trading-fees.html">자세히 →</a></p>
+<h3 id="t22">김치 프리미엄</h3><p>국내 원화 거래소 비트코인 가격이 해외 가격(환율 적용)보다 비싼 정도. 마이너스면 역프리미엄이라고 합니다. <a href="kimchi-premium.html">자세히 →</a></p>
+<h3 id="t23">USDT (테더)</h3><p>1달러에 맞춰 발행되는 스테이블코인. BTC Agent 의 가격과 예측 범위는 바이낸스 BTC/USDT 기준입니다.</p>
+<h3 id="t24">백테스트</h3><p>과거 데이터로 전략이나 모델을 돌려 성적을 재는 것. 미래 정보를 실수로 쓰면 성적이 부풀려집니다.</p>
+<h3 id="t25">걷기식 검증 (워크포워드)</h3><p>과거의 한 시점까지만 보고 예측한 뒤 한 칸씩 앞으로 나가며 채점하는 방식. 미래를 보지 않으므로 실제 운영과 가장 비슷합니다.</p>
+<h3 id="t26">과적합</h3><p>과거 데이터의 우연한 패턴까지 외워서 과거 성적만 좋고 앞으로는 통하지 않는 상태.</p>
+<h3 id="t27">FOMC · CPI</h3><p>FOMC 는 미국 기준금리를 정하는 회의, CPI 는 미국 소비자물가지수 발표. 발표 직후 비트코인이 크게 출렁여 BTC Agent 는 앞뒤를 '쉬는 구간'으로 표시합니다.</p>
+<a class="cta" href="index.html">매매 가이드 모음 →</a>
+
+<div class="ad-slot" data-ad-slot="article-end" aria-label="광고"></div>
+<footer>
+  <a href="../index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="../about.html">소개</a><a href="../disclaimer.html">면책 조항</a><a href="../privacy.html">개인정보처리방침</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="../faq.html">❓ 자주 묻는 질문</a><a href="../guide/">📚 매매 가이드</a><a href="../guide/glossary.html">📖 용어 사전</a><a href="../daily/">📅 시장 일지</a><a href="../monthly/">📊 월간 성적표</a>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</footer>
+</main>
+<script>document.querySelectorAll("a.mail").forEach((a) => { const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; });</script>
+</body>
+</html>
