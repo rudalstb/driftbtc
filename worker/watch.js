@@ -21,23 +21,34 @@ const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
 const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
 const kst = (ms) => { const d = new Date(ms + 9 * 3600 * 1000); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
 
-// 캔들 [{t, h, l, c}] 오래된 순, 마감된 것만. 바이낸스가 막히면 OKX 로 받는다.
-async function candles(bar, limit, now) {
-  const done = (a, ms) => a.filter((k) => k.t + ms <= now).sort((x, y) => x.t - y.t);
+// 캔들 [{t, h, l, c}] 오래된 순, 마감된 것만. Cloudflare 서버 위치에 따라 막히는 거래소가 달라서 여러 곳을 차례로 시도한다
+// (USDT 가격인 곳을 먼저, 달러 가격인 크라켄·코인베이스는 마지막에: 예측 범위가 USDT 기준이라).
+const UA = { "User-Agent": "btc-agent-watch/1.0", Accept: "application/json" };
+function sources(bar, limit) {
+  const min = bar === "1m" ? 1 : 15;
+  const binance = (host) => [`${host}/api/v3/klines?symbol=BTCUSDT&interval=${bar}&limit=${limit}`, (a) => a.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }))];
+  return [
+    ["바이낸스", ...binance("https://data-api.binance.vision")],
+    ["OKX", `https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=${bar}&limit=${Math.min(limit, 300)}`, (j) => j.data.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }))],
+    ["바이비트", `https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=${min}&limit=${limit}`, (j) => j.result.list.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }))],
+    ["크라켄", `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=${min}`, (j) => Object.values(j.result).find(Array.isArray).slice(-limit).map((x) => ({ t: x[0] * 1000, h: +x[2], l: +x[3], c: +x[4] }))],
+    ["코인베이스", `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${min * 60}`, (a) => a.slice(0, limit).map((x) => ({ t: x[0] * 1000, h: +x[2], l: +x[1], c: +x[4] }))],
+  ];
+}
+async function candles(bar, limit, now, fails = []) {
   const ms = bar === "1m" ? M : 15 * M;
-  for (const host of ["https://data-api.binance.vision", "https://api.binance.com"]) {
+  for (const [name, url, parse] of sources(bar, limit)) {
     try {
-      const r = await fetch(`${host}/api/v3/klines?symbol=BTCUSDT&interval=${bar}&limit=${limit}`, { cf: { cacheTtl: 0 } });
-      if (!r.ok) continue;
-      const a = await r.json();
-      if (Array.isArray(a) && a.length) return { src: "바이낸스", k: done(a.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), ms) };
-    } catch {}
+      const r = await fetch(url, { headers: UA, cf: { cacheTtl: 0 } });
+      if (!r.ok) { fails.push(`${name} ${r.status}`); continue; }
+      const k = parse(await r.json()).filter((x) => x.t + ms <= now).sort((x, y) => x.t - y.t);
+      // 최근 캔들이 빠져 있으면(지연된 응답) 다음 곳으로
+      if (k.length && now - k[k.length - 1].t <= ms * 2 + M) return { src: name, k };
+      fails.push(`${name} 비어 있음`);
+    } catch (e) {
+      fails.push(`${name} 오류`);
+    }
   }
-  try {
-    const r = await fetch(`https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=${bar}&limit=${Math.min(limit, 300)}`);
-    const a = (await r.json())?.data;
-    if (Array.isArray(a) && a.length) return { src: "OKX", k: done(a.map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), ms) };
-  } catch {}
   return null;
 }
 
@@ -56,12 +67,13 @@ function firstBreak(start, lo, hi, m1, m15) {
 
 async function check(env, now = Date.now()) {
   const movePct = Number(env.MOVE_PCT || 1) / 100, moveMin = Number(env.MOVE_MIN || 5);
+  const fails = [];
   const [one, quarter, fc] = await Promise.all([
-    candles("1m", 61, now),
+    candles("1m", 61, now, fails),
     candles("15m", 100, now),
     fetch(FORECAST + "?t=" + Math.floor(now / M), { cf: { cacheTtl: 0 } }).then((r) => r.json()).catch(() => null),
   ]);
-  if (!one || one.k.length < moveMin + COOLDOWN_MIN + 1) return { ok: false, error: "가격을 받지 못함", msgs: [] };
+  if (!one || one.k.length < moveMin + COOLDOWN_MIN + 1) return { ok: false, error: "가격을 받지 못함", tried: fails, msgs: [] };
   const m1 = one.k, last = m1[m1.length - 1], price = last.c;
   const msgs = [];
   const f1h = fc?.forecasts?.["1h"], f1d = fc?.forecasts?.["1d"];
@@ -87,7 +99,7 @@ async function check(env, now = Date.now()) {
       `BTC ${usd(b.px)} — 95% 범위 ${up ? "상단" : "하단"} ${usd(b.level)}을 ${up ? "넘었어요" : "깼어요"}\n` +
       `모델이 ${odds} 안에 이럴 확률을 5% 이하로 봤던 움직임이에요. ${up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.\n🔗 ${SITE}`);
   }
-  return { ok: true, src: one.src, at: new Date(last.t + M).toISOString(), price, move_5m: +(mv * 100).toFixed(3),
+  return { ok: true, src: one.src, skipped: fails.length ? fails : undefined, at: new Date(last.t + M).toISOString(), price, move_5m: +(mv * 100).toFixed(3),
     range_1h: f1h ? [f1h.next.lo95, f1h.next.hi95] : null, range_1d: f1d ? [f1d.next.lo95, f1d.next.hi95] : null, msgs };
 }
 
