@@ -41,6 +41,8 @@ Z68, Z95 = 0.9945, 1.96
 # lab/calibrate.py 로 처음 보는 기간 두 번씩 검증: 1h·1d·1w 모두 68% 포함률이 목표에 가까워지고 구간 점수도 좋아짐.
 # 95% 는 기간마다 결과가 엇갈려 1.96 그대로 둔다.
 CALIB_N = {"1h": 8760, "1d": 730, "1w": 156}   # 보정에 쓰는 최근 캔들 수 (약 1년·2년·3년)
+# 68% 범위 보정을 켠 시각: 이 뒤에 낸 예측과 그 전 예측을 따로 채점해 보정 효과를 공개한다
+CALIB_SINCE = "2026-11-16T10:30:00+00:00"
 
 
 def garch_path(ret: pd.Series, horizon: int, max_obs: int = 10000) -> np.ndarray:
@@ -173,7 +175,7 @@ def live_record() -> dict:
             if t not in close_at.index:
                 continue
             a = float(close_at[t])
-            scored.append({"t": e["t"], "actual": a,
+            scored.append({"t": e["t"], "actual": a, "after": e.get("made_at", "") >= CALIB_SINCE,
                            "in95": e["lo95"] <= a <= e["hi95"], "in68": e["lo68"] <= a <= e["hi68"]})
             if e.get("point") and e.get("price"):
                 up = e["point"] >= e["price"]
@@ -198,6 +200,10 @@ def live_record() -> dict:
             "hit68": sum(x["in68"] for x in scored),
             # 최근 30개: 2 = 68% 안, 1 = 95% 안, 0 = 범위 밖
             "recent": [{"t": x["t"], "r": 2 if x["in68"] else 1 if x["in95"] else 0} for x in scored[-30:]],
+            # 🎯 68% 범위 보정 전/후 따로 채점
+            "calib": {k: {"n": len(g), "hit68": sum(x["in68"] for x in g), "hit95": sum(x["in95"] for x in g)}
+                      for k, g in (("before", [x for x in scored if not x["after"]]), ("after", [x for x in scored if x["after"]]))}
+                     | {"since": CALIB_SINCE},
             # 🎯 한 점 예측 채점
             "point": {
                 "n": len(points),

@@ -20,6 +20,7 @@ import pandas as pd
 
 import data
 import pages
+from forecast import CALIB_SINCE
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -65,6 +66,10 @@ def score_ranges(ym: str) -> tuple[dict, dict | None]:
         in95 = (f.actual >= f.lo95) & (f.actual <= f.hi95)
         res[freq] = {"n": int(len(f)), "in68": round(float(in68.mean()) * 100, 1), "in95": round(float(in95.mean()) * 100, 1),
                      "first": f.t.min(), "last": f.t.max()}
+        # 🎯 68% 범위 보정 전/후 (그달에 보정 시각이 끼어 있으면 둘로 나눠 보여 준다)
+        after = f.made_at >= CALIB_SINCE
+        res[freq]["split"] = {k: {"n": int(m.sum()), "in68": round(float(in68[m].mean()) * 100, 1) if m.any() else None}
+                              for k, m in (("before", ~after), ("after", after))}
         if freq == "1d":
             sd = (f.hi95 - f.lo95) / 3.92
             z = ((f.actual - f.mid) / sd)
@@ -160,6 +165,13 @@ def build(ym: str) -> tuple[str, str, str]:
                    f"(낸 수수료·펀딩 ${tr['fees']:,.2f}). 가장 좋은 거래 {'+' if tr['best'] >= 0 else '−'}${abs(tr['best']):,.2f}, 가장 나쁜 거래 {'+' if tr['worst'] >= 0 else '−'}${abs(tr['worst']):,.2f}.</p>"
                    if tr["n"] else "<p>그달에 청산한 거래가 없어요.</p>") +
                   "<p class='muted'>사이트 예측과 별개로 운영자가 직접 한 매매예요. 조회 전용 키로 그대로 가져와요.</p>")
+    calib_txt = ""
+    split = [(name, rng[k]["split"]) for k, name in (("1h", "1시간"), ("1d", "하루")) if k in rng and rng[k]["split"]["before"]["n"] and rng[k]["split"]["after"]["n"]]
+    if split:
+        cs = pd.Timestamp(CALIB_SINCE) + pd.Timedelta(hours=9)
+        cells = ", ".join(f"{n} 예측 <b>{sp_['before']['in68']}% → {sp_['after']['in68']}%</b> ({sp_['before']['n']:,}번 → {sp_['after']['n']:,}번)" for n, sp_ in split)
+        calib_txt = (f"<p>🎯 <b>{cs.month}월 {cs.day}일 68% 범위 보정 전/후</b>: 68% 범위 안에 든 비율이 {cells}. "
+                     f"범위가 필요 이상으로 넓어 실제 움직임에 맞게 좁혔는데, 목표 68%에 가까워졌는지 여기서 확인해요.</p>")
     jl = "".join(f'<li><a href="../daily/{f.name}">{int(f.stem[5:7])}월 {int(f.stem[8:10])}일 시장 일지</a></li>' for f in journals)
 
     body = f"""
@@ -169,6 +181,7 @@ BTC Agent 가 이 달에 낸 예측을 실제 가격과 하나하나 맞춰 본 
 <h2>예측 범위는 잘 맞았나</h2>
 <table><tr><th>예측</th><th>채점 수</th><th>68% 범위 안</th><th>95% 범위 안</th><th>판정</th></tr>
 {rng_row('1h', '1시간 뒤')}{rng_row('1d', '하루 뒤')}</table>
+{calib_txt}
 <p>잘 맞춰진 범위라면 오래 보면 68% 범위에는 약 68%, 95% 범위에는 약 95%가 들어와야 해요. 이보다 훨씬 높으면 범위가 쓸데없이 넓은 것이고, 낮으면 급변동을 놓친 거예요. 한 달은 짧아서 몇 %p 정도 오르내리는 건 자연스러워요.</p>
 
 <h2>방향 관점(롱·숏)은 맞았나</h2>

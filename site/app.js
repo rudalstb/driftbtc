@@ -1007,9 +1007,24 @@ function renderAccuracySummary() {
     const since = h?.since ? new Date(h.since).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" }) : "";
     cards.push(`<div class="acc-card"><div class="acc-title">📈 실제 운영 기록</div>
       <div class="muted small">사이트를 연 뒤(${since}부터) 실제로 낸 예측이 범위 안에 들어온 비율 · 매시간 채점</div>
-      ${rows}${dots}<div class="muted small">점: 최근 1시간 예측 (초록 68% 안 · 노랑 95% 안 · 빨강 밖)</div></div>`);
+      ${rows}${calibLine(lr)}${dots}<div class="muted small">점: 최근 1시간 예측 (초록 68% 안 · 노랑 95% 안 · 빨강 밖)</div></div>`);
   }
   $("acc-summary").innerHTML = cards.join("");
+}
+
+// 🎯 68% 범위 보정(11/16) 전/후 적중률: 바꾼 게 실제로도 맞았는지 공개 검증
+function calibLine(lr) {
+  const F = ["1h", "1d", "1w"].filter((k) => lr[k]?.calib);
+  if (!F.length) return "";
+  const pct = (g) => Math.round((g.hit68 / g.n) * 100);
+  const since = new Date(lr[F[0]].calib.since).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
+  const cells = F.filter((k) => lr[k].calib.after.n).map((k) => {
+    const { before: b, after: a } = lr[k].calib;
+    const ok = Math.abs(pct(a) - 68) <= Math.abs((b.n ? pct(b) : 100) - 68);
+    return `${UNIT[k]} <b class="${ok ? "pos" : ""}">${pct(a)}%</b><span class="muted">(${a.n}번${b.n ? `, 전 ${pct(b)}%` : ""})</span>`;
+  });
+  const body = cells.length ? cells.join(" · ") : `<span class="muted">보정 뒤 첫 채점을 기다리는 중</span>`;
+  return `<div class="calib-line small">🎯 68% 범위 보정(${since}) 뒤 68% 적중: ${body} <span class="muted">· 목표 68%</span></div>`;
 }
 
 function renderTables() {
