@@ -78,9 +78,9 @@ function alertsAt(m1, f1h, f1d, m15, movePct, moveMin) {
   for (let i = n - COOLDOWN_MIN; i < n; i++) if (Math.abs(move(i)) >= movePct) recent = true;
   if (Math.abs(mv) >= movePct && !recent) out.push({ kind: "move", up: mv > 0, px: last.c, mv, from: m1[n - moveMin].c, t });
   // 🚨 예측 범위 이탈 (그 예측이 덮는 시간 안에서만)
-  for (const [f, label, odds] of [[f1h, "이번 1시간", "1시간"], [f1d, "오늘(1일)", "하루"]]) {
+  for (const [f, label, odds] of [[f1h, "이번 1시간", "이번 시간"], [f1d, "오늘(1일)", "오늘"]]) {
     if (!f || t > Date.parse(f.next.t) || Date.parse(f.as_of) > last.t) continue;
-    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, odds === "하루" ? m15 : null);
+    const b = firstBreak(Date.parse(f.as_of), f.next.lo95, f.next.hi95, m1, odds === "오늘" ? m15 : null);
     if (b) out.push({ kind: "range", up: b.dir === "up", px: b.px, level: b.level, label, odds, t });
   }
   return { list: out, mv };
@@ -118,7 +118,7 @@ async function check(env, now = Date.now()) {
 ` +
         `BTC ${usd(a.px)} — 95% 범위 ${a.up ? "상단" : "하단"} ${usd(a.level)}을 ${a.up ? "넘었어요" : "깼어요"}
 ` +
-        `모델이 ${a.odds} 안에 이럴 확률을 5% 이하로 봤던 움직임이에요. ${a.up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.
+        `이 범위는 ${a.odds} <b>마감 가격</b>이 밖일 확률을 5%로 본 선이에요. 잠깐 닿는 일은 더 흔하니, 마감까지 밖에 머무는지 보세요. ${a.up ? "숏 포지션 손절가를" : "롱 포지션 손절가를"} 확인하세요.
 🔗 ${SITE}`);
     }
   }

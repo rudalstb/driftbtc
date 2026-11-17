@@ -5,7 +5,7 @@
 - 1일 관점이 롱↔숏으로 바뀔 때
 - 쉬는 구간(변동성 극단·발표 창) 시작/끝
 - 발표 약 1시간 전 (20~90분 전 창, 1번)
-- 가상 계좌 주간 성적 (월요일 아침 브리핑에 덧붙임)
+- 가상 계좌 주간 성적 · 실시간 알림 주간 성적(alert_week.py) (월요일 아침 브리핑에 덧붙임)
 - 💥 강제 청산 급증 (liq.py 가 판정, 같은 시간은 1번만)
 
 환경 변수 TELEGRAM_BOT_TOKEN · TELEGRAM_CHAT_ID 가 없으면 아무것도 보내지 않고 조용히 끝난다.
@@ -93,6 +93,12 @@ def build(report: dict, state: dict, now: datetime) -> tuple[list[str], dict]:
         paper = (report.get("paper") or {}).get("1d")
         if now.weekday() == 0 and paper:
             lines.append(f"💵 가상 계좌(1일 관점) {fmt_usd(paper['equity'])} ({pct(paper['return_pct'], 2)}) · 들고만 있기 {pct(paper['hold_return_pct'], 2)}")
+        if now.weekday() == 0:
+            try:  # 실시간 감시기 알림을 같은 규칙으로 다시 돌린 지난주 성적 (실패해도 브리핑은 나간다)
+                import alert_week
+                lines.append(alert_week.line(alert_week.summary(now)))
+            except Exception as e:
+                print(f"실시간 알림 주간 성적 실패: {e}")
         lines.append(f"📅 오늘 시장 일지: {SITE}{daily['file']}" if has_daily else f"🔗 {SITE}")
         lines.append("재미로 보는 실험 · 투자 권유 아님")
         msgs.append("\n".join(x for x in lines if x))
