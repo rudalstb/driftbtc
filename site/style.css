@@ -533,6 +533,6 @@ td.best { color: var(--accent); font-weight: 700; }
 .jumps-base { color: var(--accent); text-decoration: none; white-space: nowrap; }
 .push-btn { display: block; margin-top: 10px; padding: 9px 12px; border: 1px solid var(--accent); border-radius: 10px; text-align: center; font-weight: 600; line-height: 1.4; }
 .push-nudge { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); line-height: 1.5; }
-.push-nudge button { margin: 8px 6px 0 0; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.push-nudge button { margin: 8px 6px 0 0; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #111; font: inherit; font-weight: 600; cursor: pointer; }
 .push-nudge button.ghost { background: transparent; color: var(--muted); border-color: var(--border); font-weight: 400; }
 .push-btn[data-on="1"] { border-color: var(--border, #444); color: var(--muted, #999); font-weight: 400; }
