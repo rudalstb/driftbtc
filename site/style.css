@@ -530,3 +530,5 @@ td.best { color: var(--accent); font-weight: 700; }
 .pwa-install { margin-left: 0; }
 .pwa-tip { margin-top: 6px; }
 .jumps-line { margin-top: 4px; }
+.jumps-base { color: var(--accent); text-decoration: none; white-space: nowrap; }
+.push-btn { display: block; margin-top: 4px; }

@@ -51,13 +51,73 @@ async function renderJumps() {
   if (!k || k.length < 600) { el.hidden = true; return; }
   const ev = jumpEvents(k);
   el.hidden = false;
-  if (!ev.length) { el.textContent = "⚡ 최근 24시간 급변 없음 — 5분 만에 ±1% 넘게 움직인 적이 없는 조용한 하루"; return; }
+  if (!ev.length) { el.textContent = "⚡ 최근 24시간 급변 없음 — 5분 만에 ±1% 넘게 움직인 적이 없는 조용한 하루"; jumpBase(el); return; }
   const hm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
   const items = ev.slice(-3).reverse().map((e) =>
     `${hm(e.t)} ${e.m > 0 ? "▲" : "▼"}${(Math.abs(e.m) * 100).toFixed(1)}% → ${e.after ? "30분 뒤 " + e.after : "지켜보는 중"}`);
   el.textContent = `⚡ 최근 24시간 급변 ${ev.length}번 (5분 ±1%) · ` + items.join(" · ");
+  jumpBase(el);
   el.title = "5분 만에 1% 넘게 움직인 순간과, 30분 뒤 그 방향으로 이어졌는지(0.2% 이상) 되돌렸는지";
+}
+
+// 지난 1년 기준치 (jumps_stats.py 가 매주 계산) — 줄 끝에 작은 링크로
+async function jumpBase(el) {
+  try {
+    const d = await (await fetch("data/jumps_stats.json", { cache: "no-store" })).json();
+    const a = d.groups.all.h30;
+    const link = document.createElement("a");
+    link.href = "guide/sudden-moves.html";
+    link.className = "jumps-base";
+    link.textContent = ` · 1년 기준 30분 뒤 이어짐 ${Math.round(a.cont)}%·되돌림 ${Math.round(a.rev)}% →`;
+    link.title = `지난 1년(${d.from} ~ ${d.to}) 급변 ${a.n}번 통계`;
+    el.appendChild(link);
+  } catch (e) { /* 통계 없으면 줄만 */ }
 }
 
 renderJumps();
 setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
+
+// 🔔 급변 푸시 받기: 사이트를 닫아도 5분 ±1% 급변 때 알림 (api/push.js 가 보냄, 서비스 워커가 띄움)
+// - 아이폰은 '홈 화면에 추가'한 앱에서만 웹 푸시가 되므로, 사파리에서는 방법만 안내한다
+(function () {
+  const btn = document.getElementById("push-btn"), tip = document.getElementById("push-tip");
+  if (!btn || !window.PUSH_URL || location.protocol !== "https:") return;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const can = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if (!can && !(ios && !standalone)) return;
+  const say = (t) => { tip.textContent = t; tip.hidden = !t; };
+  const b64 = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4); const r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+  const reg = () => navigator.serviceWorker.ready;
+  const label = (on) => { btn.textContent = on ? "🔕 급변 푸시 끄기" : "🔔 급변 푸시 받기 — 사이트를 닫아도 5분 ±1% 급변 때 알림"; btn.dataset.on = on ? "1" : ""; };
+  const post = (body) => fetch(window.PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+  btn.hidden = false;
+  label(false);
+  if (can) reg().then((r) => r.pushManager.getSubscription()).then((s) => label(!!s)).catch(() => {});
+
+  btn.addEventListener("click", async (ev) => {
+    ev.preventDefault();
+    if (!can) { say("아이폰은 사파리 공유 버튼 → '홈 화면에 추가'로 설치한 뒤, 설치한 앱에서 이 버튼을 누르면 알림을 받을 수 있어요."); return; }
+    try {
+      const r = await reg();
+      const cur = await r.pushManager.getSubscription();
+      if (cur) {
+        await post({ action: "unsub", endpoint: cur.endpoint }).catch(() => {});
+        await cur.unsubscribe();
+        label(false); say("급변 푸시를 껐어요.");
+        return;
+      }
+      if ((await Notification.requestPermission()) !== "granted") { say("알림이 막혀 있어요. 브라우저 주소창의 사이트 설정에서 알림을 허용해 주세요."); return; }
+      const { key } = await (await fetch(window.PUSH_URL, { cache: "no-store" })).json();
+      const sub = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+      const res = await post({ action: "sub", sub: sub.toJSON() });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+      label(true);
+      say("켜졌어요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
+      try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=push-on"); } catch (e) {}
+    } catch (e) {
+      say("알림을 켜지 못했어요 (" + (e.message || e) + "). 잠시 뒤 다시 시도해 주세요.");
+    }
+  });
+})();

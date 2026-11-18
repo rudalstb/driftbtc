@@ -50,3 +50,27 @@ self.addEventListener("fetch", (e) => {
   if (req.mode === "navigate" || url.pathname.includes("/data/") || url.pathname.endsWith(".html")) e.respondWith(networkFirst(req));
   else if (/\.(js|css|svg|png|webmanifest)$/.test(url.pathname)) e.respondWith(staleWhileRevalidate(req, e));
 });
+
+// 🔔 급변 푸시 (api/push.js 가 보냄): 알림을 띄우고, 누르면 사이트를 연다
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "BTC Agent", body: e.data?.text() || "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "BTC Agent", {
+    body: d.body || "",
+    icon: "icons/icon-192.png",
+    badge: "icons/icon-192.png",
+    tag: d.tag || "btc-agent",
+    data: { url: d.url || "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || "./";
+  e.waitUntil((async () => {
+    for (const c of await self.clients.matchAll({ type: "window", includeUncontrolled: true })) {
+      if (new URL(c.url).origin === location.origin && "focus" in c) { c.navigate?.(url); return c.focus(); }
+    }
+    return self.clients.openWindow(url);
+  })());
+});

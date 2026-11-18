@@ -100,7 +100,7 @@ def replay(k: list, fc: dict[str, list[dict]], since_ms: int) -> list[dict]:
                 elif hit:
                     broke.add(key)
         if kinds and t[i] >= since_ms:
-            ev = {"t": t[i], "kinds": kinds, "up": kinds[0][1]}
+            ev = {"t": t[i], "kinds": kinds, "up": kinds[0][1], "move5": mv}
             if i + FOLLOW < len(k):
                 chg = c[i + FOLLOW] / c[i] - 1
                 same = chg if ev["up"] else -chg

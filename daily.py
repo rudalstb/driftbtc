@@ -80,6 +80,35 @@ def first_forecast(target: pd.Timestamp) -> dict | None:
     return None
 
 
+def jumps_of(start: pd.Timestamp, end: pd.Timestamp) -> str:
+    """그날(start~end) 5분 ±1% 급변과 30분 뒤 결과 — 감시기·메인 화면 줄과 같은 규칙 (alert_week.replay)."""
+    try:
+        import alert_week
+        ms = lambda t: int(t.timestamp() * 1000)
+        now = int(pd.Timestamp.now(tz="UTC").floor("min").timestamp() * 1000)
+        k = alert_week.klines_1m(ms(start) - 60 * 60_000, min(now, ms(end) + 40 * 60_000))
+        if len(k) < 1000:
+            return ""
+        ev = [e for e in alert_week.replay(k, {"1h": [], "1d": []}, ms(start)) if e["t"] < ms(end)]
+    except Exception as e:
+        print(f"급변 계산 실패 (건너뜀): {e}")
+        return ""
+    base = ""
+    try:
+        a = json.loads((SITE / "data" / "jumps_stats.json").read_text(encoding="utf-8"))["groups"]["all"]["h30"]
+        base = f' 지난 1년 기준으로는 급변 뒤 30분 동안 이어진 경우가 {a["cont"]:.0f}%, 되돌린 경우가 {a["rev"]:.0f}%였어요(<a href="../guide/sudden-moves.html">급변 통계</a>).'
+    except Exception:
+        pass
+    if not ev:
+        return f"<h2>그날의 급변</h2><p>5분 만에 ±1% 넘게 움직인 순간은 <b>없었어요</b>.{base}</p>"
+    word = {"cont": "이어짐", "rev": "되돌림", "flat": "제자리"}
+    items = "".join(
+        f"<li>{pd.Timestamp(e['t'] + 60_000, unit='ms', tz='UTC').tz_convert('Asia/Seoul').strftime('%H:%M')} — "
+        f"5분 {'▲' if e['up'] else '▼'}{abs(e['move5']) * 100:.1f}% → 30분 뒤 <b>{word.get(e.get('after'), '—')}</b>"
+        + (f" ({e['same'] * 100:+.2f}%)" if "same" in e else "") + "</li>" for e in ev)
+    return f"<h2>그날의 급변</h2><p>5분 만에 ±1% 넘게 움직인 순간이 <b>{len(ev)}번</b> 있었어요(한국 시간).{base}</p><ul>{items}</ul>"
+
+
 def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
     fc = json.loads((SITE / "data" / "forecast.json").read_text(encoding="utf-8"))
     f1d = fc["forecasts"]["1d"]
@@ -153,6 +182,7 @@ def build(day: pd.Timestamp) -> tuple[str, str, str, dict] | None:
 <tr><td>{usd(c.open)}</td><td>{usd(c.high)}</td><td>{usd(c.low)}</td><td>{usd(c.close)}</td><td>{sp(chg)}</td></tr></table>
 <p>고가와 저가 차이는 시가의 <b>{rng:.1f}%</b>로, 최근 1년 365일 가운데 <b>{'상위 ' + str(100 - rng_rank) + '%' if rng_rank >= 50 else '하위 ' + str(rng_rank) + '%'}</b> 수준의 {'큰' if rng_rank >= 70 else '평범한' if rng_rank >= 30 else '작은'} 움직임이었어요.</p>
 
+{jumps_of(yday, day)}
 <h2>어제 예측 채점</h2>
 {score or '<p>어제 기록된 1일 예측이 없어 채점을 건너뛰어요.</p>'}
 

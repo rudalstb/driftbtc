@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>비트코인 5분 1% 급변, 따라가야 할까? 1년치 통계 · BTC Agent</title>
+  <meta name="description" content="비트코인이 5분 만에 1% 넘게 움직인 뒤 30분 동안 이어졌는지 되돌렸는지, 지난 1년 1분봉으로 센 통계와 급등·급락·시간대별 차이, 매매에 쓰는 법을 정리했습니다.">
+  <link rel="canonical" href="https://btc.rudals.app/guide/sudden-moves.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="BTC Agent">
+  <meta property="og:title" content="비트코인 5분 1% 급변, 따라가야 할까? 1년치 통계">
+  <meta property="og:description" content="비트코인이 5분 만에 1% 넘게 움직인 뒤 30분 동안 이어졌는지 되돌렸는지, 지난 1년 1분봉으로 센 통계와 급등·급락·시간대별 차이, 매매에 쓰는 법을 정리했습니다.">
+  <meta property="og:url" content="https://btc.rudals.app/guide/sudden-moves.html">
+  <meta property="og:image" content="https://btc.rudals.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../page.css">
+  <script src="../ads.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="../index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>비트코인 5분 1% 급변, 따라가야 할까? 1년치 통계</h1><div class="updated">마지막 수정 2026년 11월 18일</div></header>
+
+<p>비트코인이 5분 만에 1% 넘게 튀면 "지금 따라 들어가야 하나, 반대로 잡아야 하나" 고민이 됩니다. 감으로 답하지 않고, 지난 1년치 1분봉 <b>527,040개</b>를 BTC Agent 가 쓰는 규칙 그대로 돌려 세어 봤습니다 (2025-11-18 ~ 2026-11-18, 바이낸스 BTC/USDT).</p>
+<div class="box"><b>한 줄 요약:</b> 1년 동안 급변은 <b>165번</b>(일주일에 약 3.2번). 30분 뒤 급변 방향으로 <b>이어진 건 33.3%</b>, <b>되돌린 건 47.9%</b>였습니다. 평균으로는 급변 방향과 반대로 0.12% 움직였지만, 30분 뒤 움직임의 흔들림(표준편차 0.93%)이 평균보다 훨씬 커서 통계적으로 확실하다고 하기엔 부족합니다(|t| 2 미만).</div>
+<h2>급변을 어떻게 셌나</h2>
+<ul>
+  <li><b>급변</b> — 5분 수익률(지금 1분봉 종가 ÷ 5분 전 종가)이 처음으로 ±1% 이상이 된 순간. 그 전 30분 안에 이미 급변이 있었으면 같은 움직임으로 보고 세지 않습니다.</li>
+  <li><b>이어짐 / 되돌림</b> — 급변 순간 종가에서 정해진 시간 뒤 종가가 급변 방향으로 0.2% 이상 더 가면 이어짐, 반대로 0.2% 이상 가면 되돌림, 그 사이면 제자리.</li>
+  <li>메인 화면의 "⚡ 최근 24시간 급변" 줄과 운영자의 실시간 텔레그램 알림이 이 규칙과 똑같습니다.</li>
+</ul>
+<h2>시간이 지나면서 어떻게 됐나</h2>
+<table><tr><th>급변 뒤</th><th>이어짐</th><th>되돌림</th><th>제자리</th><th>평균 (급변 방향 +)</th></tr>
+<tr><td>5분 뒤</td><td>24.2%</td><td>37.6%</td><td>38.2%</td><td>-0.06%</td></tr><tr><td>15분 뒤</td><td>34.5%</td><td>43.6%</td><td>21.8%</td><td>-0.03%</td></tr><tr><td>30분 뒤</td><td>33.3%</td><td>47.9%</td><td>18.8%</td><td>-0.12%</td></tr><tr><td>60분 뒤</td><td>33.3%</td><td>51.5%</td><td>15.2%</td><td>-0.16%</td></tr></table>
+<p>짧게는 제자리가 많고, 시간이 지날수록 되돌림 쪽이 조금씩 많아졌습니다. 다만 평균은 0.1~0.2% 수준이라, 왕복 수수료와 슬리피지(<a href="trading-fees.html">수수료 글</a>)를 빼면 남는 게 거의 없습니다.</p>
+<h2>급등과 급락, 크기별로는</h2>
+<table><tr><th>구분 (30분 뒤)</th><th>횟수</th><th>이어짐</th><th>되돌림</th><th>평균</th></tr>
+<tr><td>급등 (5분 +1% 이상)</td><td>94번</td><td>31.9%</td><td>50.0%</td><td>-0.16%</td></tr><tr><td>급락 (5분 −1% 이상)</td><td>71번</td><td>35.2%</td><td>45.1%</td><td>-0.06%</td></tr><tr><td>1~1.5% 급변</td><td>152번</td><td>34.2%</td><td>48.0%</td><td>-0.13%</td></tr><tr><td>1.5% 넘는 급변</td><td>13번</td><td>23.1%</td><td>46.2%</td><td>+0.03%</td></tr></table>
+<p>1.5% 넘는 큰 급변은 1년에 13번뿐이라 비율을 믿기 어렵습니다. 표본이 작은 칸은 참고만 하세요.</p>
+<h2>언제 몰리나 (한국 시간)</h2>
+<p>급변이 가장 많았던 시간은 0시, 23시, 7시, 3시입니다. 밤 9시~새벽 1시 다섯 시간에 전체의 <b>41%</b>가 몰렸습니다. 미국 주식 시장이 열리고 경제 지표가 발표되는 시간대입니다(<a href="../index.html">메인 화면</a>의 발표 일정 참고).</p>
+<h2>가장 컸던 급변 5번</h2>
+<ul><li>2026년 08월 22일 14:11 — 5분 -2.28% → 30분 뒤 급변 방향으로 -0.50%</li><li>2025년 11월 21일 16:34 — 5분 -2.23% → 30분 뒤 급변 방향으로 -0.53%</li><li>2026년 11월 09일 06:56 — 5분 -2.02% → 30분 뒤 급변 방향으로 -0.99%</li><li>2026년 03월 23일 20:06 — 5분 +1.96% → 30분 뒤 급변 방향으로 +1.33%</li><li>2026년 02월 02일 15:43 — 5분 +1.91% → 30분 뒤 급변 방향으로 -0.01%</li></ul>
+<h2>그래서 어떻게 쓰나</h2>
+<ol>
+  <li><b>추격 매수·매도는 불리했다</b> — 1년 동안 30분 뒤 이어진 경우가 3번 중 1번 정도였습니다. 급변을 보고 같은 방향으로 시장가 진입하면, 수수료까지 내고 되돌림을 맞기 쉽습니다.</li>
+  <li><b>그렇다고 반대 매매가 정답도 아니다</b> — 되돌림 쪽이 조금 많았을 뿐, 평균 크기가 작고 흔들림이 커서 "무조건 반대"로 이길 만한 차이는 아닙니다. 지난 1년이 다음 1년에도 그대로라는 보장도 없습니다.</li>
+  <li><b>급변은 손절·청산가 점검 신호</b> — 급변 직후에는 변동성이 커집니다. 내 손절이 너무 가깝지 않은지(<a href="stop-loss.html">손절 거리</a>), 청산가가 <a href="forecast-range.html">95% 예측 범위</a> 안에 있지 않은지 먼저 보세요.</li>
+</ol>
+<p class="muted">이 통계는 매주 새 1분봉으로 다시 계산해 메인 화면 줄에 반영되며, 이 글의 숫자는 글을 만든 시점 기준입니다. 과거 통계이며 투자 권유가 아닙니다.</p>
+<a class="cta" href="../index.html#home">지금 최근 24시간 급변 보기 →</a>
+
+<div class="ad-slot" data-ad-slot="article-end" aria-label="광고"></div>
+<footer>
+  <a href="../index.html">BTC Agent 홈</a><a href="https://rudals.app/">다른 앱 둘러보기</a><a href="../about.html">소개</a><a href="../disclaimer.html">면책 조항</a><a href="../privacy.html">개인정보처리방침</a>
+  <a href="#" class="mail" data-u="rudalstb" data-d="gmail.com">✉️ 문의하기</a><a href="../faq.html">❓ 자주 묻는 질문</a><a href="../guide/">📚 매매 가이드</a><a href="../guide/glossary.html">📖 용어 사전</a><a href="../daily/">📅 시장 일지</a><a href="../weekly/">🗓️ 주간 일지</a><a href="../monthly/">📊 월간 성적표</a>
+  <div style="margin-top:8px">BTC Agent 는 정보 제공 목적의 사이트이며 투자 권유가 아닙니다. 모든 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</footer>
+</main>
+<script>document.querySelectorAll("a.mail").forEach((a) => { const addr = a.dataset.u + "@" + a.dataset.d; a.href = "mailto:" + addr + "?subject=" + encodeURIComponent("[BTC Agent] 문의"); if (!a.textContent.trim()) a.textContent = addr; });</script>
+</body>
+</html>

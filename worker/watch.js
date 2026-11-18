@@ -16,6 +16,7 @@
 
 const SITE = "https://btc.rudals.app/";
 const FORECAST = SITE + "data/forecast.json";
+const PUSH_CHECK = "https://driftbtc.vercel.app/api/push";
 const M = 60 * 1000;
 const COOLDOWN_MIN = 30;
 const FOLLOW_MIN = 30;
@@ -170,6 +171,8 @@ let lastRun = null, lastTest = 0;
 export { check, firstBreak, alertsAt };
 export default {
   async scheduled(event, env, ctx) {
+    // 🔔 방문자 급변 푸시: Vercel(api/push.js)이 직접 1분봉을 보고 새 급변이면 구독자에게 보낸다 (여기는 깨우기만)
+    ctx.waitUntil(fetch(PUSH_CHECK, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"action":"check"}' }).then((r) => r.text()).catch(() => null));
     ctx.waitUntil((async () => {
       const r = await check(env);
       const sent = [];

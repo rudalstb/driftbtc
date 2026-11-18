@@ -157,6 +157,12 @@ jobs:
         continue-on-error: true
         run: python weekly.py
 
+      # 주 1회(백테스트 때): 지난 1년 1분봉으로 '급변 뒤 30분' 통계 (1분봉은 data/ 캐시에 쌓아 새 부분만 받음)
+      - name: 급변 통계
+        if: steps.check.outputs.backtest == 'true'
+        continue-on-error: true
+        run: python jumps_stats.py
+
       # 아침 브리핑에 오늘 시장 일지 링크를 넣으려고 일지 다음에 보낸다
       - name: 텔레그램 채널 알림
         if: steps.check.outputs.new == 'true'
