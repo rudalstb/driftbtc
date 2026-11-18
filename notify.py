@@ -76,7 +76,7 @@ HEALTH = [
     ("월간 성적표", "monthly", lambda: None, None),
     # 주간 일지: 가장 최근 글이 다룬 주가 끝난 월요일 9시에서 30시간 넘게 새 글이 없으면
     # 🔔 방문자 급변 푸시: Cloudflare 감시기가 1분마다 api/push.js 를 깨운다. 마지막 성공 시각이 30분 넘게 멈추면
-    ("급변 푸시 확인", "push", lambda: json.load(urllib.request.urlopen(PUSH_URL, timeout=15))["ok"], 0.5),
+    ("급변 푸시 확인", "push", lambda: json.load(urllib.request.urlopen(f"{PUSH_URL}?health={datetime.now().timestamp():.0f}", timeout=15))["ok"], 0.5),
     ("주간 일지", "weekly", lambda: (max((p.stem for p in (DATA.parent / "weekly").glob("20*.html")), default="2000-01-01")) + "T09:00:00+09:00", 7 * 24 + 7 * 24 + 30),
 ]
 
