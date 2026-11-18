@@ -6,8 +6,11 @@
 // GET                                   → {key: 발송용 공개 키, n: 구독 수}
 // POST {action:"sub", sub}               → 구독 저장 (브라우저가 만든 푸시 주소·암호 키만, 개인정보 없음)
 // POST {action:"unsub", endpoint}        → 구독 삭제
+// POST {action:"pref", endpoint, morning} → ☀️ 아침 9시 요약도 받을지 (기본 꺼짐)
 // POST {action:"check"}                  → Cloudflare 감시기가 1분마다 부름. 여기서 직접 1분봉을 보고 새 급변이면 모두에게 보냄
 //                                          (누가 불러도 결과는 같고, 같은 급변은 한 번만, 1분에 한 번만 계산 → 비밀 값이 필요 없다)
+//                                          한국 시간 9시대에는 오늘 1일 예측이 나오면 아침 요약을 켠 사람에게 하루 한 번 보냄
+// 보낸 수·알림 눌러 들어온 수는 방문 집계(sec:<날짜>)에 함께 쌓아 stats.html 에서 본다.
 // 발송 키(VAPID)는 처음 쓸 때 만들어 Redis 에 보관한다.
 import { createHash } from "node:crypto";
 import webpush from "web-push";
@@ -27,6 +30,10 @@ const json = (request, body, status = 200) => new Response(JSON.stringify(body),
 const SITE = "https://btc.rudals.app/";
 const M = 60_000, PCT = 0.01, WIN = 5, COOL = 30;
 const MAX_SUBS = 20000;
+const DAY_TTL = 60 * 60 * 24 * 40;
+const kstDate = (ms) => new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10);
+const stat = (cfg, name, n) => (n ? redis(cfg, [["HINCRBY", `sec:${kstDate(Date.now())}`, name, n], ["EXPIRE", `sec:${kstDate(Date.now())}`, DAY_TTL]]).catch(() => null) : null);
+const usd = (x) => "$" + Math.round(x).toLocaleString("en-US");
 const sha = (s) => createHash("sha256").update(s).digest("hex").slice(0, 32);
 
 async function vapid(cfg) {
@@ -74,7 +81,7 @@ async function base() {
   } catch (e) { return ""; }
 }
 
-async function broadcast(cfg, payload) {
+async function broadcast(cfg, payload, want = () => true) {
   const keys = await vapid(cfg);
   webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
   const [all] = await redis(cfg, [["HGETALL", "push:subs"]]);
@@ -84,14 +91,49 @@ async function broadcast(cfg, payload) {
   let ok = 0;
   const gone = [];
   const body = JSON.stringify(payload);
-  for (let i = 0; i < entries.length; i += 50) {
-    await Promise.all(entries.slice(i, i + 50).map(async ([id, s]) => {
-      try { await webpush.sendNotification(JSON.parse(s), body, { TTL: 900, urgency: "high" }); ok++; }
+  const list = entries.map(([id, s]) => [id, JSON.parse(s)]).filter(([, s]) => want(s));
+  for (let i = 0; i < list.length; i += 50) {
+    await Promise.all(list.slice(i, i + 50).map(async ([id, s]) => {
+      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, body, { TTL: payload.ttl || 900, urgency: payload.urgency || "high" }); ok++; }
       catch (e) { if (e.statusCode === 404 || e.statusCode === 410) gone.push(id); }
     }));
   }
   if (gone.length) await redis(cfg, [["HDEL", "push:subs", ...gone]]);
-  return { sent: ok, removed: gone.length, total: entries.length };
+  return { sent: ok, removed: gone.length, total: list.length };
+}
+
+// ☀️ 아침 요약: 한국 시간 9시대, 오늘 1일 예측(일봉 00:00 UTC 기준)이 사이트에 올라온 뒤 하루 한 번
+async function morning(cfg) {
+  const now = Date.now();
+  if (new Date(now + 9 * 3600 * 1000).getUTCHours() !== 9) return null;
+  const day = kstDate(now);
+  const [done] = await redis(cfg, [["GET", `push:morning:${day}`]]);
+  if (done) return null;
+  let f;
+  try { f = await (await fetch(SITE + "data/forecast.json", { cache: "no-store" })).json(); } catch (e) { return null; }
+  const d1 = f?.forecasts?.["1d"];
+  if (!d1 || String(d1.as_of).slice(0, 10) !== new Date(now).toISOString().slice(0, 10)) return null; // 오늘 예측이 아직
+  const [first] = await redis(cfg, [["SET", `push:morning:${day}`, "1", "NX", "EX", 2 * 86400]]);
+  if (!first) return null;
+  let dl = {};
+  try { dl = await (await fetch(SITE + "data/daily_latest.json", { cache: "no-store" })).json(); } catch (e) { /* 일지 없어도 보냄 */ }
+  const fresh = dl.date === day;
+  const p = f.signals?.["1d"]?.current?.p_up;
+  const body = [
+    `지금 ${usd(d1.price)}`,
+    p != null ? `오늘 상승 확률 ${Math.round(p * 100)}%` : "",
+    fresh && dl.scored ? `어제 예측 ${dl.scored}` : "",
+  ].filter(Boolean).join(" · ") + " (참고용)";
+  const r = await broadcast(cfg, {
+    title: `☀️ 오늘 비트코인 95% 범위 ${usd(d1.next.lo95)} ~ ${usd(d1.next.hi95)}`,
+    body,
+    url: SITE + "?from=push-morning#home", // 일지 글에는 방문 집계가 없어 메인으로 (들어온 수를 셀 수 있게)
+    tag: "morning-" + day,
+    ttl: 3 * 3600,
+    urgency: "normal",
+  }, (s) => s.morning);
+  await stat(cfg, "push-sent-morning", r.sent);
+  return r;
 }
 
 export async function OPTIONS(request) {
@@ -125,12 +167,12 @@ export async function POST(request) {
         return json(request, { error: "구독 정보가 올바르지 않아요" }, 400);
       const [n] = await redis(cfg, [["HLEN", "push:subs"]]);
       if (Number(n) >= MAX_SUBS) return json(request, { error: "구독이 가득 찼어요" }, 429);
-      const sub = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
+      const sub = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, morning: b.morning === true };
       // 켜자마자 그 기기에만 확인 알림 1번 (실제로 도착하는지 바로 알 수 있게). 실패하면 저장하지 않는다
       const keys = await vapid(cfg);
       webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
       try {
-        await webpush.sendNotification(sub, JSON.stringify({ title: "🔔 급변 푸시가 켜졌어요", body: "비트코인이 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요. 일주일에 3번 안팎이에요.", url: SITE + "#home", tag: "push-on" }), { TTL: 300 });
+        await webpush.sendNotification(sub, JSON.stringify({ title: "🔔 급변 푸시가 켜졌어요", body: "비트코인이 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요. 일주일에 3번 안팎이에요.", url: SITE + "?from=push-on#home", tag: "push-on" }), { TTL: 300 });
       } catch (e) {
         return json(request, { error: `확인 알림을 보내지 못했어요 (${e.statusCode || e.message})` }, 502);
       }
@@ -140,6 +182,14 @@ export async function POST(request) {
     if (b.action === "unsub") {
       if (b.endpoint) await redis(cfg, [["HDEL", "push:subs", sha(String(b.endpoint))]]);
       return json(request, { ok: true });
+    }
+    if (b.action === "pref") {
+      const id = sha(String(b.endpoint || ""));
+      const [cur] = await redis(cfg, [["HGET", "push:subs", id]]);
+      if (!cur) return json(request, { error: "구독을 찾지 못했어요. 푸시를 껐다 다시 켜 주세요" }, 404);
+      const sub = { ...JSON.parse(cur), morning: b.morning === true };
+      await redis(cfg, [["HSET", "push:subs", id, JSON.stringify(sub)]]);
+      return json(request, { ok: true, morning: sub.morning });
     }
     if (b.action === "check") {
       const minute = Math.floor(Date.now() / M);
@@ -157,11 +207,14 @@ export async function POST(request) {
         res.push(await broadcast(cfg, {
           title: `⚡ 비트코인 5분 ${up ? "▲" : "▼"}${(Math.abs(j.m) * 100).toFixed(1)}% 급${up ? "등" : "락"}`,
           body: `$${Math.round(j.price).toLocaleString("en-US")}${b30 ? " · " + b30 + " (참고용)" : ""}`,
-          url: SITE + "#home",
+          url: SITE + "?from=push-jump#home",
           tag: "jump-" + j.t,
         }));
+        await stat(cfg, "push-sent-jump", res[res.length - 1].sent);
       }
-      return json(request, { ok: true, price: k[k.length - 1].c, jumps: found.length, sent: res });
+      let am = null;
+      try { am = await morning(cfg); } catch (e) { am = { error: String(e.message || e) }; }
+      return json(request, { ok: true, price: k[k.length - 1].c, jumps: found.length, sent: res, morning: am });
     }
     return json(request, { error: "알 수 없는 요청" }, 400);
   } catch (e) {

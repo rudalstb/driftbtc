@@ -27,6 +27,10 @@
       forecast: "예측 범위", calc: "이 가격 될까", risk: "얼마나 들어갈까", futures: "선물 지표", filter: "들어가도 될까",
       "my-analysis": "내 매매 해부", "my-analysis-used": "내 매매 해부 · 파일 올림", mypos: "운영자 공개", game: "롱/숏 게임", chart: "가격 차트", accuracy: "정확도",
       "share-forecast": "공유 · 예측", "share-filter": "공유 · 신호등",
+      "push-on": "🔔 푸시 켬", "push-off": "🔔 푸시 끔", "push-morning-on": "☀️ 아침 요약 켬", "push-morning-off": "☀️ 아침 요약 끔",
+      "push-nudge-shown": "⚡ 급변 권유 뜸", "push-nudge-yes": "⚡ 권유 → 알림 받기", "push-nudge-no": "⚡ 권유 닫음", "push-ios-guide": "📲 아이폰 설치 방법 봄",
+      "push-sent-jump": "📤 급변 푸시 보냄(건)", "push-sent-morning": "📤 아침 요약 보냄(건)",
+      "open-push-jump": "📥 급변 알림 눌러 들어옴", "open-push-morning": "📥 아침 요약 눌러 들어옴", "open-push-on": "📥 확인 알림 눌러 들어옴",
     };
     const secs = [...new Set(j.days.flatMap((d) => Object.keys(d.sections)))];
     const total = (s) => j.days.reduce((a, d) => a + (d.sections[s] || 0), 0);

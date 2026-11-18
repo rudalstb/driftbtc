@@ -78,10 +78,21 @@ async function jumpBase(el) {
 renderJumps();
 setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
 
+const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=" + name); } catch (e) {} };
+
+// 📈 푸시 알림을 눌러 들어온 방문 (?from=push-jump · push-morning · push-on) — 세고 나서 주소에서 지운다
+(function () {
+  const q = new URLSearchParams(location.search), f = q.get("from");
+  if (!f || !/^push-[a-z]+$/.test(f)) return;
+  pushBeat("open-" + f);
+  q.delete("from");
+  history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash);
+})();
+
 // 🔔 급변 푸시 받기: 사이트를 닫아도 5분 ±1% 급변 때 알림 (api/push.js 가 보냄, 서비스 워커가 띄움)
 // - 아이폰은 '홈 화면에 추가'한 앱에서만 웹 푸시가 되므로, 사파리에서는 방법만 안내한다
 (function () {
-  const btn = document.getElementById("push-btn"), tip = document.getElementById("push-tip");
+  const btn = document.getElementById("push-btn"), tip = document.getElementById("push-tip"), am = document.getElementById("push-morning");
   if (!btn || !window.PUSH_URL || location.protocol !== "https:") return;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -100,7 +111,17 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
     const who = subs >= 20 ? ` · ${subs.toLocaleString("ko-KR")}명 받는 중` : "";
     btn.textContent = on ? "🔕 급변 푸시 끄기" : iosGuide ? "📲 아이폰: 홈 화면에 추가하면 급변 알림을 받을 수 있어요 (방법 보기)" + who : "🔔 급변 푸시 받기 — 사이트를 닫아도 5분 ±1% 급변 때 알림" + who;
     btn.dataset.on = on ? "1" : "";
+    showAm(on);
   };
+  // ☀️ 아침 9시 요약도 받기 (켠 사람만, 기본 꺼짐) — 이 기기의 선택은 브라우저에도 기억해 둔다
+  const AK = "push-morning";
+  const amOn = () => { try { return localStorage.getItem(AK) === "1"; } catch (e) { return false; } };
+  function showAm(on) {
+    if (!am) return;
+    am.hidden = !on;
+    am.textContent = amOn() ? "☀️ 아침 9시 요약 받는 중 (끄기)" : "☀️ 아침 9시 요약도 받기 — 오늘 예측 범위 한 줄";
+    am.dataset.on = amOn() ? "1" : "";
+  }
   const IOS_STEPS = "① 아래쪽 공유 버튼(네모에 ↑) → ② '홈 화면에 추가' → ③ 홈 화면의 BTC Agent 아이콘으로 열기 → ④ 이 버튼을 다시 누르고 알림 '허용'. (iOS 16.4 이상)";
   const post = (body) => fetch(window.PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
@@ -122,17 +143,35 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
     txt.textContent = `⚡ ${mins}분 전 5분 만에 ${last.m > 0 ? "▲" : "▼"}${(Math.abs(last.m) * 100).toFixed(1)}% 급변이 있었어요. 다음엔 바로 알림으로 받을래요?`;
     const yes = document.createElement("button");
     yes.type = "button"; yes.textContent = iosGuide ? "방법 보기" : "알림 받기";
-    yes.onclick = () => { nudge.hidden = true; btn.click(); };
+    yes.onclick = () => { nudge.hidden = true; pushBeat("push-nudge-yes"); btn.click(); };
     const no = document.createElement("button");
     no.type = "button"; no.className = "ghost"; no.textContent = "닫기";
-    no.onclick = () => { nudge.hidden = true; try { localStorage.setItem(NK, String(Date.now())); } catch (err) {} };
+    no.onclick = () => { nudge.hidden = true; pushBeat("push-nudge-no"); try { localStorage.setItem(NK, String(Date.now())); } catch (err) {} };
     nudge.append(txt, yes, no);
+    if (nudge.hidden) pushBeat("push-nudge-shown"); // 5분마다 다시 그려도 한 번만 센다
     nudge.hidden = false;
+  });
+
+  am?.addEventListener("click", async (ev) => {
+    ev.preventDefault();
+    const want = !amOn();
+    try {
+      const cur = await (await reg()).pushManager.getSubscription();
+      if (!cur) return label(false);
+      const res = await post({ action: "pref", endpoint: cur.endpoint, morning: want });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+      try { localStorage.setItem(AK, want ? "1" : ""); } catch (e) {}
+      showAm(true);
+      say(want ? "아침 9시쯤 오늘의 예측 범위를 한 줄로 보내 드려요." : "아침 요약을 껐어요. 급변 알림은 그대로 와요.");
+      pushBeat(want ? "push-morning-on" : "push-morning-off");
+    } catch (e) {
+      say("바꾸지 못했어요 (" + (e.message || e) + ")");
+    }
   });
 
   btn.addEventListener("click", async (ev) => {
     ev.preventDefault();
-    if (!can) { say(IOS_STEPS); return; }
+    if (!can) { say(IOS_STEPS); pushBeat("push-ios-guide"); return; }
     let step = "준비";
     say("확인하는 중…");
     try {
@@ -141,7 +180,9 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
       if (cur) {
         await post({ action: "unsub", endpoint: cur.endpoint }).catch(() => {});
         await cur.unsubscribe();
+        try { localStorage.setItem(AK, ""); } catch (e) {}
         label(false); say("급변 푸시를 껐어요.");
+        pushBeat("push-off");
         return;
       }
       step = "알림 허용";
@@ -155,7 +196,9 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
       label(true);
       say("켜졌어요. 확인 알림이 하나 갔을 거예요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
-      try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=push-on"); } catch (e) {}
+      try { localStorage.setItem(AK, ""); } catch (e) {}
+      showAm(true);
+      pushBeat("push-on");
     } catch (e) {
       say("알림을 켜지 못했어요 [" + step + ": " + (e.message || e) + "]. 잠시 뒤 다시 시도해 주세요.");
     }
