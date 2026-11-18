@@ -529,3 +529,4 @@ td.best { color: var(--accent); font-weight: 700; }
 /* 📱 홈 화면 설치 안내 */
 .pwa-install { margin-left: 0; }
 .pwa-tip { margin-top: 6px; }
+.jumps-line { margin-top: 4px; }

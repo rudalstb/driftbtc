@@ -67,6 +67,8 @@ HEALTH = [
     ("이더리움 예측", "eth", lambda: _load(DATA / "eth.json", {}).get("generated_at"), 3),
     ("강제 청산 집계", "liq", lambda: _load(DATA / "liq.json", {}).get("updated"), 3),
     ("발표 일정 갱신", "events", lambda: None, None),
+    # 신호 실험실 2단계용 시장 지표 수집기: 실패해도 0으로 끝나므로 마지막 줄 시각으로 본다
+    ("시장 지표 수집", "snap", lambda: (DATA / "snapshots.csv").read_text(encoding="utf-8").strip().rsplit("\n", 1)[-1].split(",", 1)[0], 4),
     ("시장 일지", "daily", lambda: (_load(DATA / "daily_latest.json", {}).get("date") or "") + "T00:00:00+09:00", 50),
     ("월간 성적표", "monthly", lambda: None, None),
     # 주간 일지: 가장 최근 글이 다룬 주가 끝난 월요일 9시에서 30시간 넘게 새 글이 없으면
