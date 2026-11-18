@@ -22,3 +22,8 @@
 .page .guide-list a { color: var(--text); text-decoration: none; }
 .page .guide-list a:hover b { color: var(--accent); }
 .page .muted { color: var(--muted); font-size: 14px; }
+/* 📚 다음에 읽을 글 (가이드: pages.py, 일지·성적표: page.js) */
+.page .read-next { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 4px 16px 10px; margin: 28px 0 8px; }
+.page .read-next h2 { font-size: 16px; margin: 12px 0 6px; }
+.page .read-next ul { margin: 0; }
+.page .read-next .nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 6px; font-size: 14px; }

@@ -5,7 +5,11 @@
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+import json
+import re
+from datetime import date, datetime, timedelta, timezone
+from email.utils import format_datetime
+from html import escape, unescape
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -27,6 +31,75 @@ def has_ads(path: str) -> bool:
 
 # 페이지별로 <head> 에 더 넣을 것 (구조화 데이터 등)
 EXTRA_HEAD: dict[str, str] = {}
+
+UPDATED_ISO = "2026-11-18"
+
+# 🔎 검색 등록 소유 확인 코드 (구글 서치 콘솔 · 네이버 서치어드바이저의 'HTML 태그' 방식에서 content="..." 안의 값만)
+# 넣고 python pages.py 를 실행하면 모든 글과 메인(index.html)에 들어간다
+VERIFY = {"google": "", "naver": ""}
+
+# 📚 가이드 끝 '다음에 읽을 글' (guide/ 뒤 이름)
+RELATED = {
+    "forecast-range": ["stop-loss", "sudden-moves", "leverage"],
+    "kimchi-premium": ["upbit-profit", "funding-rate"],
+    "funding-rate": ["liquidations", "trading-fees", "kimchi-premium"],
+    "liquidation-price": ["leverage", "stop-loss", "liquidations"],
+    "leverage": ["liquidation-price", "stop-loss", "win-rate-reward"],
+    "stop-loss": ["forecast-range", "win-rate-reward", "leverage"],
+    "win-rate-reward": ["stop-loss", "averaging-down", "trading-fees"],
+    "averaging-down": ["liquidation-price", "win-rate-reward", "upbit-profit"],
+    "trading-fees": ["funding-rate", "win-rate-reward", "leverage"],
+    "upbit-profit": ["averaging-down", "kimchi-premium"],
+    "liquidations": ["liquidation-price", "sudden-moves", "funding-rate"],
+    "sudden-moves": ["liquidations", "forecast-range", "stop-loss"],
+    "glossary": ["forecast-range", "leverage", "funding-rate"],
+}
+
+SECTION = {"daily": ("시장 일지", "daily/"), "weekly": ("주간 일지", "weekly/"), "monthly": ("월간 성적표", "monthly/"), "guide": ("매매 가이드", "guide/")}
+
+
+def verify_meta() -> str:
+    names = {"google": "google-site-verification", "naver": "naver-site-verification"}
+    return "".join(f'\n  <meta name="{names[k]}" content="{v}">' for k, v in VERIFY.items() if v)
+
+
+def _dates(path: str) -> tuple[str, str]:
+    """(처음 쓴 날, 마지막 수정일) — 일지·성적표는 파일 이름의 날짜, 나머지는 UPDATED_ISO."""
+    m = re.match(r"(daily|weekly|monthly)/(\d{4}-\d{2}(?:-\d{2})?)\.html$", path)
+    if m:
+        d = m.group(2) if len(m.group(2)) == 10 else m.group(2) + "-01"
+        return d, d
+    return UPDATED_ISO, UPDATED_ISO
+
+
+def structured(path: str, title: str, desc: str, image: str | None) -> str:
+    """구글·네이버가 읽는 위치(홈 › 분류 › 글)와 글 정보(Article). 목록·안내 페이지는 위치만."""
+    top = path.split("/")[0] if "/" in path else ""
+    crumbs = [{"@type": "ListItem", "position": 1, "name": "BTC Agent", "item": BASE}]
+    if top in SECTION:
+        crumbs.append({"@type": "ListItem", "position": 2, "name": SECTION[top][0], "item": BASE + SECTION[top][1]})
+    if not path.endswith("index.html"):
+        crumbs.append({"@type": "ListItem", "position": len(crumbs) + 1, "name": title, "item": BASE + path})
+    out = [{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": crumbs}]
+    if top in SECTION and not path.endswith("index.html"):
+        pub, mod = _dates(path)
+        org = {"@type": "Organization", "name": "BTC Agent", "url": BASE, "logo": {"@type": "ImageObject", "url": BASE + "icons/icon-192.png"}}
+        out.append({"@context": "https://schema.org", "@type": "Article", "headline": title[:110], "description": desc,
+                    "datePublished": pub, "dateModified": mod, "inLanguage": "ko", "url": BASE + path,
+                    "mainEntityOfPage": BASE + path, "image": image or BASE + "og.png", "author": org, "publisher": org})
+    return "".join('\n  <script type="application/ld+json">' + json.dumps(o, ensure_ascii=False) + "</script>" for o in out)
+
+
+def related(path: str, p: str) -> str:
+    """가이드 끝 '📚 다음에 읽을 글' (일지·성적표는 site/page.js 가 이전·다음 글을 붙인다)."""
+    name = path.removeprefix("guide/").removesuffix(".html")
+    if not path.startswith("guide/") or name not in RELATED:
+        return ""
+    items = [(f"guide/{n}.html", PAGES[f"guide/{n}.html"][0]) for n in RELATED[name] if f"guide/{n}.html" in PAGES]
+    if not items:
+        return ""
+    return ('\n<section class="read-next"><h2>📚 다음에 읽을 글</h2><ul>' + "".join(f'<li><a href="{p}{u}">{t}</a></li>' for u, t in items)
+            + f'</ul><p class="muted"><a href="{p}guide/">가이드 전체 보기</a> · <a href="{p}daily/">시장 일지</a></p></section>')
 
 
 def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None, image: str | None = None) -> str:
@@ -52,12 +125,13 @@ def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None
   <meta property="og:locale" content="ko_KR">
   <link rel="icon" href="{p}favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{p}style.css">
-  <link rel="stylesheet" href="{p}page.css">{ad_head}{EXTRA_HEAD.get(path, "")}
+  <link rel="stylesheet" href="{p}page.css">
+  <link rel="alternate" type="application/rss+xml" title="BTC Agent 새 글" href="{p}rss.xml">{verify_meta()}{structured(path, title, desc, image)}{ad_head}{EXTRA_HEAD.get(path, "")}
 </head>
 <body>
 <main class="page">
   <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">{updated or "마지막 수정 " + UPDATED}</div></header>
-{body}{ad_end}
+{body}{related(path, p)}{ad_end}
 {FOOT.format(p=p)}
 </main>
 <script src="{p}page.js" defer></script>
@@ -611,6 +685,38 @@ def write_sitemap() -> None:
         f"  <url><loc>{u}</loc><lastmod>{m}</lastmod></url>\n" for u, m in items) + "</urlset>\n"
     (SITE / "sitemap.xml").write_text(sitemap, encoding="utf-8", newline="\n")
     (SITE / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE}sitemap.xml\n", encoding="utf-8", newline="\n")
+    write_rss()
+    sync_index_verify()
+
+
+def write_rss() -> None:
+    """📰 새 글 RSS (네이버 서치어드바이저에 제출): 일지·주간·월간·가이드 최근 40편. 제목·설명은 각 html 에서 읽는다."""
+    items = []
+    for f in [*(SITE / "daily").glob("20*.html"), *(SITE / "weekly").glob("20*.html"), *(SITE / "monthly").glob("20*.html"), *(SITE / "guide").glob("*.html")]:
+        rel = f.relative_to(SITE).as_posix()
+        if rel.endswith("index.html"):
+            continue
+        t = f.read_text(encoding="utf-8")
+        title = re.search(r"<title>(.*?) · BTC Agent</title>", t)
+        desc = re.search(r'<meta name="description" content="(.*?)">', t)
+        items.append((_dates(rel)[0], rel, unescape(title.group(1)) if title else rel, unescape(desc.group(1)) if desc else ""))
+    items.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    when = lambda d: format_datetime(datetime.fromisoformat(d).replace(tzinfo=timezone.utc))  # noqa: E731
+    body = "".join(f"<item><title>{escape(t)}</title><link>{BASE}{r}</link><guid>{BASE}{r}</guid><pubDate>{when(d)}</pubDate><description>{escape(ds)}</description></item>\n"
+                   for d, r, t, ds in items[:40])
+    rss = ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>\n'
+           f"<title>BTC Agent 새 글</title><link>{BASE}</link><description>비트코인 AI 예측 범위 · 시장 일지 · 매매 가이드</description><language>ko</language>\n"
+           + body + "</channel></rss>\n")
+    (SITE / "rss.xml").write_text(rss, encoding="utf-8", newline="\n")
+
+
+def sync_index_verify() -> None:
+    """메인(index.html)의 <!-- verify --> … <!-- /verify --> 사이를 VERIFY 값으로 맞춘다."""
+    f = SITE / "index.html"
+    t = f.read_text(encoding="utf-8")
+    new = re.sub(r"<!-- verify -->.*?<!-- /verify -->", lambda m: "<!-- verify -->" + verify_meta().replace("\n  ", "") + "<!-- /verify -->", t, flags=re.S)
+    if new != t:
+        f.write_text(new, encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":
