@@ -92,7 +92,11 @@ async function broadcast(cfg, payload, want = () => true) {
   let ok = 0;
   const gone = [];
   const body = JSON.stringify(payload);
-  const list = entries.map(([id, s]) => [id, JSON.parse(s)]).filter(([, s]) => want(s));
+  // 깨진 기록 하나 때문에 전체 발송이 멈추지 않게 (읽지 못한 기록은 지운다)
+  const list = [];
+  for (const [id, s] of entries) {
+    try { const v = JSON.parse(s); if (want(v)) list.push([id, v]); } catch (e) { gone.push(id); }
+  }
   for (let i = 0; i < list.length; i += 50) {
     await Promise.all(list.slice(i, i + 50).map(async ([id, s]) => {
       try { await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, body, { TTL: payload.ttl || 900, urgency: payload.urgency || "high" }); ok++; }
@@ -238,16 +242,12 @@ export async function POST(request) {
       const minute = Math.floor(Date.now() / M);
       const [first] = await redis(cfg, [["SET", `push:check:${minute}`, "1", "NX", "EX", "120"]]);
       if (!first) return json(request, { skipped: "이번 분은 이미 확인함" });
-      // 아침 요약·발표 알림은 1분봉과 상관없이 먼저
-      let am = null;
-      try { am = await morning(cfg); } catch (e) { am = { error: String(e.message || e) }; }
-      let evs = null;
-      try { evs = await eventAlert(cfg); } catch (e) { evs = { error: String(e.message || e) }; }
+      // 1) 급변이 가장 급하므로 먼저 (1분봉을 못 받아도 아침 요약·발표 알림은 아래에서 나감)
       const k = await klines();
-      if (!k || k.length < 40) return json(request, { error: "1분봉을 받지 못함", morning: am, events: evs }, 502);
+      const ok = !!k && k.length >= 40;
       // 감시용: 마지막으로 1분봉까지 받아 확인을 마친 시각 (notify.py 가 1시간마다 보고, 오래되면 텔레그램으로 알림)
-      await redis(cfg, [["SET", "push:last_ok", new Date().toISOString()]]);
-      const found = jumps(k);
+      if (ok) await redis(cfg, [["SET", "push:last_ok", new Date().toISOString()]]);
+      const found = ok ? jumps(k) : [];
       const res = [];
       for (const j of found) {
         const [fresh] = await redis(cfg, [["SET", `push:sent:${j.t}`, "1", "NX", "EX", "7200"]]);
@@ -262,6 +262,12 @@ export async function POST(request) {
         }));
         await stat(cfg, "push-sent-jump", res[res.length - 1].sent);
       }
+      // 2) 아침 요약 · 발표 30분 전 알림
+      let am = null;
+      try { am = await morning(cfg); } catch (e) { am = { error: String(e.message || e) }; }
+      let evs = null;
+      try { evs = await eventAlert(cfg); } catch (e) { evs = { error: String(e.message || e) }; }
+      if (!ok) return json(request, { error: "1분봉을 받지 못함", morning: am, events: evs }, 502);
       return json(request, { ok: true, price: k[k.length - 1].c, jumps: found.length, sent: res, morning: am, events: evs });
     }
     return json(request, { error: "알 수 없는 요청" }, 400);

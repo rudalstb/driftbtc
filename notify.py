@@ -63,6 +63,9 @@ def light(rg: dict) -> tuple[str, str]:
 
 
 # 🩺 점검 대상: (이름, 단계 id, 갱신 시각을 꺼내는 함수, 몇 시간 넘게 그대로면 멈춘 걸로 볼지)
+PUSH_URL = "https://driftbtc.vercel.app/api/push"
+HINT = {"push": "Cloudflare driftbtc-watch 가 돌고 있는지(대시보드 로그), Vercel api/push 오류를 확인하세요."}
+
 HEALTH = [
     ("이더리움 예측", "eth", lambda: _load(DATA / "eth.json", {}).get("generated_at"), 3),
     ("강제 청산 집계", "liq", lambda: _load(DATA / "liq.json", {}).get("updated"), 3),
@@ -72,6 +75,8 @@ HEALTH = [
     ("시장 일지", "daily", lambda: (_load(DATA / "daily_latest.json", {}).get("date") or "") + "T00:00:00+09:00", 50),
     ("월간 성적표", "monthly", lambda: None, None),
     # 주간 일지: 가장 최근 글이 다룬 주가 끝난 월요일 9시에서 30시간 넘게 새 글이 없으면
+    # 🔔 방문자 급변 푸시: Cloudflare 감시기가 1분마다 api/push.js 를 깨운다. 마지막 성공 시각이 30분 넘게 멈추면
+    ("급변 푸시 확인", "push", lambda: json.load(urllib.request.urlopen(PUSH_URL, timeout=15))["ok"], 0.5),
     ("주간 일지", "weekly", lambda: (max((p.stem for p in (DATA.parent / "weekly").glob("20*.html")), default="2000-01-01")) + "T09:00:00+09:00", 7 * 24 + 7 * 24 + 30),
 ]
 
@@ -87,12 +92,12 @@ def health(state: dict, new_state: dict, now: datetime) -> list[str]:
             try:
                 age = (now - datetime.fromisoformat(updated().replace("Z", "+00:00"))).total_seconds() / 3600
                 if age > max_h:
-                    why = f"{age:.0f}시간째 갱신 안 됨"
+                    why = f"{age:.0f}시간째 갱신 안 됨" if age >= 1 else f"{age * 60:.0f}분째 갱신 안 됨"
             except Exception:
                 why = "갱신 시각을 읽지 못함"
         key = f"down_{sid}"
         if why and not state.get(key):
-            out.append(f"🩺 <b>{name} 멈춤</b> — {why}\n사이트의 다른 부분은 계속 돌아가요. GitHub Actions 기록에서 '{name}' 단계를 확인하세요.")
+            out.append(f"🩺 <b>{name} 멈춤</b> — {why}\n사이트의 다른 부분은 계속 돌아가요. " + HINT.get(sid, f"GitHub Actions 기록에서 '{name}' 단계를 확인하세요."))
             new_state[key] = now.isoformat(timespec="minutes")
         elif not why and state.get(key):
             out.append(f"✅ <b>{name} 다시 정상</b> (멈춘 시각 {state[key][5:16].replace('-', '/').replace('T', ' ')} KST)")

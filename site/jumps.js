@@ -179,7 +179,7 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
   btn.addEventListener("click", async (ev) => {
     ev.preventDefault();
     if (!can) { say(IOS_STEPS); pushBeat("push-ios-guide"); return; }
-    let step = "준비";
+    let step = "준비", created = null;
     say("확인하는 중…");
     try {
       const r = await reg();
@@ -197,7 +197,7 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
       step = "발송 키";
       const { key } = await (await fetch(window.PUSH_URL, { cache: "no-store" })).json();
       step = "구독";
-      const sub = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+      const sub = created = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
       step = "확인 알림";
       const res = await post({ action: "sub", sub: sub.toJSON() });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
@@ -207,6 +207,9 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
       showAm(true);
       pushBeat("push-on");
     } catch (e) {
+      // 브라우저 구독은 됐는데 서버 저장이 실패하면 구독을 되돌린다 (안 그러면 다음에 누를 때 '끄기'로 처리되고 알림은 안 옴)
+      if (created) await created.unsubscribe().catch(() => {});
+      label(false);
       say("알림을 켜지 못했어요 [" + step + ": " + (e.message || e) + "]. 잠시 뒤 다시 시도해 주세요.");
     }
   });
