@@ -163,6 +163,12 @@ jobs:
         continue-on-error: true
         run: python jumps_stats.py
 
+      # 주 1회: 데이터로 쓰는 가이드(급변·발표·공포탐욕·시간대) 숫자를 새로 넣어 다시 쓴다 (+ sitemap · rss)
+      - name: 가이드 숫자 갱신
+        if: steps.check.outputs.backtest == 'true'
+        continue-on-error: true
+        run: python pages.py
+
       # 아침 브리핑에 오늘 시장 일지 링크를 넣으려고 일지 다음에 보낸다
       - name: 텔레그램 채널 알림
         if: steps.check.outputs.new == 'true'
@@ -192,7 +198,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898732+github-actions[bot]@users.noreply.github.com"
-          git add site/data site/daily site/weekly site/monthly site/sitemap.xml reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
+          git add site/data site/daily site/weekly site/monthly site/guide site/sitemap.xml site/rss.xml site/about.html site/faq.html site/privacy.html site/disclaimer.html reports/summary.json reports/signal_backtest.json reports/backtest_at.txt
           git diff --cached --quiet || git commit -m "forecast $(date -u +'%Y-%m-%d %H:%M') UTC"
           # 그 사이 다른 커밋이 올라오면 push 가 거절되므로 3번까지 다시 받아 올린다
           for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep $((i * 5)); done; exit 1

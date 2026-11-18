@@ -55,6 +55,9 @@ RELATED = {
     "glossary": ["forecast-range", "leverage", "funding-rate"],
 }
 
+# 매주 숫자가 새로 들어가는 가이드 — '마지막 수정'·dateModified 를 다시 쓴 날로
+DATA_GUIDES = {"guide/sudden-moves.html", "guide/fomc-cpi.html", "guide/fear-greed.html", "guide/volatile-hours.html"}
+
 SECTION = {"daily": ("시장 일지", "daily/"), "weekly": ("주간 일지", "weekly/"), "monthly": ("월간 성적표", "monthly/"), "guide": ("매매 가이드", "guide/")}
 
 
@@ -69,6 +72,8 @@ def _dates(path: str) -> tuple[str, str]:
     if m:
         d = m.group(2) if len(m.group(2)) == 10 else m.group(2) + "-01"
         return d, d
+    if path in DATA_GUIDES:
+        return UPDATED_ISO, date.today().isoformat()
     return UPDATED_ISO, UPDATED_ISO
 
 
@@ -551,6 +556,164 @@ if (SITE / "data" / "jumps_stats.json").exists():   # daily.py 등이 이 모듈
     PAGES["guide/sudden-moves.html"] = ("비트코인 5분 1% 급변, 따라가야 할까? 1년치 통계", "비트코인이 5분 만에 1% 넘게 움직인 뒤 30분 동안 이어졌는지 되돌렸는지, 지난 1년 1분봉으로 센 통계와 급등·급락·시간대별 차이, 매매에 쓰는 법을 정리했습니다.", sudden_moves())
 
 
+# ─── 📊 데이터로 쓰는 가이드 (history.json 은 매시간 history.py 가 갱신, 글은 주 1회 pages.py 로 다시 씀) ───
+WD = "월화수목금토일"
+
+
+def _hist() -> dict:
+    return json.loads((SITE / "data" / "history.json").read_text(encoding="utf-8"))
+
+
+def _pc(v: float) -> str:
+    return f"{v:+.2f}%"
+
+
+def event_guide() -> str:
+    h = _hist()
+    ev = h["events"]
+    c, f = ev["cpi"], ev["fomc"]
+    hrs = ev.get("hours", 4)
+
+    def row(e: dict) -> str:
+        return (f"<tr><td>{e['name']}</td><td>{e['n']}번</td><td>±{e['abs_median']}%</td><td>±{e['base_abs_median']}%</td>"
+                f"<td><b>{e['ratio']}배</b></td><td>{e['big_share']}% <span class='muted'>(평소 {e['base_big_share']}%)</span></td><td>{e['up']}%</td></tr>")
+
+    def recent(e: dict) -> str:
+        return " · ".join(f"{r['date'][2:].replace('-', '/')} {_pc(r['move'])}" for r in e["recent"][:8])
+
+    def biggest(e: dict) -> str:
+        return ", ".join(f"{b['date']} {_pc(b['move'])}" for b in e["biggest"])
+
+    up = ev.get("upcoming") or []
+    kst = lambda t: (datetime.fromisoformat(t.replace("Z", "+00:00")) + timedelta(hours=9)).strftime("%m월 %d일 %H:%M")  # noqa: E731
+    nxt = "".join(f"<li><b>{u['name']}</b> — {kst(u['t'])} (한국 시간)</li>" for u in up) or "<li>가까운 발표 일정이 없어요.</li>"
+    return f"""
+<p>미국 소비자물가(CPI)와 연준 금리 결정(FOMC) 날에는 "발표 전에 정리해야 하나" 고민이 됩니다. 2020년 이후 실제 발표 <b>{c['n'] + f['n']}번</b>을 모아, 발표 시각부터 <b>{hrs}시간 동안</b> 비트코인이 얼마나 움직였는지 같은 요일·같은 시각의 평소와 비교했습니다 (바이낸스 BTC/USDT 1시간봉).</p>
+<div class="box"><b>한 줄 요약:</b> 발표 뒤 {hrs}시간 움직임(크기 중간값)은 CPI 날 평소의 <b>{c['ratio']}배</b>, FOMC 날 평소의 <b>{f['ratio']}배</b>였습니다. 방향은 오른 날이 CPI {c['up']}%, FOMC {f['up']}%로 반반에 가깝습니다. 즉 <b>"얼마나 크게"는 예상할 수 있어도 "어느 쪽으로"는 예상하기 어렵습니다.</b></div>
+<h2>발표 뒤 {hrs}시간, 평소와 비교</h2>
+<table><tr><th>발표</th><th>횟수</th><th>보통 움직임</th><th>평소</th><th>배수</th><th>2% 넘게 움직인 비율</th><th>오른 비율</th></tr>
+{row(c)}{row(f)}</table>
+<p class="muted">보통 움직임 = 발표 시각 1시간봉 시가 → {hrs}시간 뒤 종가 변화의 크기(절댓값) 중간값. 평소 = 발표가 없던 날 같은 요일·같은 시각. CPI 는 한국 시간 밤 10시 반(미국 서머타임 기간엔 9시 반), FOMC 는 새벽 4시(서머타임 기간엔 3시)에 나옵니다.</p>
+<h2>최근 발표 때는</h2>
+<ul>
+  <li><b>CPI</b> — {recent(c)}</li>
+  <li><b>FOMC</b> — {recent(f)}</li>
+</ul>
+<h2>가장 크게 움직인 날</h2>
+<ul>
+  <li><b>CPI</b> — {biggest(c)}</li>
+  <li><b>FOMC</b> — {biggest(f)}</li>
+</ul>
+<p>큰 날은 대부분 2022년처럼 물가와 금리가 시장의 최대 관심사였던 시기에 몰려 있습니다. 시장이 무엇에 민감한지에 따라 같은 발표라도 반응 크기가 달라집니다.</p>
+<h2>다가오는 발표</h2>
+<ul>{nxt}</ul>
+<h2>그래서 어떻게 쓰나</h2>
+<ol>
+  <li><b>방향에 걸지 말고 크기에 대비</b> — 오른 비율이 반반이라 발표 직전 방향 베팅은 동전 던지기에 가깝습니다. 대신 평소보다 {min(c['ratio'], f['ratio'])}~{max(c['ratio'], f['ratio'])}배 크게 움직인다고 보고 손절 거리(<a href="stop-loss.html">손절 거리 정하는 법</a>)와 레버리지(<a href="leverage.html">레버리지 정하는 법</a>)를 먼저 조정하세요.</li>
+  <li><b>청산가 점검</b> — 2% 넘게 움직인 날이 CPI 는 평소의 {c['big_share'] / max(0.1, c['base_big_share']):.1f}배, FOMC 는 {f['big_share'] / max(0.1, f['base_big_share']):.1f}배였습니다. 20배 이상이면 2~3% 움직임에도 청산가가 가까워집니다(<a href="liquidation-price.html">청산가 계산법</a>).</li>
+  <li><b>발표 30분 전 알림</b> — 메인 화면에서 급변 푸시를 켠 뒤 "📅 큰 발표 30분 전 알림"을 켜 두면, 발표 30분 전에 이 통계와 함께 알려 드립니다.</li>
+</ol>
+<p class="muted">숫자는 매주 다시 계산해 이 글에 반영됩니다. 과거 통계이며 투자 권유가 아닙니다.</p>
+<a class="cta" href="../index.html#home">지금 예측 범위와 발표 일정 보기 →</a>
+"""
+
+
+def fear_greed_guide() -> str:
+    g = _hist()["fng"]
+    b, base = g["buckets"], g["base"]
+    now = next((x for x in b if x["now"]), None)
+    rows = "".join(
+        f"<tr{' style=\"font-weight:700\"' if x['now'] else ''}><td>{x['name']} ({x['lo']}~{x['hi']})</td><td>{x['days']:,}일</td>"
+        f"<td>{x['up7']}%</td><td>{_pc(x['med7'])}</td><td>{x['up30']}%</td><td>{_pc(x['med30'])}</td></tr>" for x in b)
+    best = max(b, key=lambda x: x["med30"])
+    worst = min(b, key=lambda x: x["med30"])
+    return f"""
+<p>공포·탐욕 지수는 비트코인 시장 분위기를 0(극단적 공포)~100(극단적 탐욕) 숫자 하나로 보여 줍니다. "남들이 공포에 질렸을 때 사라"는 말이 정말 맞았는지, {g['since'][:4]}년 이후 <b>{g['days']:,}일</b>의 지수와 그 뒤 비트코인 가격을 맞대어 셌습니다 (지수 출처: alternative.me).</p>
+<div class="box"><b>지금:</b> {g['date']} 기준 <b>{g['now']}</b>{f" — {now['name']}" if now else ""}. 최근 1년 평균은 {g['avg_1y']}이었습니다. <b>한 줄 요약:</b> 구간별로 그 뒤 30일 수익률 중간값은 {worst['name']} {_pc(worst['med30'])} ~ {best['name']} {_pc(best['med30'])}로 차이가 있었지만, 모든 날의 평소(30일 뒤 오른 비율 {base['up30']}%, 중간값 {_pc(base['med30'])})와 견줘 통계적으로 뚜렷한 차이라고 하기는 어려웠습니다.</div>
+<h2>구간별로 그 뒤 비트코인은</h2>
+<table><tr><th>지수 구간</th><th>날 수</th><th>7일 뒤 오른 비율</th><th>7일 중간값</th><th>30일 뒤 오른 비율</th><th>30일 중간값</th></tr>
+{rows}
+<tr class="muted"><td>평소 (모든 날)</td><td></td><td>{base['up7']}%</td><td>{_pc(base['med7'])}</td><td>{base['up30']}%</td><td>{_pc(base['med30'])}</td></tr></table>
+<p class="muted">굵은 줄이 지금 구간입니다. 같은 구간이 며칠씩 이어지므로(예: 극단적 공포 {b[0]['days']}일은 {b[0]['episodes']}번의 시기) 날 수만큼 독립적인 표본은 아닙니다.</p>
+<h2>읽는 법</h2>
+<ul>
+  <li><b>극단적 공포 = 바닥은 아니다</b> — 공포가 길게 이어지며 더 내린 시기도 많았습니다. "극단적 공포니까 바로 산다"보다는 분할로 나눠 들어가는 근거 정도로 쓰는 게 안전합니다(<a href="averaging-down.html">물타기 평단 계산</a>).</li>
+  <li><b>극단적 탐욕 = 바로 꼭지도 아니다</b> — 강세장에서는 탐욕이 몇 주씩 이어지며 더 올랐습니다. 다만 이때는 펀딩비가 높아지는 경우가 많아 롱을 오래 들고 있으면 비용이 큽니다(<a href="funding-rate.html">펀딩비</a>).</li>
+  <li><b>지수는 결과를 요약한 숫자</b> — 지수는 최근 가격 변동성·거래량·검색량 등을 섞어 만든 것이라, 이미 일어난 움직임을 늦게 반영합니다. 예측 신호보다는 "지금 시장 분위기" 확인용입니다.</li>
+</ul>
+<h2>최근 30일 흐름</h2>
+<p>{" → ".join(str(v) for v in g['last30'][-10:])} (최근 10일)</p>
+<p class="muted">숫자는 매주 다시 계산해 이 글에 반영됩니다. 과거 통계이며 투자 권유가 아닙니다.</p>
+<a class="cta" href="../index.html#home">지금 공포·탐욕 지수와 예측 범위 보기 →</a>
+"""
+
+
+def hours_guide() -> str:
+    hm = _hist()["heatmap"]
+    y = hm["year"]
+    hour_avg = [sum(y[w][h] for w in range(7)) / 7 for h in range(24)]
+    day_avg = [sum(y[w]) / 24 for w in range(7)]
+    top_h = sorted(range(24), key=lambda h: -hour_avg[h])[:4]
+    calm_h = sorted(range(24), key=lambda h: hour_avg[h])[:4]
+    spot = lambda x: f"{WD[x['wd']]}요일 {x['h']}시 (±{x['v']:.2f}%)"  # noqa: E731
+    js = None
+    if (SITE / "data" / "jumps_stats.json").exists():
+        js = json.loads((SITE / "data" / "jumps_stats.json").read_text(encoding="utf-8"))
+    jumps = ""
+    if js:
+        bh = js["by_hour_kst"]
+        tot = max(1, sum(bh))
+        jt = sorted(range(24), key=lambda h: -bh[h])[:4]
+        jumps = (f"<h2>5분 1% 급변은 언제 몰리나</h2><p>지난 1년 급변 {tot}번 가운데 가장 많았던 시간은 "
+                 f"{', '.join(f'{h}시({bh[h]}번)' for h in jt)}입니다. 자세한 통계는 <a href='sudden-moves.html'>급변 글</a>에 있습니다.</p>")
+    cells = "".join(
+        f"<tr><td>{WD[w]}</td>" + "".join(
+            f"<td style='background:rgba(247,147,26,{min(0.9, y[w][h] / max(map(max, y)) * 0.9):.2f})'>{y[w][h]:.2f}</td>" for h in range(0, 24, 3))
+        + "</tr>" for w in range(7))
+    return f"""
+<p>비트코인은 24시간 거래되지만 하루 내내 똑같이 움직이지 않습니다. 최근 1년 1시간봉으로 <b>한국 시간 요일·시간대별 "1시간 동안 보통 얼마나 움직이나"</b>(시가→종가 변화 크기의 중간값)를 셌습니다.</p>
+<div class="box"><b>한 줄 요약:</b> 1시간 움직임 중간값은 전체 ±{hm['median']:.2f}%. 평일 ±{hm['weekday']:.2f}%, 주말 ±{hm['weekend']:.2f}%로 <b>주말이 평일의 약 {hm['weekend'] / hm['weekday'] * 100:.0f}%</b> 수준입니다. 가장 크게 움직인 시간대는 {', '.join(f'{h}시' for h in top_h)}, 가장 조용한 시간대는 {', '.join(f'{h}시' for h in calm_h)}였습니다.</div>
+<h2>가장 크게 / 조용하게 움직인 칸</h2>
+<ul>
+  <li><b>가장 큰 칸</b> — {', '.join(spot(x) for x in hm['top'])}</li>
+  <li><b>가장 조용한 칸</b> — {', '.join(spot(x) for x in hm['calm'])}</li>
+</ul>
+<h2>요일 × 시간 (3시간 간격, 1시간 움직임 중간값 %)</h2>
+<table><tr><th></th>{''.join(f'<th>{h}시</th>' for h in range(0, 24, 3))}</tr>{cells}</table>
+<p class="muted">색이 진할수록 많이 움직인 칸입니다. 요일별 평균: {' · '.join(f'{WD[w]} ±{day_avg[w]:.2f}%' for w in range(7))}.</p>
+<h2>왜 이 시간대인가</h2>
+<ul>
+  <li><b>밤 9시~새벽 1시</b> — 미국 주식 시장이 열리고(한국 시간 밤 11시 반, 미국 서머타임 기간엔 10시 반) 미국 경제 지표가 나오는 시간입니다(<a href="fomc-cpi.html">FOMC·CPI 발표 통계</a>).</li>
+  <li><b>오전 9시 전후</b> — 일봉이 바뀌는 시각(UTC 0시)이라, 평일에는 바로 앞 새벽 시간보다 조금 커지는 편입니다.</li>
+  <li><b>주말 낮</b> — 기관·주식 시장이 쉬어 거래량이 줄고 조용한 편입니다. 다만 거래량이 적을 때 큰 주문 하나에 급변이 나기도 합니다.</li>
+</ul>
+{jumps}
+<h2>그래서 어떻게 쓰나</h2>
+<ol>
+  <li><b>같은 손절이라도 시간대에 따라 다르게</b> — 많이 움직이는 시간대에 진입하면 평소 출렁임만으로 손절이 맞기 쉽습니다(<a href="stop-loss.html">손절 거리</a>).</li>
+  <li><b>자기 전에 포지션 점검</b> — 한국 시간 밤~새벽이 가장 크게 움직이는 시간대라, 잠들기 전 레버리지·청산가를 한 번 더 보세요(<a href="liquidation-price.html">청산가 계산법</a>).</li>
+  <li><b>시간대는 방향을 알려 주지 않는다</b> — 이 통계는 움직임의 크기만 셉니다. 오를지 내릴지는 별개입니다.</li>
+</ol>
+<p class="muted">숫자는 매주 다시 계산해 이 글에 반영됩니다. 메인 화면 "과거와 비교" 영역에서 24시간 전체 표를 볼 수 있습니다. 과거 통계이며 투자 권유가 아닙니다.</p>
+<a class="cta" href="../index.html#home">지금 예측 범위 보기 →</a>
+"""
+
+
+if (SITE / "data" / "history.json").exists():
+    _h = _hist()
+    if _h.get("events", {}).get("cpi"):
+        PAGES["guide/fomc-cpi.html"] = ("FOMC·CPI 발표 날 비트코인은 얼마나 움직일까? 2020년 이후 통계", "미국 CPI·FOMC 발표 뒤 4시간 동안 비트코인이 평소보다 몇 배 움직였는지, 오른 비율, 가장 크게 움직인 날, 최근 발표 반응과 다가오는 일정을 실제 데이터로 정리했습니다.", event_guide())
+    if _h.get("fng", {}).get("buckets"):
+        PAGES["guide/fear-greed.html"] = ("공포탐욕지수 보는 법: 극단적 공포일 때 사도 될까?", "비트코인 공포·탐욕 지수 구간별로 그 뒤 7일·30일 비트코인 수익률이 어땠는지 2018년 이후 데이터로 비교하고, 지수를 매매에 쓰는 법과 한계를 설명합니다.", fear_greed_guide())
+    if _h.get("heatmap", {}).get("year"):
+        PAGES["guide/volatile-hours.html"] = ("비트코인이 가장 크게 움직이는 시간대·요일 (한국 시간)", "최근 1년 1시간봉으로 한국 시간 요일·시간대별 비트코인 변동폭을 세고, 평일과 주말 차이, 급변이 몰리는 시간, 손절·포지션 관리에 쓰는 법을 정리했습니다.", hours_guide())
+    RELATED.update({
+        "fomc-cpi": ["volatile-hours", "sudden-moves", "stop-loss"],
+        "fear-greed": ["averaging-down", "funding-rate", "forecast-range"],
+        "volatile-hours": ["fomc-cpi", "sudden-moves", "stop-loss"],
+    })
+
+
 # 📖 용어 사전: (용어, 설명, 관련 글) — 가나다 순이 아니라 처음 보는 사람이 읽기 좋은 순서
 GLOSSARY = [
     ("변동성 (σ, 시그마)", "가격이 평소 얼마나 크게 출렁이는지를 나타내는 숫자. 수익률의 표준편차로 잽니다. BTC Agent 의 예측 범위 폭은 이 값으로 정해집니다.", "forecast-range.html"),
@@ -660,7 +823,8 @@ def main() -> None:
     for path, (title, desc, body) in PAGES.items():
         out = SITE / path
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(wrap(path, title, desc, body), encoding="utf-8", newline="\n")
+        upd = f"숫자 갱신 {date.today():%Y년 %m월 %d일}" if path in DATA_GUIDES else None
+        out.write_text(wrap(path, title, desc, body, upd), encoding="utf-8", newline="\n")
     write_sitemap()
     print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
 
