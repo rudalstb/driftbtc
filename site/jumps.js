@@ -88,7 +88,11 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
   if (!can && !(ios && !standalone)) return;
   const say = (t) => { tip.textContent = t; tip.hidden = !t; };
   const b64 = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4); const r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
-  const reg = () => navigator.serviceWorker.ready;
+  // 서비스 워커가 아직 없으면 직접 등록하고, 8초 안에 준비되지 않으면 멈춰 있지 않고 알려 준다
+  const reg = () => Promise.race([
+    navigator.serviceWorker.getRegistration().then((r) => r || navigator.serviceWorker.register("sw.js")).then(() => navigator.serviceWorker.ready),
+    new Promise((_, no) => setTimeout(() => no(new Error("서비스 워커 준비 안 됨")), 8000)),
+  ]);
   const label = (on) => { btn.textContent = on ? "🔕 급변 푸시 끄기" : "🔔 급변 푸시 받기 — 사이트를 닫아도 5분 ±1% 급변 때 알림"; btn.dataset.on = on ? "1" : ""; };
   const post = (body) => fetch(window.PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
@@ -99,6 +103,8 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
   btn.addEventListener("click", async (ev) => {
     ev.preventDefault();
     if (!can) { say("아이폰은 사파리 공유 버튼 → '홈 화면에 추가'로 설치한 뒤, 설치한 앱에서 이 버튼을 누르면 알림을 받을 수 있어요."); return; }
+    let step = "준비";
+    say("확인하는 중…");
     try {
       const r = await reg();
       const cur = await r.pushManager.getSubscription();
@@ -108,16 +114,20 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
         label(false); say("급변 푸시를 껐어요.");
         return;
       }
+      step = "알림 허용";
       if ((await Notification.requestPermission()) !== "granted") { say("알림이 막혀 있어요. 브라우저 주소창의 사이트 설정에서 알림을 허용해 주세요."); return; }
+      step = "발송 키";
       const { key } = await (await fetch(window.PUSH_URL, { cache: "no-store" })).json();
+      step = "구독";
       const sub = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+      step = "확인 알림";
       const res = await post({ action: "sub", sub: sub.toJSON() });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
       label(true);
       say("켜졌어요. 확인 알림이 하나 갔을 거예요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
       try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=push-on"); } catch (e) {}
     } catch (e) {
-      say("알림을 켜지 못했어요 (" + (e.message || e) + "). 잠시 뒤 다시 시도해 주세요.");
+      say("알림을 켜지 못했어요 [" + step + ": " + (e.message || e) + "]. 잠시 뒤 다시 시도해 주세요.");
     }
   });
 })();
