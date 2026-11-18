@@ -122,7 +122,16 @@ export async function POST(request) {
         return json(request, { error: "구독 정보가 올바르지 않아요" }, 400);
       const [n] = await redis(cfg, [["HLEN", "push:subs"]]);
       if (Number(n) >= MAX_SUBS) return json(request, { error: "구독이 가득 찼어요" }, 429);
-      await redis(cfg, [["HSET", "push:subs", sha(s.endpoint), JSON.stringify({ endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } })]]);
+      const sub = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
+      // 켜자마자 그 기기에만 확인 알림 1번 (실제로 도착하는지 바로 알 수 있게). 실패하면 저장하지 않는다
+      const keys = await vapid(cfg);
+      webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
+      try {
+        await webpush.sendNotification(sub, JSON.stringify({ title: "🔔 급변 푸시가 켜졌어요", body: "비트코인이 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요. 일주일에 3번 안팎이에요.", url: SITE + "#home", tag: "push-on" }), { TTL: 300 });
+      } catch (e) {
+        return json(request, { error: `확인 알림을 보내지 못했어요 (${e.statusCode || e.message})` }, 502);
+      }
+      await redis(cfg, [["HSET", "push:subs", sha(s.endpoint), JSON.stringify(sub)]]);
       return json(request, { ok: true });
     }
     if (b.action === "unsub") {

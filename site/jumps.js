@@ -114,7 +114,7 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
       const res = await post({ action: "sub", sub: sub.toJSON() });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
       label(true);
-      say("켜졌어요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
+      say("켜졌어요. 확인 알림이 하나 갔을 거예요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
       try { navigator.sendBeacon?.(window.VISIT_URL + "?sec=push-on"); } catch (e) {}
     } catch (e) {
       say("알림을 켜지 못했어요 (" + (e.message || e) + "). 잠시 뒤 다시 시도해 주세요.");
