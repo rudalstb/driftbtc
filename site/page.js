@@ -34,7 +34,7 @@
   let list = [];
   try {
     const xml = await (await fetch("../sitemap.xml", { cache: "no-store" })).text();
-    const re = new RegExp(`/${kind}/(\\d{4}-\\d{2}(?:-\\d{2})?)\\.html<`, "g");
+    const re = new RegExp("/" + kind + "/([0-9]{4}-[0-9]{2}(?:-[0-9]{2})?)[.]html<", "g");
     list = [...new Set([...xml.matchAll(re)].map((x) => x[1]))].sort();
   } catch (e) {}
   const i = list.indexOf(stem);
