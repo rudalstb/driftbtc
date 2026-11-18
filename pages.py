@@ -519,6 +519,10 @@ def sudden_moves() -> str:
     kst = lambda ms: _dt.fromtimestamp(ms / 1000 + 60, _tz(_td(hours=9))).strftime("%Y년 %m월 %d일 %H:%M")
     big = "".join(f"<li>{kst(b['t'])} — 5분 {pc(b['move'])} → 30분 뒤 급변 방향으로 {pc(b['r30']) if b['r30'] is not None else '—'}</li>" for b in d["biggest"])
     t = a["t"]
+    r5, r60 = g["all"]["h5"].get("rev", 0), g["all"]["h60"].get("rev", 0)
+    trend = "시간이 지날수록 되돌림 쪽이 조금씩 많아졌습니다" if r60 > r5 + 2 else "시간이 지나도 이어짐·되돌림 비율이 크게 달라지지 않았습니다"
+    avg_max = max(abs(g["all"][f"h{h}"].get("avg", 0)) for h in (5, 15, 30, 60))
+    chase = "추격 매수·매도는 불리했다" if a["cont"] < a["rev"] else "추격이 유리했다고 보기도 어렵다"
     sure = "통계적으로 확실하다고 하기엔 부족합니다(|t| 2 미만)" if t is not None and abs(t) < 2 else "우연으로 보기 어려운 크기입니다(|t| 2 이상)"
     return f"""
 <p>비트코인이 5분 만에 1% 넘게 튀면 "지금 따라 들어가야 하나, 반대로 잡아야 하나" 고민이 됩니다. 감으로 답하지 않고, 지난 1년치 1분봉 <b>{d['minutes']:,}개</b>를 BTC Agent 가 쓰는 규칙 그대로 돌려 세어 봤습니다 ({d['from']} ~ {d['to']}, 바이낸스 BTC/USDT).</p>
@@ -532,7 +536,7 @@ def sudden_moves() -> str:
 <h2>시간이 지나면서 어떻게 됐나</h2>
 <table><tr><th>급변 뒤</th><th>이어짐</th><th>되돌림</th><th>제자리</th><th>평균 (급변 방향 +)</th></tr>
 {rows}</table>
-<p>짧게는 제자리가 많고, 시간이 지날수록 되돌림 쪽이 조금씩 많아졌습니다. 다만 평균은 0.1~0.2% 수준이라, 왕복 수수료와 슬리피지(<a href="trading-fees.html">수수료 글</a>)를 빼면 남는 게 거의 없습니다.</p>
+<p>{trend}. 다만 평균은 가장 커도 {avg_max:.2f}% 수준이라, 왕복 수수료와 슬리피지(<a href="trading-fees.html">수수료 글</a>)를 빼면 남는 게 거의 없습니다.</p>
 <h2>급등과 급락, 크기별로는</h2>
 <table><tr><th>구분 (30분 뒤)</th><th>횟수</th><th>이어짐</th><th>되돌림</th><th>평균</th></tr>
 {side}</table>
@@ -543,7 +547,7 @@ def sudden_moves() -> str:
 <ul>{big}</ul>
 <h2>그래서 어떻게 쓰나</h2>
 <ol>
-  <li><b>추격 매수·매도는 불리했다</b> — 1년 동안 30분 뒤 이어진 경우가 3번 중 1번 정도였습니다. 급변을 보고 같은 방향으로 시장가 진입하면, 수수료까지 내고 되돌림을 맞기 쉽습니다.</li>
+  <li><b>{chase}</b> — 1년 동안 30분 뒤 이어진 경우는 {round(a['cont'])}%, 되돌린 경우는 {round(a['rev'])}%였습니다. 급변을 보고 같은 방향으로 시장가 진입하면, 수수료까지 내고 되돌림을 맞기 쉽습니다.</li>
   <li><b>그렇다고 반대 매매가 정답도 아니다</b> — 되돌림 쪽이 조금 많았을 뿐, 평균 크기가 작고 흔들림이 커서 "무조건 반대"로 이길 만한 차이는 아닙니다. 지난 1년이 다음 1년에도 그대로라는 보장도 없습니다.</li>
   <li><b>급변은 손절·청산가 점검 신호</b> — 급변 직후에는 변동성이 커집니다. 내 손절이 너무 가깝지 않은지(<a href="stop-loss.html">손절 거리</a>), 청산가가 <a href="forecast-range.html">95% 예측 범위</a> 안에 있지 않은지 먼저 보세요.</li>
 </ol>
@@ -585,7 +589,9 @@ def event_guide() -> str:
         return ", ".join(f"{b['date']} {_pc(b['move'])}" for b in e["biggest"])
 
     up = ev.get("upcoming") or []
-    kst = lambda t: (datetime.fromisoformat(t.replace("Z", "+00:00")) + timedelta(hours=9)).strftime("%m월 %d일 %H:%M")  # noqa: E731
+    def kst(t: str) -> str:
+        k = datetime.fromisoformat(t.replace("Z", "+00:00")) + timedelta(hours=9)
+        return f"{k.month}월 {k.day}일 {k:%H:%M}"
     nxt = "".join(f"<li><b>{u['name']}</b> — {kst(u['t'])} (한국 시간)</li>" for u in up) or "<li>가까운 발표 일정이 없어요.</li>"
     return f"""
 <p>미국 소비자물가(CPI)와 연준 금리 결정(FOMC) 날에는 "발표 전에 정리해야 하나" 고민이 됩니다. 2020년 이후 실제 발표 <b>{c['n'] + f['n']}번</b>을 모아, 발표 시각부터 <b>{hrs}시간 동안</b> 비트코인이 얼마나 움직였는지 같은 요일·같은 시각의 평소와 비교했습니다 (바이낸스 BTC/USDT 1시간봉).</p>
@@ -604,7 +610,7 @@ def event_guide() -> str:
   <li><b>CPI</b> — {biggest(c)}</li>
   <li><b>FOMC</b> — {biggest(f)}</li>
 </ul>
-<p>큰 날은 대부분 2022년처럼 물가와 금리가 시장의 최대 관심사였던 시기에 몰려 있습니다. 시장이 무엇에 민감한지에 따라 같은 발표라도 반응 크기가 달라집니다.</p>
+<p>같은 발표라도 그 시기 시장이 물가·금리에 얼마나 민감했는지에 따라 반응 크기가 크게 달라졌습니다. 평균보다 '가끔 크게 터지는 날'이 있다는 점을 기억하세요.</p>
 <h2>다가오는 발표</h2>
 <ul>{nxt}</ul>
 <h2>그래서 어떻게 쓰나</h2>
@@ -625,11 +631,14 @@ def fear_greed_guide() -> str:
     rows = "".join(
         f"<tr{' style=\"font-weight:700\"' if x['now'] else ''}><td>{x['name']} ({x['lo']}~{x['hi']})</td><td>{x['days']:,}일</td>"
         f"<td>{x['up7']}%</td><td>{_pc(x['med7'])}</td><td>{x['up30']}%</td><td>{_pc(x['med30'])}</td></tr>" for x in b)
+    diff = [x["name"] for x in b if x.get("verdict") and x["verdict"] != "평소와 비슷"]
+    gap = (f"{', '.join(diff)} 구간은 평소와 다르게 나타났지만 표본이 겹쳐 있어 참고만 하세요" if diff
+           else "통계적으로 뚜렷한 차이라고 하기는 어려웠습니다")
     best = max(b, key=lambda x: x["med30"])
     worst = min(b, key=lambda x: x["med30"])
     return f"""
 <p>공포·탐욕 지수는 비트코인 시장 분위기를 0(극단적 공포)~100(극단적 탐욕) 숫자 하나로 보여 줍니다. "남들이 공포에 질렸을 때 사라"는 말이 정말 맞았는지, {g['since'][:4]}년 이후 <b>{g['days']:,}일</b>의 지수와 그 뒤 비트코인 가격을 맞대어 셌습니다 (지수 출처: alternative.me).</p>
-<div class="box"><b>지금:</b> {g['date']} 기준 <b>{g['now']}</b>{f" — {now['name']}" if now else ""}. 최근 1년 평균은 {g['avg_1y']}이었습니다. <b>한 줄 요약:</b> 구간별로 그 뒤 30일 수익률 중간값은 {worst['name']} {_pc(worst['med30'])} ~ {best['name']} {_pc(best['med30'])}로 차이가 있었지만, 모든 날의 평소(30일 뒤 오른 비율 {base['up30']}%, 중간값 {_pc(base['med30'])})와 견줘 통계적으로 뚜렷한 차이라고 하기는 어려웠습니다.</div>
+<div class="box"><b>지금:</b> {g['date']} 기준 <b>{g['now']}</b>{f" — {now['name']}" if now else ""}. 최근 1년 평균은 {g['avg_1y']}이었습니다. <b>한 줄 요약:</b> 구간별로 그 뒤 30일 수익률 중간값은 {worst['name']} {_pc(worst['med30'])} ~ {best['name']} {_pc(best['med30'])}로 차이가 있었지만, 모든 날의 평소(30일 뒤 오른 비율 {base['up30']}%, 중간값 {_pc(base['med30'])})와 견줘 {gap}.</div>
 <h2>구간별로 그 뒤 비트코인은</h2>
 <table><tr><th>지수 구간</th><th>날 수</th><th>7일 뒤 오른 비율</th><th>7일 중간값</th><th>30일 뒤 오른 비율</th><th>30일 중간값</th></tr>
 {rows}
@@ -637,11 +646,11 @@ def fear_greed_guide() -> str:
 <p class="muted">굵은 줄이 지금 구간입니다. 같은 구간이 며칠씩 이어지므로(예: 극단적 공포 {b[0]['days']}일은 {b[0]['episodes']}번의 시기) 날 수만큼 독립적인 표본은 아닙니다.</p>
 <h2>읽는 법</h2>
 <ul>
-  <li><b>극단적 공포 = 바닥은 아니다</b> — 공포가 길게 이어지며 더 내린 시기도 많았습니다. "극단적 공포니까 바로 산다"보다는 분할로 나눠 들어가는 근거 정도로 쓰는 게 안전합니다(<a href="averaging-down.html">물타기 평단 계산</a>).</li>
-  <li><b>극단적 탐욕 = 바로 꼭지도 아니다</b> — 강세장에서는 탐욕이 몇 주씩 이어지며 더 올랐습니다. 다만 이때는 펀딩비가 높아지는 경우가 많아 롱을 오래 들고 있으면 비용이 큽니다(<a href="funding-rate.html">펀딩비</a>).</li>
+  <li><b>극단적 공포 = 바닥은 아니다</b> — 공포가 길게 이어지며 더 내린 시기도 있었습니다. "극단적 공포니까 바로 산다"보다는 분할로 나눠 들어가는 근거 정도로 쓰는 게 안전합니다(<a href="averaging-down.html">물타기 평단 계산</a>).</li>
+  <li><b>극단적 탐욕 = 바로 꼭지도 아니다</b> — 강세장에서는 탐욕이 몇 주씩 이어지며 더 오르기도 했습니다. 다만 이때는 펀딩비가 높아지는 경우가 많아 롱을 오래 들고 있으면 비용이 큽니다(<a href="funding-rate.html">펀딩비</a>).</li>
   <li><b>지수는 결과를 요약한 숫자</b> — 지수는 최근 가격 변동성·거래량·검색량 등을 섞어 만든 것이라, 이미 일어난 움직임을 늦게 반영합니다. 예측 신호보다는 "지금 시장 분위기" 확인용입니다.</li>
 </ul>
-<h2>최근 30일 흐름</h2>
+<h2>최근 10일 흐름</h2>
 <p>{" → ".join(str(v) for v in g['last30'][-10:])} (최근 10일)</p>
 <p class="muted">숫자는 매주 다시 계산해 이 글에 반영됩니다. 과거 통계이며 투자 권유가 아닙니다.</p>
 <a class="cta" href="../index.html#home">지금 공포·탐욕 지수와 예측 범위 보기 →</a>
