@@ -6,10 +6,11 @@
 // GET                                   → {key: 발송용 공개 키, n: 구독 수}
 // POST {action:"sub", sub}               → 구독 저장 (브라우저가 만든 푸시 주소·암호 키만, 개인정보 없음)
 // POST {action:"unsub", endpoint}        → 구독 삭제
-// POST {action:"pref", endpoint, morning} → ☀️ 아침 9시 요약도 받을지 (기본 꺼짐)
+// POST {action:"pref", endpoint, morning?, events?} → ☀️ 아침 9시 요약 · 📅 큰 발표 30분 전 알림도 받을지 (기본 꺼짐, 보낸 항목만 바꿈)
 // POST {action:"check"}                  → Cloudflare 감시기가 1분마다 부름. 여기서 직접 1분봉을 보고 새 급변이면 모두에게 보냄
 //                                          (누가 불러도 결과는 같고, 같은 급변은 한 번만, 1분에 한 번만 계산 → 비밀 값이 필요 없다)
 //                                          한국 시간 9시대에는 오늘 1일 예측이 나오면 아침 요약을 켠 사람에게 하루 한 번 보냄
+//                                          미국 CPI·FOMC 발표 25~35분 전이면 발표 알림을 켠 사람에게 발표마다 한 번 보냄
 // 보낸 수·알림 눌러 들어온 수는 방문 집계(sec:<날짜>)에 함께 쌓아 stats.html 에서 본다.
 // 발송 키(VAPID)는 처음 쓸 때 만들어 Redis 에 보관한다.
 import { createHash } from "node:crypto";
@@ -136,6 +137,47 @@ async function morning(cfg) {
   return r;
 }
 
+// 📅 큰 발표 30분 전: site/data/events.json(사이트가 자동 관리) 가운데 25~35분 남은 발표, 발표마다 한 번
+let evCache = { at: 0, list: [] };
+async function upcomingEvents() {
+  if (Date.now() - evCache.at > 10 * M) {
+    try { evCache = { at: Date.now(), list: await (await fetch(SITE + "data/events.json", { cache: "no-store" })).json() }; }
+    catch (e) { evCache.at = Date.now() - 8 * M; } // 실패하면 2분 뒤 다시
+  }
+  return Array.isArray(evCache.list) ? evCache.list : [];
+}
+
+async function eventAlert(cfg) {
+  const now = Date.now();
+  const soon = (await upcomingEvents()).filter((e) => { const left = Date.parse(e.t) - now; return left >= 25 * M && left <= 35 * M; });
+  const out = [];
+  for (const e of soon) {
+    const t = Date.parse(e.t);
+    const [first] = await redis(cfg, [["SET", `push:event:${t}`, "1", "NX", "EX", 2 * 86400]]);
+    if (!first) continue;
+    // 지난 발표 반응 (history.py 가 계산: 발표 뒤 4시간 움직임, 평소 같은 시각과 비교)
+    let line = "";
+    try {
+      const h = await (await fetch(SITE + "data/history.json", { cache: "no-store" })).json();
+      const kind = /CPI/i.test(e.name) ? "cpi" : /FOMC/i.test(e.name) ? "fomc" : null;
+      const s = kind && h.events?.[kind];
+      if (s) line = `지난 ${s.n}번 발표 뒤 4시간 보통 ±${s.abs_median}% (평소의 ${s.ratio}배)` + (s.recent?.[0] ? ` · 직전 ${s.recent[0].move > 0 ? "+" : ""}${s.recent[0].move}%` : "");
+    } catch (err) { /* 통계 없이 보냄 */ }
+    const left = Math.round((t - now) / M);
+    const hm = new Date(t + 9 * 3600 * 1000).toISOString().slice(11, 16);
+    const r = await broadcast(cfg, {
+      title: `📅 ${left}분 뒤 ${e.name} 발표 (${hm})`,
+      body: (line || "발표 직후에는 가격이 크게 흔들릴 수 있어요") + " (참고용)",
+      url: SITE + "?from=push-event#home",
+      tag: "event-" + t,
+      ttl: 30 * 60,
+    }, (sub) => sub.events);
+    await stat(cfg, "push-sent-event", r.sent);
+    out.push({ name: e.name, ...r });
+  }
+  return out.length ? out : null;
+}
+
 export async function OPTIONS(request) {
   return new Response(null, { status: 204, headers: headers(request) });
 }
@@ -167,7 +209,7 @@ export async function POST(request) {
         return json(request, { error: "구독 정보가 올바르지 않아요" }, 400);
       const [n] = await redis(cfg, [["HLEN", "push:subs"]]);
       if (Number(n) >= MAX_SUBS) return json(request, { error: "구독이 가득 찼어요" }, 429);
-      const sub = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, morning: b.morning === true };
+      const sub = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, morning: b.morning === true, events: b.events === true };
       // 켜자마자 그 기기에만 확인 알림 1번 (실제로 도착하는지 바로 알 수 있게). 실패하면 저장하지 않는다
       const keys = await vapid(cfg);
       webpush.setVapidDetails(SITE, keys.publicKey, keys.privateKey);
@@ -187,16 +229,22 @@ export async function POST(request) {
       const id = sha(String(b.endpoint || ""));
       const [cur] = await redis(cfg, [["HGET", "push:subs", id]]);
       if (!cur) return json(request, { error: "구독을 찾지 못했어요. 푸시를 껐다 다시 켜 주세요" }, 404);
-      const sub = { ...JSON.parse(cur), morning: b.morning === true };
+      const sub = JSON.parse(cur);
+      for (const k of ["morning", "events"]) if (k in b) sub[k] = b[k] === true;
       await redis(cfg, [["HSET", "push:subs", id, JSON.stringify(sub)]]);
-      return json(request, { ok: true, morning: sub.morning });
+      return json(request, { ok: true, morning: !!sub.morning, events: !!sub.events });
     }
     if (b.action === "check") {
       const minute = Math.floor(Date.now() / M);
       const [first] = await redis(cfg, [["SET", `push:check:${minute}`, "1", "NX", "EX", "120"]]);
       if (!first) return json(request, { skipped: "이번 분은 이미 확인함" });
+      // 아침 요약·발표 알림은 1분봉과 상관없이 먼저
+      let am = null;
+      try { am = await morning(cfg); } catch (e) { am = { error: String(e.message || e) }; }
+      let evs = null;
+      try { evs = await eventAlert(cfg); } catch (e) { evs = { error: String(e.message || e) }; }
       const k = await klines();
-      if (!k || k.length < 40) return json(request, { error: "1분봉을 받지 못함" }, 502);
+      if (!k || k.length < 40) return json(request, { error: "1분봉을 받지 못함", morning: am, events: evs }, 502);
       const found = jumps(k);
       const res = [];
       for (const j of found) {
@@ -212,9 +260,7 @@ export async function POST(request) {
         }));
         await stat(cfg, "push-sent-jump", res[res.length - 1].sent);
       }
-      let am = null;
-      try { am = await morning(cfg); } catch (e) { am = { error: String(e.message || e) }; }
-      return json(request, { ok: true, price: k[k.length - 1].c, jumps: found.length, sent: res, morning: am });
+      return json(request, { ok: true, price: k[k.length - 1].c, jumps: found.length, sent: res, morning: am, events: evs });
     }
     return json(request, { error: "알 수 없는 요청" }, 400);
   } catch (e) {

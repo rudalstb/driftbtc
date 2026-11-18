@@ -92,7 +92,7 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
 // 🔔 급변 푸시 받기: 사이트를 닫아도 5분 ±1% 급변 때 알림 (api/push.js 가 보냄, 서비스 워커가 띄움)
 // - 아이폰은 '홈 화면에 추가'한 앱에서만 웹 푸시가 되므로, 사파리에서는 방법만 안내한다
 (function () {
-  const btn = document.getElementById("push-btn"), tip = document.getElementById("push-tip"), am = document.getElementById("push-morning");
+  const btn = document.getElementById("push-btn"), tip = document.getElementById("push-tip");
   if (!btn || !window.PUSH_URL || location.protocol !== "https:") return;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -113,14 +113,21 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
     btn.dataset.on = on ? "1" : "";
     showAm(on);
   };
-  // ☀️ 아침 9시 요약도 받기 (켠 사람만, 기본 꺼짐) — 이 기기의 선택은 브라우저에도 기억해 둔다
-  const AK = "push-morning";
-  const amOn = () => { try { return localStorage.getItem(AK) === "1"; } catch (e) { return false; } };
+  // 추가로 받을 알림 (켠 사람만, 기본 꺼짐) — 이 기기의 선택은 브라우저에도 기억해 둔다
+  const EXTRAS = [
+    { id: "push-morning", key: "morning", on: "☀️ 아침 9시 요약 받는 중 (끄기)", off: "☀️ 아침 9시 요약도 받기 — 오늘 예측 범위 한 줄",
+      sayOn: "아침 9시쯤 오늘의 예측 범위를 한 줄로 보내 드려요.", sayOff: "아침 요약을 껐어요." },
+    { id: "push-events", key: "events", on: "📅 큰 발표 30분 전 알림 받는 중 (끄기)", off: "📅 큰 발표 30분 전 알림도 받기 — 미국 CPI·FOMC",
+      sayOn: "미국 CPI·FOMC 발표 30분 전에 지난 발표 때 움직임과 함께 알려 드려요.", sayOff: "발표 알림을 껐어요." },
+  ].map((x) => ({ ...x, el: document.getElementById(x.id) })).filter((x) => x.el);
+  const isOn = (x) => { try { return localStorage.getItem(x.id) === "1"; } catch (e) { return false; } };
+  const setOn = (x, v) => { try { localStorage.setItem(x.id, v ? "1" : ""); } catch (e) {} };
   function showAm(on) {
-    if (!am) return;
-    am.hidden = !on;
-    am.textContent = amOn() ? "☀️ 아침 9시 요약 받는 중 (끄기)" : "☀️ 아침 9시 요약도 받기 — 오늘 예측 범위 한 줄";
-    am.dataset.on = amOn() ? "1" : "";
+    for (const x of EXTRAS) {
+      x.el.hidden = !on;
+      x.el.textContent = isOn(x) ? x.on : x.off;
+      x.el.dataset.on = isOn(x) ? "1" : "";
+    }
   }
   const IOS_STEPS = "① 아래쪽 공유 버튼(네모에 ↑) → ② '홈 화면에 추가' → ③ 홈 화면의 BTC Agent 아이콘으로 열기 → ④ 이 버튼을 다시 누르고 알림 '허용'. (iOS 16.4 이상)";
   const post = (body) => fetch(window.PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -152,18 +159,18 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
     nudge.hidden = false;
   });
 
-  am?.addEventListener("click", async (ev) => {
+  for (const x of EXTRAS) x.el.addEventListener("click", async (ev) => {
     ev.preventDefault();
-    const want = !amOn();
+    const want = !isOn(x);
     try {
       const cur = await (await reg()).pushManager.getSubscription();
       if (!cur) return label(false);
-      const res = await post({ action: "pref", endpoint: cur.endpoint, morning: want });
+      const res = await post({ action: "pref", endpoint: cur.endpoint, [x.key]: want });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
-      try { localStorage.setItem(AK, want ? "1" : ""); } catch (e) {}
+      setOn(x, want);
       showAm(true);
-      say(want ? "아침 9시쯤 오늘의 예측 범위를 한 줄로 보내 드려요." : "아침 요약을 껐어요. 급변 알림은 그대로 와요.");
-      pushBeat(want ? "push-morning-on" : "push-morning-off");
+      say(want ? x.sayOn : x.sayOff + " 급변 알림은 그대로 와요.");
+      pushBeat(x.id + (want ? "-on" : "-off"));
     } catch (e) {
       say("바꾸지 못했어요 (" + (e.message || e) + ")");
     }
@@ -180,7 +187,7 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
       if (cur) {
         await post({ action: "unsub", endpoint: cur.endpoint }).catch(() => {});
         await cur.unsubscribe();
-        try { localStorage.setItem(AK, ""); } catch (e) {}
+        EXTRAS.forEach((x) => setOn(x, false));
         label(false); say("급변 푸시를 껐어요.");
         pushBeat("push-off");
         return;
@@ -196,7 +203,7 @@ const pushBeat = (name) => { try { navigator.sendBeacon?.(window.VISIT_URL + "?s
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
       label(true);
       say("켜졌어요. 확인 알림이 하나 갔을 거예요. 5분 만에 ±1% 넘게 움직이면 바로 알려 드려요(일주일에 3번 안팎). 매매 신호가 아니라 '지금 크게 움직였다'는 알림이에요.");
-      try { localStorage.setItem(AK, ""); } catch (e) {}
+      EXTRAS.forEach((x) => setOn(x, false));
       showAm(true);
       pushBeat("push-on");
     } catch (e) {

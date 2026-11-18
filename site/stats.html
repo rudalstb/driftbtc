@@ -29,7 +29,7 @@
       "share-forecast": "공유 · 예측", "share-filter": "공유 · 신호등",
       "push-on": "🔔 푸시 켬", "push-off": "🔔 푸시 끔", "push-morning-on": "☀️ 아침 요약 켬", "push-morning-off": "☀️ 아침 요약 끔",
       "push-nudge-shown": "⚡ 급변 권유 뜸", "push-nudge-yes": "⚡ 권유 → 알림 받기", "push-nudge-no": "⚡ 권유 닫음", "push-ios-guide": "📲 아이폰 설치 방법 봄",
-      "push-sent-jump": "📤 급변 푸시 보냄(건)", "push-sent-morning": "📤 아침 요약 보냄(건)",
+      "push-sent-jump": "📤 급변 푸시 보냄(건)", "push-sent-morning": "📤 아침 요약 보냄(건)", "push-sent-event": "📤 발표 알림 보냄(건)", "push-events-on": "📅 발표 알림 켬", "push-events-off": "📅 발표 알림 끔", "open-push-event": "📥 발표 알림 눌러 들어옴",
       "open-push-jump": "📥 급변 알림 눌러 들어옴", "open-push-morning": "📥 아침 요약 눌러 들어옴", "open-push-on": "📥 확인 알림 눌러 들어옴",
     };
     const secs = [...new Set(j.days.flatMap((d) => Object.keys(d.sections)))];
@@ -38,6 +38,21 @@
     out.innerHTML = `<table><thead><tr><th>영역</th>${j.days.map((d) => `<th>${d.date.slice(5)}</th>`).join("")}<th>7일 합</th></tr></thead><tbody>` +
       secs.map((s) => `<tr><td>${names[s] || s}</td>${j.days.map((d) => `<td>${d.sections[s] || ""}</td>`).join("")}<td><b>${total(s)}</b></td></tr>`).join("") +
       `</tbody></table><p class="muted" style="font-size:13px">순 방문자 오늘 ${j.today ?? "-"} · 어제 ${j.yesterday ?? "-"}. 영역 집계는 한 브라우저 탭에서 하루 1번만 셉니다.</p>`;
+    // 📈 글 페이지 (site/page.js): 많이 본 글 20개 · 들어온 경로
+    const tbl = (title, keys, get, label) => {
+      const sum = (k) => j.days.reduce((a, d) => a + (get(d)[k] || 0), 0);
+      keys = keys.sort((a, b) => sum(b) - sum(a));
+      return `<h2 style="font-size:16px;margin-top:24px">${title}</h2>` + (keys.length ? `<table><thead><tr><th></th>${j.days.map((d) => `<th>${d.date.slice(5)}</th>`).join("")}<th>7일 합</th></tr></thead><tbody>` +
+        keys.map((k) => `<tr><td>${label(k)}</td>${j.days.map((d) => `<td>${get(d)[k] || ""}</td>`).join("")}<td><b>${sum(k)}</b></td></tr>`).join("") + "</tbody></table>" : `<p class="muted">아직 기록이 없어요.</p>`);
+    };
+    const pg = (d) => d.pages || {}, rf = (d) => d.refs || {};
+    const pkeys = [...new Set(j.days.flatMap((d) => Object.keys(pg(d))))];
+    const top = pkeys.map((k) => [k, j.days.reduce((a, d) => a + (pg(d)[k] || 0), 0)]).sort((a, b) => b[1] - a[1]).slice(0, 20).map((x) => x[0]);
+    const kind = { search: "🔎 검색", internal: "🔗 사이트 안 링크", direct: "⌨️ 직접·즐겨찾기·앱", other: "🌐 다른 사이트" };
+    out.insertAdjacentHTML("beforeend",
+      tbl("📈 많이 본 글 (7일, 상위 20)", top, pg, (k) => `<a href="${k === "index" ? "./" : k}">${k}</a>`) +
+      tbl("🧭 글로 들어온 경로", [...new Set(j.days.flatMap((d) => Object.keys(rf(d))))], rf, (k) => kind[k] || k) +
+      `<p class="muted" style="font-size:13px">글 페이지(일지·가이드·안내)를 열 때마다 셉니다. 메인 화면은 위 영역 표와 방문자 수에 따로 잡혀요.</p>`);
   } catch (e) {
     out.textContent = "집계를 불러오지 못했어요: " + e.message;
   }

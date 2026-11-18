@@ -119,10 +119,27 @@ export async function GET(request) {
     } catch (e) {}
     return new Response(JSON.stringify({ ok: true }), { headers });
   }
+  // 글 페이지 방문 (site/page.js): 글 주소별 조회 수 · 들어온 경로 4가지 · 방문자 수(같은 브라우저 번호)
+  const page = q.get("page");
+  if (page != null) {
+    const ok = /^[a-z0-9][a-z0-9/._-]{0,90}$/i.test(page) && !page.includes("..");
+    const ref = ["search", "internal", "direct", "other"].includes(q.get("ref")) ? q.get("ref") : "other";
+    const v = /^[a-zA-Z0-9]{8,40}$/.test(q.get("vid") || "") ? q.get("vid") : null;
+    if (ok) {
+      try {
+        const d = kstDate(now0);
+        const cmds = [["HINCRBY", `page:${d}`, page, 1], ["EXPIRE", `page:${d}`, DAY_TTL], ["HINCRBY", `ref:${d}`, ref, 1], ["EXPIRE", `ref:${d}`, DAY_TTL]];
+        if (v) cmds.push(["PFADD", `uv:${d}`, v], ["EXPIRE", `uv:${d}`, DAY_TTL], ["PFADD", "uv:all", v]);
+        await redis(cfg, cmds);
+      } catch (e) {}
+    }
+    return new Response(JSON.stringify({ ok }), { headers });
+  }
   if (q.get("stats") === "1") {
     try {
       const days = [...Array(7)].map((_, i) => kstDate(now0 - i * 86400000)).reverse();
-      const res = await redis(cfg, [...days.map((d) => ["HGETALL", `sec:${d}`]), ["PFCOUNT", `uv:${days[6]}`], ["PFCOUNT", `uv:${days[5]}`]]);
+      const res = await redis(cfg, [...days.map((d) => ["HGETALL", `sec:${d}`]), ["PFCOUNT", `uv:${days[6]}`], ["PFCOUNT", `uv:${days[5]}`],
+        ...days.map((d) => ["HGETALL", `page:${d}`]), ...days.map((d) => ["HGETALL", `ref:${d}`])]);
       const toObj = (arr) => {
         if (!arr) return {};
         if (!Array.isArray(arr)) return Object.fromEntries(Object.entries(arr).map(([k, v]) => [k, Number(v)]));
@@ -130,7 +147,7 @@ export async function GET(request) {
         for (let i = 0; i < arr.length; i += 2) o[arr[i]] = Number(arr[i + 1]);
         return o;
       };
-      return new Response(JSON.stringify({ days: days.map((d, i) => ({ date: d, sections: toObj(res[i]) })), today: Number(res[7]) || 0, yesterday: Number(res[8]) || 0 }), { headers });
+      return new Response(JSON.stringify({ days: days.map((d, i) => ({ date: d, sections: toObj(res[i]), pages: toObj(res[9 + i]), refs: toObj(res[16 + i]) })), today: Number(res[7]) || 0, yesterday: Number(res[8]) || 0 }), { headers });
     } catch (e) {
       return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers });
     }
