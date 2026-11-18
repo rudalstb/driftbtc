@@ -818,13 +818,57 @@ def guide_index() -> str:
 
 
 
+def _hour(h: int) -> str:
+    return "자정" if h == 0 else f"새벽 {h}시" if h < 6 else f"오전 {h}시" if h < 12 else "낮 12시" if h == 12 else f"오후 {h - 12}시" if h < 18 else f"밤 {h - 12}시"
+
+
+def og_spec(path: str) -> tuple[str | None, str]:
+    """가이드 공유 그림에 크게 박을 숫자와 설명. 데이터 가이드는 지금 숫자, 나머지는 (None, 설명)."""
+    try:
+        if path == "guide/sudden-moves.html":
+            d = json.loads((SITE / "data" / "jumps_stats.json").read_text(encoding="utf-8"))
+            a = d["groups"]["all"]["h30"]
+            return f"되돌림 {round(a['rev'])}%", f"5분 1% 급변 {a['n']}번, 30분 뒤 이어짐은 {round(a['cont'])}% · 최근 1년 1분봉"
+        if path == "guide/fomc-cpi.html":
+            e = _hist()["events"]
+            return f"평소의 {e['fomc']['ratio']}배", f"FOMC 발표 뒤 4시간 비트코인 움직임 (CPI 는 {e['cpi']['ratio']}배) · 2020년 이후 {e['fomc']['n'] + e['cpi']['n']}번"
+        if path == "guide/fear-greed.html":
+            g = _hist()["fng"]
+            now = next((x for x in g["buckets"] if x["now"]), None)
+            ex = g["buckets"][0]
+            return f"지금 {g['now']}" + (f" · {now['name']}" if now else ""), f"극단적 공포 뒤 30일 오른 비율 {ex['up30']}% (평소 {g['base']['up30']}%) · {g['since'][:4]}년 이후"
+        if path == "guide/volatile-hours.html":
+            hm = _hist()["heatmap"]
+            y = hm["year"]
+            top = max(range(24), key=lambda h: sum(y[w][h] for w in range(7)))
+            return _hour(top), f"비트코인이 가장 크게 움직이는 시간 (한국 시간) · 주말은 평일의 {hm['weekend'] / hm['weekday'] * 100:.0f}%"
+    except Exception as e:  # 그림 숫자 실패해도 글은 쓴다
+        print(f"공유 그림 숫자 실패 {path}: {e}")
+    return None, PAGES[path][1]
+
+
+def guide_image(path: str, title: str) -> str | None:
+    """guide/og/<이름>.png 를 그리고 주소를 돌려준다 (실패하면 사이트 공통 그림)."""
+    if not path.startswith("guide/") or path.endswith("index.html"):
+        return None
+    try:
+        import guide_og
+        name = path.removeprefix("guide/").removesuffix(".html")
+        big, label = og_spec(path)
+        guide_og.draw(SITE / "guide" / "og" / f"{name}.png", title, big, label)
+        return f"{BASE}guide/og/{name}.png"
+    except Exception as e:
+        print(f"가이드 공유 그림 실패 {path}: {e}")
+        return None
+
+
 def main() -> None:
     PAGES["guide/index.html"] = ("비트코인 매매 가이드 모음", "레버리지, 손절, 청산가, 물타기, 수수료, 펀딩비, 김치 프리미엄, 업비트 수익 계산까지 코인 매매 기본을 공식과 예시로 정리한 가이드 모음입니다.", guide_index())
     for path, (title, desc, body) in PAGES.items():
         out = SITE / path
         out.parent.mkdir(parents=True, exist_ok=True)
         upd = f"숫자 갱신 {date.today():%Y년 %m월 %d일}" if path in DATA_GUIDES else None
-        out.write_text(wrap(path, title, desc, body, upd), encoding="utf-8", newline="\n")
+        out.write_text(wrap(path, title, desc, body, upd, guide_image(path, title)), encoding="utf-8", newline="\n")
     write_sitemap()
     print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
 
