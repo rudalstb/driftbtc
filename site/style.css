@@ -531,4 +531,5 @@ td.best { color: var(--accent); font-weight: 700; }
 .pwa-tip { margin-top: 6px; }
 .jumps-line { margin-top: 4px; }
 .jumps-base { color: var(--accent); text-decoration: none; white-space: nowrap; }
-.push-btn { display: block; margin-top: 4px; }
+.push-btn { display: block; margin-top: 10px; padding: 9px 12px; border: 1px solid var(--accent); border-radius: 10px; text-align: center; font-weight: 600; line-height: 1.4; }
+.push-btn[data-on="1"] { border-color: var(--border, #444); color: var(--muted, #999); font-weight: 400; }
