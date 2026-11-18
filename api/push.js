@@ -104,7 +104,10 @@ export async function GET(request) {
   try {
     const keys = await vapid(cfg);
     const [n] = await redis(cfg, [["HLEN", "push:subs"]]);
-    return json(request, { key: keys.publicKey, n: Number(n) || 0 });
+    // 공개 정보라 누구에게나 같은 응답 → 10분 동안 Vercel 앞단에 저장해 방문자마다 Redis 를 부르지 않게
+    return new Response(JSON.stringify({ key: keys.publicKey, n: Number(n) || 0 }), {
+      headers: { ...headers(request), "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=60, s-maxage=600" },
+    });
   } catch (e) {
     return json(request, { error: String(e.message || e) }, 500);
   }

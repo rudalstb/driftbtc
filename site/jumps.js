@@ -50,6 +50,7 @@ async function renderJumps() {
   const k = await jumpKlines();
   if (!k || k.length < 600) { el.hidden = true; return; }
   const ev = jumpEvents(k);
+  window.dispatchEvent(new CustomEvent("jumps", { detail: ev }));
   el.hidden = false;
   if (!ev.length) { el.textContent = "⚡ 최근 24시간 급변 없음 — 5분 만에 ±1% 넘게 움직인 적이 없는 조용한 하루"; jumpBase(el); return; }
   const hm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -93,16 +94,45 @@ setInterval(() => { if (!document.hidden) renderJumps(); }, 5 * 60 * 1000);
     navigator.serviceWorker.getRegistration().then((r) => r || navigator.serviceWorker.register("sw.js")).then(() => navigator.serviceWorker.ready),
     new Promise((_, no) => setTimeout(() => no(new Error("서비스 워커 준비 안 됨")), 8000)),
   ]);
-  const label = (on) => { btn.textContent = on ? "🔕 급변 푸시 끄기" : "🔔 급변 푸시 받기 — 사이트를 닫아도 5분 ±1% 급변 때 알림"; btn.dataset.on = on ? "1" : ""; };
+  const iosGuide = ios && !standalone && !can;
+  let subs = 0; // 받는 사람 수 (20명부터 보여 줌)
+  const label = (on) => {
+    const who = subs >= 20 ? ` · ${subs.toLocaleString("ko-KR")}명 받는 중` : "";
+    btn.textContent = on ? "🔕 급변 푸시 끄기" : iosGuide ? "📲 아이폰: 홈 화면에 추가하면 급변 알림을 받을 수 있어요 (방법 보기)" + who : "🔔 급변 푸시 받기 — 사이트를 닫아도 5분 ±1% 급변 때 알림" + who;
+    btn.dataset.on = on ? "1" : "";
+  };
+  const IOS_STEPS = "① 아래쪽 공유 버튼(네모에 ↑) → ② '홈 화면에 추가' → ③ 홈 화면의 BTC Agent 아이콘으로 열기 → ④ 이 버튼을 다시 누르고 알림 '허용'. (iOS 16.4 이상)";
   const post = (body) => fetch(window.PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
   btn.hidden = false;
   label(false);
   if (can) reg().then((r) => r.pushManager.getSubscription()).then((s) => label(!!s)).catch(() => {});
+  fetch(window.PUSH_URL).then((r) => r.json()).then((d) => { subs = d.n || 0; if (subs >= 20) label(btn.dataset.on === "1"); }).catch(() => {});
+
+  // ⚡ 급변 직후(1시간 안)에 들어온 사람에게만 한 번 권한다 (닫으면 3일 동안 안 보임)
+  const nudge = document.getElementById("push-nudge");
+  const NK = "push-nudge-off";
+  const off = () => { try { return Date.now() - Number(localStorage.getItem(NK) || 0) < 3 * 86400000; } catch (e) { return false; } };
+  addEventListener("jumps", (e) => {
+    const last = e.detail[e.detail.length - 1];
+    if (!nudge || !last || Date.now() - last.t > 3600000 || btn.dataset.on === "1" || off()) { if (nudge) nudge.hidden = true; return; }
+    const mins = Math.max(1, Math.round((Date.now() - last.t) / 60000));
+    nudge.innerHTML = "";
+    const txt = document.createElement("span");
+    txt.textContent = `⚡ ${mins}분 전 5분 만에 ${last.m > 0 ? "▲" : "▼"}${(Math.abs(last.m) * 100).toFixed(1)}% 급변이 있었어요. 다음엔 바로 알림으로 받을래요?`;
+    const yes = document.createElement("button");
+    yes.type = "button"; yes.textContent = iosGuide ? "방법 보기" : "알림 받기";
+    yes.onclick = () => { nudge.hidden = true; btn.click(); };
+    const no = document.createElement("button");
+    no.type = "button"; no.className = "ghost"; no.textContent = "닫기";
+    no.onclick = () => { nudge.hidden = true; try { localStorage.setItem(NK, String(Date.now())); } catch (err) {} };
+    nudge.append(txt, yes, no);
+    nudge.hidden = false;
+  });
 
   btn.addEventListener("click", async (ev) => {
     ev.preventDefault();
-    if (!can) { say("아이폰은 사파리 공유 버튼 → '홈 화면에 추가'로 설치한 뒤, 설치한 앱에서 이 버튼을 누르면 알림을 받을 수 있어요."); return; }
+    if (!can) { say(IOS_STEPS); return; }
     let step = "준비";
     say("확인하는 중…");
     try {
