@@ -187,9 +187,9 @@ export async function GET(request) {
   if (!cfg) return json(request, { error: "저장소 없음" }, 503);
   try {
     const keys = await vapid(cfg);
-    const [n] = await redis(cfg, [["HLEN", "push:subs"]]);
+    const [n, lastOk] = await redis(cfg, [["HLEN", "push:subs"], ["GET", "push:last_ok"]]);
     // 공개 정보라 누구에게나 같은 응답 → 10분 동안 Vercel 앞단에 저장해 방문자마다 Redis 를 부르지 않게
-    return new Response(JSON.stringify({ key: keys.publicKey, n: Number(n) || 0 }), {
+    return new Response(JSON.stringify({ key: keys.publicKey, n: Number(n) || 0, ok: lastOk || null }), {
       headers: { ...headers(request), "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=60, s-maxage=600" },
     });
   } catch (e) {
@@ -245,6 +245,8 @@ export async function POST(request) {
       try { evs = await eventAlert(cfg); } catch (e) { evs = { error: String(e.message || e) }; }
       const k = await klines();
       if (!k || k.length < 40) return json(request, { error: "1분봉을 받지 못함", morning: am, events: evs }, 502);
+      // 감시용: 마지막으로 1분봉까지 받아 확인을 마친 시각 (notify.py 가 1시간마다 보고, 오래되면 텔레그램으로 알림)
+      await redis(cfg, [["SET", "push:last_ok", new Date().toISOString()]]);
       const found = jumps(k);
       const res = [];
       for (const j of found) {
