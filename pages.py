@@ -58,6 +58,16 @@ RELATED = {
 # 매주 숫자가 새로 들어가는 가이드 — '마지막 수정'·dateModified 를 다시 쓴 날로
 DATA_GUIDES = {"guide/sudden-moves.html", "guide/fomc-cpi.html", "guide/fear-greed.html", "guide/volatile-hours.html"}
 
+# 📅 가이드를 처음 올린 날 (datePublished · RSS · 글 머리 '처음 올림'). 새 가이드를 쓰면 여기에 올린 날을 적는다.
+# 적지 않으면 UPDATED_ISO 가 쓰여, 나중에 UPDATED_ISO 를 올릴 때 올린 날까지 같이 바뀐다
+GUIDE_PUBLISHED = {
+    "forecast-range": "2026-10-19", "kimchi-premium": "2026-10-19", "funding-rate": "2026-10-19", "liquidation-price": "2026-10-19",
+    "leverage": "2026-11-05", "stop-loss": "2026-11-05", "win-rate-reward": "2026-11-05", "averaging-down": "2026-11-05",
+    "trading-fees": "2026-11-05", "upbit-profit": "2026-11-05",
+    "liquidations": "2026-11-17", "glossary": "2026-11-17",
+    "sudden-moves": "2026-11-18", "fomc-cpi": "2026-11-18", "fear-greed": "2026-11-18", "volatile-hours": "2026-11-18",
+}
+
 SECTION = {"daily": ("시장 일지", "daily/"), "weekly": ("주간 일지", "weekly/"), "monthly": ("월간 성적표", "monthly/"), "guide": ("매매 가이드", "guide/")}
 
 
@@ -67,14 +77,19 @@ def verify_meta() -> str:
 
 
 def _dates(path: str) -> tuple[str, str]:
-    """(처음 쓴 날, 마지막 수정일) — 일지·성적표는 파일 이름의 날짜, 나머지는 UPDATED_ISO."""
+    """(처음 쓴 날, 마지막 수정일) — 일지·성적표는 파일 이름의 날짜, 가이드는 GUIDE_PUBLISHED 의 올린 날, 나머지는 UPDATED_ISO."""
     m = re.match(r"(daily|weekly|monthly)/(\d{4}-\d{2}(?:-\d{2})?)\.html$", path)
     if m:
         d = m.group(2) if len(m.group(2)) == 10 else m.group(2) + "-01"
         return d, d
-    if path in DATA_GUIDES:
-        return UPDATED_ISO, date.today().isoformat()
-    return UPDATED_ISO, UPDATED_ISO
+    pub = GUIDE_PUBLISHED.get(path.removeprefix("guide/").removesuffix(".html"), UPDATED_ISO) if path.startswith("guide/") else UPDATED_ISO
+    return pub, (date.today().isoformat() if path in DATA_GUIDES else UPDATED_ISO)
+
+
+def _published_note(path: str) -> str:
+    """글 머리에 붙이는 '처음 올림 YYYY년 MM월 DD일 · ' — 올린 날이 마지막 수정일보다 앞선 가이드만."""
+    pub, mod = _dates(path)
+    return f"처음 올림 {date.fromisoformat(pub):%Y년 %m월 %d일} · " if path.startswith("guide/") and not path.endswith("index.html") and pub < mod else ""
 
 
 def structured(path: str, title: str, desc: str, image: str | None) -> str:
@@ -135,7 +150,7 @@ def wrap(path: str, title: str, desc: str, body: str, updated: str | None = None
 </head>
 <body>
 <main class="page">
-  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">{updated or "마지막 수정 " + UPDATED}</div></header>
+  <header><a class="up" href="https://rudals.app/">다른 앱 둘러보기 ›</a><br><a class="home" href="{p}index.html">BTC Agent <span style="font-size:11px;background:var(--accent);color:#0d1117;border-radius:5px;padding:2px 5px;vertical-align:middle">AI</span></a><h1>{title}</h1><div class="updated">{_published_note(path)}{updated or "마지막 수정 " + UPDATED}</div></header>
 {body}{related(path, p)}{ad_end}
 {FOOT.format(p=p)}
 </main>
