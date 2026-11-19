@@ -882,22 +882,36 @@ def main() -> None:
     print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
 
 
+def _lastmod(path: str) -> str:
+    """고정 페이지·가이드가 실제로 바뀐 날: 만들어 둔 html 의 dateModified(매주 숫자를 새로 넣는 가이드는 그날), 없으면 UPDATED_ISO."""
+    try:
+        m = re.search(r'"dateModified": ?"(\d{4}-\d{2}-\d{2})"', (SITE / path).read_text(encoding="utf-8"))
+    except OSError:
+        m = None
+    return m.group(1) if m else UPDATED_ISO
+
+
 def write_sitemap() -> None:
-    """고정 페이지 + 시장 일지(site/daily/YYYY-MM-DD.html, 그날 날짜를 lastmod 로). daily.py 도 부른다."""
+    """고정 페이지 + 일지·성적표. daily.py · weekly.py · monthly.py 도 부른다.
+    lastmod 는 실제로 바뀐 날만 적는다 (바뀌지 않은 글까지 매일 오늘 날짜면 검색엔진이 lastmod 를 믿지 않는다).
+    메인만 오늘 날짜(예측이 매시간 바뀜), 목록은 가장 새 글의 날짜."""
     today = date.today().isoformat()
-    items = [(BASE, today)] + [(BASE + p, today) for p in {**PAGES, "guide/index.html": None}]
+    items = [(BASE, today)] + [(BASE + p, _lastmod(p)) for p in {**PAGES, "guide/index.html": None}]
     daily = sorted((SITE / "daily").glob("20*.html"), reverse=True) if (SITE / "daily").exists() else []
     if daily:
-        items.append((BASE + "daily/index.html", today))
+        items.append((BASE + "daily/index.html", daily[0].stem))
         items += [(f"{BASE}daily/{f.name}", f.stem) for f in daily]
     weekly = sorted((SITE / "weekly").glob("20*.html"), reverse=True) if (SITE / "weekly").exists() else []
     if weekly:
-        items.append((BASE + "weekly/index.html", today))
-        items += [(f"{BASE}weekly/{f.name}", (date.fromisoformat(f.stem) + timedelta(days=7)).isoformat()) for f in weekly]
+        week_end = lambda f: (date.fromisoformat(f.stem) + timedelta(days=7)).isoformat()  # noqa: E731
+        items.append((BASE + "weekly/index.html", week_end(weekly[0])))
+        items += [(f"{BASE}weekly/{f.name}", week_end(f)) for f in weekly]
     monthly = sorted((SITE / "monthly").glob("20*.html"), reverse=True) if (SITE / "monthly").exists() else []
     if monthly:
-        items.append((BASE + "monthly/index.html", today))
-        items += [(f"{BASE}monthly/{f.name}", today) for f in monthly]
+        # 성적표는 다음 달 1일에 한 번 쓰고 고치지 않는다
+        month_end = lambda f: (date.fromisoformat(f.stem + "-01") + timedelta(days=32)).replace(day=1).isoformat()  # noqa: E731
+        items.append((BASE + "monthly/index.html", month_end(monthly[0])))
+        items += [(f"{BASE}monthly/{f.name}", month_end(f)) for f in monthly]
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(
         f"  <url><loc>{u}</loc><lastmod>{m}</lastmod></url>\n" for u, m in items) + "</urlset>\n"
     (SITE / "sitemap.xml").write_text(sitemap, encoding="utf-8", newline="\n")

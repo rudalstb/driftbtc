@@ -203,6 +203,13 @@ jobs:
           # 그 사이 다른 커밋이 올라오면 push 가 거절되므로 3번까지 다시 받아 올린다
           for i in 1 2 3; do git pull --rebase --autostash && git push && exit 0; sleep $((i * 5)); done; exit 1
 
+      # 🔔 배포 전: 지금 떠 있는 sitemap 과 비교해 새 글·바뀐 글 주소를 적어 둔다 (실패해도 배포는 계속)
+      - name: 검색엔진에 알릴 주소 고르기
+        id: s_indexnow
+        if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        run: python indexnow.py plan
+
       # 공유 미리보기 이미지: 저장소에는 넣지 않고(용량) 배포본에만 포함
       - name: 공유 미리보기 이미지
         if: steps.check.outputs.new == 'true'
@@ -224,3 +231,9 @@ jobs:
       - id: deploy
         if: steps.check.outputs.new == 'true'
         uses: actions/deploy-pages@v4
+
+      # 🔔 배포 뒤: 새 글·바뀐 글을 빙·네이버에 알린다 (IndexNow). 알릴 것이 없으면 아무것도 보내지 않는다
+      - name: 검색엔진에 새 글 알림
+        if: steps.check.outputs.new == 'true' && steps.s_indexnow.outcome == 'success'
+        continue-on-error: true
+        run: python indexnow.py send
