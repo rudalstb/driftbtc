@@ -1,3 +1,20 @@
+// 📊 Google 애널리틱스(GA4, rudals.app 과 같은 속성). 로봇·http(로컬)·운영자 통계 페이지·관리자 키가 주소에 있을 때는 부르지 않는다.
+// GA 는 page_view 에 주소창 주소(? 뒤 포함, # 뒤 제외)를 그대로 보낸다. ? 뒤에 비밀 값이 실리는 경우(admin)는 여기서 뺀다
+(function () {
+  if (window.__ga || location.protocol !== "https:" || navigator.webdriver) return;
+  if (/stats\.html$/.test(location.pathname) || new URLSearchParams(location.search).has("admin")) return;
+  window.__ga = 1;
+  const GA = "G-Y894ZF86LJ";
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", GA);
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA;
+  document.head.appendChild(s);
+})();
+
 // 비트겟 포지션 중계 주소 (Vercel 서버리스 함수, api/positions.js)
 // 비워 두면 '운영자 실전 포지션' 카드가 숨겨진다
 window.POSITIONS_URL = "https://driftbtc.vercel.app/api/positions";

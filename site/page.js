@@ -1,3 +1,20 @@
+// 📊 Google 애널리틱스(GA4, rudals.app 과 같은 속성). 로봇·http(로컬)·운영자 통계 페이지·관리자 키가 주소에 있을 때는 부르지 않는다.
+// GA 는 page_view 에 주소창 주소(? 뒤 포함, # 뒤 제외)를 그대로 보낸다. ? 뒤에 비밀 값이 실리는 경우(admin)는 여기서 뺀다
+(function () {
+  if (window.__ga || location.protocol !== "https:" || navigator.webdriver) return;
+  if (/stats\.html$/.test(location.pathname) || new URLSearchParams(location.search).has("admin")) return;
+  window.__ga = 1;
+  const GA = "G-Y894ZF86LJ";
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", GA);
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA;
+  document.head.appendChild(s);
+})();
+
 // 📈 글 페이지 방문 집계 (시장 일지·주간·월간·가이드·안내 페이지 공통)
 // 어떤 글을 몇 번 봤는지, 어디서 왔는지(검색·사이트 안·직접·기타 4가지)만 센다. 주소·검색어·개인정보는 보내지 않는다.
 // 메인 화면과 같은 임의의 브라우저 번호로 방문자 수에도 넣는다 (같은 사람은 한 번).

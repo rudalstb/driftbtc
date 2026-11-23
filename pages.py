@@ -33,6 +33,8 @@ def has_ads(path: str) -> bool:
 EXTRA_HEAD: dict[str, str] = {}
 
 UPDATED_ISO = "2026-11-18"
+# 따로 고친 페이지의 마지막 수정일 (UPDATED 를 올리면 모든 안내 페이지 날짜가 같이 바뀌므로)
+PAGE_UPDATED = {"privacy.html": ("2026년 11월 23일", "2026-11-23")}
 
 # 🔎 검색 등록 소유 확인 코드 (구글 서치 콘솔 · 네이버 서치어드바이저의 'HTML 태그' 방식에서 content="..." 안의 값만)
 # 넣고 python pages.py 를 실행하면 모든 글과 메인(index.html)에 들어간다
@@ -83,6 +85,8 @@ def _dates(path: str) -> tuple[str, str]:
         d = m.group(2) if len(m.group(2)) == 10 else m.group(2) + "-01"
         return d, d
     pub = GUIDE_PUBLISHED.get(path.removeprefix("guide/").removesuffix(".html"), UPDATED_ISO) if path.startswith("guide/") else UPDATED_ISO
+    if path in PAGE_UPDATED:
+        return pub, PAGE_UPDATED[path][1]
     return pub, (date.today().isoformat() if path in DATA_GUIDES else UPDATED_ISO)
 
 
@@ -216,10 +220,11 @@ PAGES["disclaimer.html"] = ("면책 조항", "BTC Agent 의 모든 정보는 참
 """)
 
 PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는 정보와 수집하지 않는 정보, 쿠키·광고·브라우저 저장소 이용에 대한 안내입니다.", """
-<div class="box"><b>요약:</b> 회원 가입이 없고, 이름·이메일·IP 같은 개인정보를 저장하지 않습니다. 방문자 수는 익명 번호로만 셉니다. 거래 내역 파일은 브라우저 안에서만 처리되고 서버로 전송되지 않습니다.</div>
+<div class="box"><b>요약:</b> 회원 가입이 없고, 이름·이메일·IP 같은 개인정보를 저장하지 않습니다. 방문자 수는 익명 번호로 세고, 어떤 페이지가 읽히는지 보려고 Google 애널리틱스를 함께 씁니다. 거래 내역 파일은 브라우저 안에서만 처리되고 서버로 전송되지 않습니다.</div>
 <h2>1. 수집하는 정보</h2>
 <ul>
   <li><b>익명 방문 집계</b> — 브라우저가 스스로 만든 임의의 번호(개인을 식별할 수 없음)로 순 방문자 수·조회수·접속 중 인원을 셉니다. 글 페이지는 글 주소별 조회 수와 들어온 경로의 종류(검색·사이트 안 링크·직접·다른 사이트 4가지)만 날짜별 합계로 셉니다. 이전 페이지 주소나 검색어는 저장하지 않습니다. IP 주소, 기기 정보, 위치는 저장하지 않습니다.</li>
+  <li><b>Google 애널리틱스</b> — 어떤 페이지가 실제로 읽히는지 보기 위해 Google 애널리틱스(GA4)를 씁니다. Google 은 쿠키(_ga 등)로 같은 브라우저를 구분하고, 본 페이지 주소, 머문 시간, 스크롤·바깥 링크 클릭, 들어온 경로, 대략적인 지역(도시 단위), 기기·브라우저 종류를 수집합니다. IP 주소는 지역을 알아내는 데만 쓰고 저장하지 않으며, 데이터는 Google 서버(해외)에서 처리되어 최대 14개월 보관됩니다. 계산기 입력값과 거래 내역 파일은 보내지 않으며, 운영자 통계 페이지에서는 쓰지 않습니다. 자세한 내용은 <a href="https://policies.google.com/technologies/partner-sites?hl=ko" target="_blank" rel="noopener">Google이 파트너 사이트의 데이터를 사용하는 방식</a>에 있고, 원하지 않으면 쿠키를 막거나 <a href="https://tools.google.com/dlpage/gaoptout?hl=ko" target="_blank" rel="noopener">Google 애널리틱스 차단 부가기능</a>을 쓸 수 있습니다.</li>
   <li><b>화면 이용 집계</b> — 어떤 영역(예: 계산기, 신호등)이 얼마나 쓰이는지 영역 이름과 횟수만 셉니다. 입력한 값은 포함되지 않습니다.</li>
   <li><b>투표·한마디·주간 게임</b> — 롱/숏 투표, 직접 쓴 한마디, 주간 범위 맞히기에 고른 범위는 위의 익명 번호와 함께 서버(Vercel)에 저장되어 결과·순위 집계에 쓰입니다. 한마디에는 개인정보를 적지 말아 주세요. 한마디는 다른 방문자에게 공개됩니다.</li>
   <li><b>급변 푸시 알림</b> — 직접 켠 경우에만, 브라우저가 만든 푸시 주소와 암호화 키, 아침 요약·발표 알림을 받을지 여부를 서버(Vercel)에 저장해 알림을 보내는 데만 씁니다. 보낸 알림 수와 알림을 눌러 들어온 횟수는 개인을 구분하지 않는 날짜별 합계로만 셉니다. 이름·연락처는 받지 않으며, 끄면 바로 지워지고 브라우저가 구독을 해지해도 자동으로 지워집니다.</li>
@@ -230,7 +235,7 @@ PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는
   <li>리스크 계산기에 입력한 잔고 등은 이용자 브라우저의 저장소(localStorage)에만 남아 다음 방문 때 편의를 위해 쓰이며, 운영자는 볼 수 없습니다. 브라우저 데이터 삭제로 지울 수 있습니다.</li>
 </ul>
 <h2>3. 쿠키와 브라우저 저장소</h2>
-<p>로그인 쿠키는 사용하지 않습니다. 통화 선택(원화/달러), 계산기 입력값, 접은 영역, 가격 알림 목록, 투표·게임 참여 표시 같은 화면 설정을 브라우저 저장소(localStorage)에 보관합니다.</p>
+<p>로그인 쿠키는 사용하지 않습니다. 위 Google 애널리틱스와 아래 광고 제공자는 자체 쿠키를 쓸 수 있습니다. 통화 선택(원화/달러), 계산기 입력값, 접은 영역, 가격 알림 목록, 투표·게임 참여 표시 같은 화면 설정을 브라우저 저장소(localStorage)에 보관합니다.</p>
 <p>홈 화면에 추가(앱 설치)와 끊긴 연결에서도 열리도록 <b>서비스 워커</b>가 페이지·스크립트·최근 예측 데이터를 브라우저 캐시에 저장합니다. 이 캐시는 기기 안에만 있고 운영자에게 전송되지 않으며, 브라우저의 사이트 데이터 삭제로 지울 수 있습니다.</p>
 <h2>4. 광고</h2>
 <p>사이트에는 주식회사 카카오의 광고 서비스인 <b>카카오 애드핏</b> 광고가 나옵니다. 매매 가이드 글의 중간과 끝, 가이드 목록과 소개 페이지 끝, 메인 화면 맨 아래에 한 칸씩이며, 차트·예측·신호등 사이에는 넣지 않습니다. 앞으로 Google AdSense 같은 다른 제3자 광고가 게재될 수도 있습니다.</p>
@@ -240,7 +245,7 @@ PAGES["privacy.html"] = ("개인정보처리방침", "BTC Agent 가 수집하는
   <li>광고 내용은 운영자가 보증하지 않으며, 투자 상품 광고도 투자 권유가 아닙니다.</li>
 </ul>
 <h2>5. 외부 서비스</h2>
-<p>시세·시장 데이터는 바이낸스·업비트·야후 파이낸스 등 공개 API 에서 받아옵니다. 실시간 시세·1분봉·차트·강제 청산 흐름은 이용자 브라우저가 바이낸스에 직접 요청하므로, 일반적인 웹 접속처럼 해당 서비스가 접속 IP 를 볼 수 있습니다. 이때 보내는 것은 공개 시세 요청뿐이며 이용자가 입력한 값은 포함되지 않습니다. 사이트는 GitHub Pages 와 Vercel 에서 호스팅됩니다.</p>
+<p>시세·시장 데이터는 바이낸스·업비트·야후 파이낸스 등 공개 API 에서 받아옵니다. 실시간 시세·1분봉·차트·강제 청산 흐름은 이용자 브라우저가 바이낸스에 직접 요청하므로, 일반적인 웹 접속처럼 해당 서비스가 접속 IP 를 볼 수 있습니다. 이때 보내는 것은 공개 시세 요청뿐이며 이용자가 입력한 값은 포함되지 않습니다. 사이트는 GitHub Pages 와 Vercel 에서 호스팅되며, 방문 통계에 Google 애널리틱스를 씁니다.</p>
 <h2>6. 보관과 파기</h2>
 <p>익명 집계값은 통계 목적으로 보관하며, 날짜별 세부 집계는 40일 뒤 자동 삭제됩니다.</p>
 <h2>7. 문의</h2>
@@ -891,7 +896,7 @@ def main() -> None:
     for path, (title, desc, body) in PAGES.items():
         out = SITE / path
         out.parent.mkdir(parents=True, exist_ok=True)
-        upd = f"숫자 갱신 {date.today():%Y년 %m월 %d일}" if path in DATA_GUIDES else None
+        upd = f"숫자 갱신 {date.today():%Y년 %m월 %d일}" if path in DATA_GUIDES else ("마지막 수정 " + PAGE_UPDATED[path][0] if path in PAGE_UPDATED else None)
         out.write_text(wrap(path, title, desc, body, upd, guide_image(path, title)), encoding="utf-8", newline="\n")
     write_sitemap()
     print(f"{len(PAGES)}개 페이지 + sitemap.xml + robots.txt 생성")
