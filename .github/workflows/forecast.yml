@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 45
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy_retry.outputs.page_url }}
     env:
       PYTHONIOENCODING: utf-8
     steps:
@@ -228,12 +228,23 @@ jobs:
         if: steps.check.outputs.new == 'true'
         with:
           path: site
+      # 배포는 GitHub 쪽 일시 장애로 가끔 실패한다("No artifacts named github-pages", "Fetching artifact metadata failed").
+      # 한 번 실패하면 1분 기다렸다가 같은 묶음으로 한 번 더 배포하고, 그것도 실패하면 그때 실행을 실패로 남긴다
       - id: deploy
         if: steps.check.outputs.new == 'true'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: 배포 재시도 전 기다리기
+        if: steps.check.outputs.new == 'true' && steps.deploy.outcome == 'failure'
+        run: sleep 60
+
+      - id: deploy_retry
+        if: steps.check.outputs.new == 'true' && steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       # 🔔 배포 뒤: 새 글·바뀐 글을 빙·네이버에 알린다 (IndexNow). 알릴 것이 없으면 아무것도 보내지 않는다
       - name: 검색엔진에 새 글 알림
-        if: steps.check.outputs.new == 'true' && steps.s_indexnow.outcome == 'success'
+        if: steps.check.outputs.new == 'true' && steps.s_indexnow.outcome == 'success' && (steps.deploy.outcome == 'success' || steps.deploy_retry.outcome == 'success')
         continue-on-error: true
         run: python indexnow.py send
