@@ -1,6 +1,6 @@
 {
  "sig_1d": "short",
- "red": true,
+ "red": false,
  "brief_date": "2026-11-24",
  "liq_spike": "2026-11-24T03:00:00+00:00"
 }
