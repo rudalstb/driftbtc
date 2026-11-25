@@ -79,5 +79,8 @@ export async function GET(request) {
   }
   const [upbit, nq] = await Promise.all([upbitPrice(), nasdaq()]);
   if (!cache.fx && !upbit) return new Response(JSON.stringify({ error: "환율과 업비트 가격을 받지 못했어요" }), { status: 502, headers });
-  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit, upbit_eth: upbitCache.eth, nq }), { headers });
+  // 성공 응답은 Vercel CDN 에 10초 담아 방문자끼리 나눠 쓴다(탭마다 10초에 한 번 부름). 허용 주소가 요청한 곳마다 달라서 Vary: Origin
+  return new Response(JSON.stringify({ ...(cache.fx || {}), upbit, upbit_eth: upbitCache.eth, nq }), {
+    headers: { ...headers, "Vercel-CDN-Cache-Control": "max-age=10", Vary: "Origin" },
+  });
 }

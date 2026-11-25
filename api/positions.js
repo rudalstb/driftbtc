@@ -30,10 +30,18 @@ function keyShape(e) {
   };
 }
 
+// 성공 응답은 Vercel CDN 에 5초 담아 방문자끼리 나눠 쓴다(탭마다 5초에 한 번 부르므로, 안 담으면 방문자 수만큼 함수가 돈다).
+// 브라우저 쪽 Cache-Control: no-store 는 그대로. 허용 주소(Access-Control-Allow-Origin)가 요청한 곳마다 달라서 Vary: Origin
+const CDN = { "Vercel-CDN-Cache-Control": "max-age=5", Vary: "Origin" };
+
 export async function GET(request) {
   const e = env();
   const res = await worker.fetch(request, e);
-  if (res.status === 200) return res;
+  if (res.status === 200) {
+    const headers = new Headers(res.headers);
+    for (const [k, v] of Object.entries(CDN)) headers.set(k, v);
+    return new Response(res.body, { status: 200, headers });
+  }
   const body = await res.json();
   return new Response(JSON.stringify({ ...body, check: keyShape(e) }), { status: res.status, headers: res.headers });
 }

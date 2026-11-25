@@ -1096,11 +1096,18 @@ document.querySelectorAll(".tabs button").forEach((b) =>
 pollReport().then(pollLive);
 setInterval(pollLive, 5000);
 loadFx();
-setInterval(loadFx, 10 * 1000); // 업비트 가격 때문에 10초마다 (환율은 서버에서 1분 단위)
+// Vercel 함수(fx·positions)는 탭이 보일 때만 부른다. 내려 둔 탭이 계속 부르면 Vercel 무료 CPU(월 4시간)를 다 쓴다.
+// 다시 보이면 바로 새로 받는다 (아래 visibilitychange)
+setInterval(() => { if (!document.hidden) loadFx(); }, 10 * 1000); // 업비트 가격 때문에 10초마다 (환율은 서버에서 1분 단위)
 document.querySelectorAll("#cur-toggle button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cur === CUR));
 setInterval(tick, 1000);
 pollPositions();
-setInterval(pollPositions, 5000);
+setInterval(() => { if (!document.hidden) pollPositions(); }, 5000);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  loadFx();
+  pollPositions();
+});
 if (window.POSITIONS_URL) {
   loadTrades();
   setInterval(loadTrades, 10 * 60 * 1000);

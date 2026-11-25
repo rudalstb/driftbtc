@@ -117,6 +117,7 @@ async function loadSay() {
 
 if ($("say-box")) {
   setTimeout(loadSay, 800); // 방문자 번호(vid)가 먼저 만들어진 뒤
-  setInterval(loadSay, 60000);
+  setInterval(() => { if (!document.hidden) loadSay(); }, 60000); // 내려 둔 탭은 Vercel 함수를 부르지 않는다
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadSay(); });
 }
 window.renderSay = renderSay;
